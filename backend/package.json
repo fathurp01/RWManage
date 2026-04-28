@@ -7,6 +7,8 @@
     "dev": "nodemon --watch src --ext ts,json --legacy-watch --signal SIGTERM --exec tsx src/server.ts",
     "start": "node dist/server.js",
     "build": "tsc -p tsconfig.json",
+    "db:push": "npx prisma db push",
+    "db:seed": "npx prisma db seed",
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "test:security": "jest --testPathPatterns=security --runInBand"

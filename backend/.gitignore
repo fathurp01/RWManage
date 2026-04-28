@@ -1,3 +1,42 @@
+# Dependencies
 node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment
 .env
+.env.local
+.env.*.local
+
+# Build outputs
 dist/
+build/
+.tsbuildinfo
+
+# Testing
+coverage/
+test-output.log
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prisma
+prisma/.env
+*.db
+
+# Temporary files
+*.tmp
+*.temp
