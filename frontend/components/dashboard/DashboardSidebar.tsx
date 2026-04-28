@@ -105,6 +105,30 @@ const masjidItems: SidebarItem[] = [
   },
 ];
 
+const rtItems: SidebarItem[] = [
+  {
+    href: "/dashboard/rt",
+    label: "Dashboard RT",
+    description: "Pantau iuran warga di blok RT",
+    icon: LayoutDashboard,
+  },
+];
+
+const superadminItems: SidebarItem[] = [
+  {
+    href: "/dashboard/superadmin",
+    label: "Persetujuan User",
+    description: "Kelola persetujuan akun pengguna",
+    icon: ShieldCheck,
+  },
+  {
+    href: "/dashboard/rw/warga",
+    label: "Data Semua Warga",
+    description: "Lihat semua data iuran warga",
+    icon: Users,
+  },
+];
+
 type AccentConfig = {
   gradient: string;
   indicator: string;
@@ -132,6 +156,34 @@ const getAccent = (role: AppRole | null): AccentConfig => {
     };
   }
 
+  if (role === "RT") {
+    return {
+      gradient: "from-cyan-500 to-blue-600",
+      indicator: "bg-cyan-500",
+      iconBg: "bg-cyan-50 dark:bg-cyan-950/30",
+      iconText: "text-cyan-600 dark:text-cyan-400",
+      activeBg: "bg-cyan-50 dark:bg-cyan-950/30",
+      activeText: "text-cyan-900 dark:text-cyan-100",
+      activeIconBg: "bg-cyan-100 dark:bg-cyan-900/40",
+      roleLabel: "Dashboard RT",
+      roleBadge: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300",
+    };
+  }
+
+  if (role === "SUPERADMIN") {
+    return {
+      gradient: "from-rose-500 to-pink-600",
+      indicator: "bg-rose-500",
+      iconBg: "bg-rose-50 dark:bg-rose-950/30",
+      iconText: "text-rose-600 dark:text-rose-400",
+      activeBg: "bg-rose-50 dark:bg-rose-950/30",
+      activeText: "text-rose-900 dark:text-rose-100",
+      activeIconBg: "bg-rose-100 dark:bg-rose-900/40",
+      roleLabel: "Dashboard Superadmin",
+      roleBadge: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
+    };
+  }
+
   return {
     gradient: "from-indigo-500 to-violet-600",
     indicator: "bg-indigo-500",
@@ -150,7 +202,15 @@ export function DashboardSidebar({ role }: { role: AppRole | null }) {
   const router = useRouter();
   const { logout } = useAuth();
   const accent = getAccent(role);
-  const items = role === "PENGURUS_MASJID" ? masjidItems : rwItems;
+  let items: SidebarItem[] = rwItems;
+  
+  if (role === "PENGURUS_MASJID") {
+    items = masjidItems;
+  } else if (role === "RT") {
+    items = rtItems;
+  } else if (role === "SUPERADMIN") {
+    items = superadminItems;
+  }
 
   const handleLogout = useCallback(() => {
     logout();
