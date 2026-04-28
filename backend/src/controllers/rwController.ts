@@ -69,7 +69,7 @@ const createKodeUnikCandidate = (prefix: "IUR" | "KAS", date: Date): string => {
 };
 
 const generateKodeUnik = async (
-  client: typeof prisma,
+  client: typeof prisma | Prisma.TransactionClient,
   prefix: "IUR" | "KAS"
 ): Promise<string> => {
   const now = new Date();
@@ -78,7 +78,7 @@ const generateKodeUnik = async (
     const candidate = createKodeUnikCandidate(prefix, now);
 
     if (prefix === "IUR") {
-      const exists = await client.iuranWarga.findUnique({
+      const exists = await (client as any).iuranWarga.findUnique({
         where: { kode_unik: candidate },
         select: { id: true },
       });
@@ -89,7 +89,7 @@ const generateKodeUnik = async (
       continue;
     }
 
-    const exists = await client.kasRW.findUnique({
+    const exists = await (client as any).kasRW.findUnique({
       where: { kode_unik: candidate },
       select: { id: true },
     });
