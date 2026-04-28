@@ -8,7 +8,7 @@ export const registerSchema = z
     email: z.string().trim().email().transform((value) => value.toLowerCase()),
     password: z.string().min(8).max(128),
     no_hp: z.string().trim().min(8).max(20),
-    role: z.enum(["RW", "PENGURUS_MASJID"]),
+    role: z.enum(["RW", "RT", "PENGURUS_MASJID"]),
     blok_wilayah_id: uuidSchema.optional(),
     masjid_id: uuidSchema.optional(),
   })
@@ -20,12 +20,40 @@ export const registerSchema = z
         message: "masjid_id wajib diisi untuk role PENGURUS_MASJID.",
       });
     }
+    if (value.role === "RT" && !value.blok_wilayah_id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["blok_wilayah_id"],
+        message: "blok_wilayah_id wajib diisi untuk role RT.",
+      });
+    }
   });
 
 export const loginSchema = z.object({
   email: z.string().trim().email().transform((value) => value.toLowerCase()),
   password: z.string().min(1).max(128),
-  role: z.enum(["RW", "PENGURUS_MASJID"]).optional(),
+  role: z.enum(["RW", "RT", "PENGURUS_MASJID"]).optional(),
+});
+
+export const approveRegistrationSchema = z
+  .object({
+    user_id: uuidSchema,
+    status_akun: z.enum(["APPROVED", "REJECTED"]),
+    alasan_penolakan: z.string().trim().max(500).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.status_akun === "REJECTED" && !value.alasan_penolakan) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["alasan_penolakan"],
+        message: "alasan_penolakan wajib diisi saat menolak pendaftaran.",
+      });
+    }
+  });
+
+export const listPendingRegistrationsQuerySchema = z.object({
+  search: z.string().trim().min(1).max(100).optional(),
+  role: z.enum(["RW", "RT"]).optional(),
 });
 
 export const approvePengurusSchema = z
@@ -56,6 +84,12 @@ export const createWargaSchema = z.object({
 
 export const getIuranWargaQuerySchema = z.object({
   blok_wilayah_id: uuidSchema,
+  tahun: z.coerce.number().int().min(2000).max(3000).optional(),
+  bulan: z.coerce.number().int().min(1).max(12).optional(),
+  status: z.enum(["BELUM", "LUNAS"]).optional(),
+});
+
+export const getIuranRtQuerySchema = z.object({
   tahun: z.coerce.number().int().min(2000).max(3000).optional(),
   bulan: z.coerce.number().int().min(1).max(12).optional(),
   status: z.enum(["BELUM", "LUNAS"]).optional(),

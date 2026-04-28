@@ -34,6 +34,7 @@ interface PendingPengurusQuery {
 interface TokenPayload extends Pick<User, "id" | "email" | "role"> {
   wilayah_rw_id?: string;
   masjid_ids?: string[];
+  blok_wilayah_id?: string;
 }
 
 const createToken = (user: TokenPayload): string => {
@@ -50,6 +51,7 @@ const createToken = (user: TokenPayload): string => {
       role: user.role,
       wilayah_rw_id: user.wilayah_rw_id,
       masjid_ids: user.masjid_ids,
+      blok_wilayah_id: user.blok_wilayah_id,
     },
     jwtSecret,
     { expiresIn: "1d" }
@@ -73,7 +75,7 @@ export const registerWithClient = async (
       return;
     }
 
-    if (role !== Role.RW && role !== Role.PENGURUS_MASJID) {
+    if (role !== Role.RW && role !== Role.PENGURUS_MASJID && role !== Role.RT) {
       res.status(400).json({
         success: false,
         message: "Role tidak valid. Gunakan RW atau PENGURUS_MASJID.",
@@ -85,6 +87,14 @@ export const registerWithClient = async (
       res.status(400).json({
         success: false,
         message: "masjid_id wajib diisi untuk role PENGURUS_MASJID.",
+      });
+      return;
+    }
+
+    if (role === Role.RT && !blok_wilayah_id) {
+      res.status(400).json({
+        success: false,
+        message: "blok_wilayah_id wajib diisi untuk role RT.",
       });
       return;
     }
@@ -118,8 +128,7 @@ export const registerWithClient = async (
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-    const initialStatus =
-      role === Role.RW ? StatusAkun.APPROVED : StatusAkun.PENDING;
+    const initialStatus = StatusAkun.PENDING;
 
     const createdUser = await client.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -187,7 +196,7 @@ export const loginWithClient = async (client: typeof prisma, req: Request, res: 
       return;
     }
 
-    if (role && role !== Role.RW && role !== Role.PENGURUS_MASJID) {
+    if (role && role !== Role.RW && role !== Role.PENGURUS_MASJID && role !== Role.RT) {
       res.status(400).json({
         success: false,
         message: "Role login tidak valid.",
@@ -243,6 +252,22 @@ export const loginWithClient = async (client: typeof prisma, req: Request, res: 
       return;
     }
 
+    if (user.role === Role.RT && user.status_akun === StatusAkun.PENDING) {
+      res.status(403).json({
+        success: false,
+        message: "Akun RT masih menunggu persetujuan Superadmin.",
+      });
+      return;
+    }
+
+    if (user.role === Role.RT && user.status_akun === StatusAkun.REJECTED) {
+      res.status(403).json({
+        success: false,
+        message: "Akun RT ditolak.",
+      });
+      return;
+    }
+
     if (
       user.role === Role.PENGURUS_MASJID &&
       user.status_akun === StatusAkun.REJECTED
@@ -266,6 +291,17 @@ export const loginWithClient = async (client: typeof prisma, req: Request, res: 
       wilayahRwId = wilayah?.id;
     }
 
+    let blokWilayahId: string | undefined;
+
+    if (user.role === Role.RT) {
+      const u = await client.user.findUnique({
+        where: { id: user.id },
+        select: { blok_wilayah_id: true },
+      });
+
+      blokWilayahId = u?.blok_wilayah_id ?? undefined;
+    }
+
     if (user.role === Role.PENGURUS_MASJID) {
       const pengurusMasjid = await client.pengurusMasjid.findMany({
         where: { user_id: user.id },
@@ -281,6 +317,7 @@ export const loginWithClient = async (client: typeof prisma, req: Request, res: 
       role: user.role,
       wilayah_rw_id: wilayahRwId,
       masjid_ids: masjidIds,
+      blok_wilayah_id: blokWilayahId,
     });
 
     res.status(200).json({
@@ -606,9 +643,183 @@ export const listPendingPengurusWithClient = async (
   }
 };
 
+export const listPendingRegistrationsWithClient = async (
+  client: typeof prisma,
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user || req.user.role !== Role.SUPERADMIN) {
+      res.status(403).json({
+        success: false,
+        message: "Hanya Superadmin yang boleh melihat daftar pendaftar.",
+      });
+      return;
+    }
+
+    const { search, role } = req.query as { search?: string; role?: string };
+    const normalizedSearch = search?.trim();
+
+    const whereClause: any = {
+      status_akun: StatusAkun.PENDING,
+      ...(role ? { role } : { role: { in: ["RW", "RT"] } }),
+      ...(normalizedSearch
+        ? {
+            OR: [
+              { nama: { contains: normalizedSearch, mode: "insensitive" } },
+              { email: { contains: normalizedSearch, mode: "insensitive" } },
+              { no_hp: { contains: normalizedSearch, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    };
+
+    const users = await client.user.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        nama: true,
+        email: true,
+        no_hp: true,
+        role: true,
+        status_akun: true,
+        blok_wilayah_id: true,
+        created_at: true,
+      },
+      orderBy: { created_at: "asc" },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Daftar pendaftaran pending berhasil diambil.",
+      data: users,
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan saat mengambil daftar pending pendaftaran.",
+    });
+  }
+};
+
+export const approveRegistrationWithClient = async (
+  client: typeof prisma,
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user || req.user.role !== Role.SUPERADMIN) {
+      res.status(403).json({
+        success: false,
+        message: "Hanya Superadmin yang boleh melakukan approval pendaftaran.",
+      });
+      return;
+    }
+
+    const { user_id, status_akun, alasan_penolakan } = req.body as ApprovePengurusBody;
+
+    if (!user_id || !status_akun) {
+      res.status(400).json({
+        success: false,
+        message: "user_id dan status_akun wajib diisi.",
+      });
+      return;
+    }
+
+    if (status_akun !== "APPROVED" && status_akun !== "REJECTED") {
+      res.status(400).json({
+        success: false,
+        message: "status_akun hanya boleh APPROVED atau REJECTED.",
+      });
+      return;
+    }
+
+    if (status_akun === "REJECTED" && !alasan_penolakan?.trim()) {
+      res.status(400).json({
+        success: false,
+        message: "alasan_penolakan wajib diisi saat menolak pendaftaran.",
+      });
+      return;
+    }
+
+    const targetUser = await client.user.findUnique({
+      where: { id: user_id },
+      select: { id: true, role: true, status_akun: true },
+    });
+
+    if (!targetUser) {
+      res.status(404).json({
+        success: false,
+        message: "User tidak ditemukan.",
+      });
+      return;
+    }
+
+    if (targetUser.role !== Role.RW && targetUser.role !== Role.RT) {
+      res.status(400).json({
+        success: false,
+        message: "Hanya pendaftaran RW atau RT yang dapat diproses oleh Superadmin.",
+      });
+      return;
+    }
+
+    if (targetUser.status_akun !== StatusAkun.PENDING) {
+      res.status(400).json({
+        success: false,
+        message: "Approval hanya bisa dilakukan untuk user dengan status PENDING.",
+      });
+      return;
+    }
+
+    const updatedUser = await client.user.update({
+      where: { id: user_id },
+      data: {
+        status_akun: status_akun,
+        alasan_penolakan: status_akun === "REJECTED" ? alasan_penolakan?.trim() : null,
+      },
+      select: {
+        id: true,
+        nama: true,
+        email: true,
+        role: true,
+        status_akun: true,
+        alasan_penolakan: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message:
+        status_akun === "APPROVED"
+          ? "Pendaftaran berhasil di-approve."
+          : "Pendaftaran berhasil di-reject.",
+      data: updatedUser,
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan saat memproses approval pendaftaran.",
+    });
+  }
+};
+
 export const listPendingPengurus = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   return listPendingPengurusWithClient(prisma, req, res);
+};
+
+export const listPendingRegistrations = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  return listPendingRegistrationsWithClient(prisma, req, res);
+};
+
+export const approveRegistration = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  return approveRegistrationWithClient(prisma, req, res);
 };

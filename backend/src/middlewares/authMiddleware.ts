@@ -11,6 +11,7 @@ interface AuthUserPayload {
   role: AppRole;
   wilayah_rw_id?: string;
   masjid_ids?: string[];
+  blok_wilayah_id?: string;
 }
 
 declare global {
@@ -46,7 +47,12 @@ const parseJwtUser = (decoded: string | JwtPayload): AuthUserPayload | null => {
     return null;
   }
 
-  if (role !== Role.RW && role !== Role.PENGURUS_MASJID) {
+  if (
+    role !== Role.RW &&
+    role !== Role.PENGURUS_MASJID &&
+    role !== Role.RT &&
+    role !== Role.SUPERADMIN
+  ) {
     return null;
   }
 
@@ -56,12 +62,16 @@ const parseJwtUser = (decoded: string | JwtPayload): AuthUserPayload | null => {
     ? decoded.masjid_ids.filter((value): value is string => typeof value === "string")
     : undefined;
 
+  const blokWilayahId =
+    typeof decoded.blok_wilayah_id === "string" ? decoded.blok_wilayah_id : undefined;
+
   return {
     id,
     email: typeof decoded.email === "string" ? decoded.email : undefined,
     role,
     wilayah_rw_id: wilayahRwId,
     masjid_ids: masjidIds,
+    blok_wilayah_id: blokWilayahId,
   };
 };
 

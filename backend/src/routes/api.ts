@@ -4,6 +4,8 @@ import {
   listPendingPengurus,
   login,
   register,
+  listPendingRegistrationsWithClient as listPendingRegistrations,
+  approveRegistrationWithClient as approveRegistration,
 } from "../controllers/authController";
 import {
   bayarIuran,
@@ -96,6 +98,7 @@ import {
   exportReportQuerySchema,
   getKasMasjidQuerySchema,
   getIuranWargaQuerySchema,
+  getIuranRtQuerySchema,
   getKasRWQuerySchema,
   reportMasjidQuerySchema,
   reportRwQuerySchema,
@@ -104,9 +107,11 @@ import {
   kasRWParamsSchema,
   kasMasjidParamsSchema,
   listPendingPengurusQuerySchema,
+  listPendingRegistrationsQuerySchema,
   loginSchema,
   masjidListQuerySchema,
   registerSchema,
+  approveRegistrationSchema,
   rwMasjidParamsSchema,
   createRwMasjidSchema,
   updateRwMasjidSchema,
@@ -137,6 +142,26 @@ router.get(
   checkApproval,
   validateQuery(listPendingPengurusQuerySchema),
   listPendingPengurus
+);
+
+router.get(
+  "/auth/pending-registrations",
+  authRateLimit,
+  verifyToken,
+  checkRole(["SUPERADMIN"]),
+  checkApproval,
+  validateQuery(listPendingRegistrationsQuerySchema),
+  listPendingRegistrations
+);
+
+router.patch(
+  "/auth/approve-registration",
+  authRateLimit,
+  verifyToken,
+  checkRole(["SUPERADMIN"]),
+  checkApproval,
+  validateBody(approveRegistrationSchema),
+  approveRegistration
 );
 
 router.post(
@@ -229,6 +254,21 @@ router.get(
   checkApproval,
   validateQuery(getIuranWargaQuerySchema),
   getIuranWarga
+);
+
+router.get(
+  "/rt/iuran",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateQuery(getIuranRtQuerySchema),
+  // handler from rtController
+  (req, res) => {
+    // lazy import to avoid circular issues
+    const { getIuranForRt } = require("../controllers/rtController");
+    return getIuranForRt(req, res);
+  }
 );
 router.patch(
   "/rw/bayar-iuran",
