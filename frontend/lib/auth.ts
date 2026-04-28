@@ -1,4 +1,4 @@
-export type AppRole = "RW" | "PENGURUS_MASJID";
+export type AppRole = "RW" | "RT" | "PENGURUS_MASJID" | "SUPERADMIN";
 export type StatusAkun = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface AuthUser {
@@ -8,6 +8,7 @@ export interface AuthUser {
   role: AppRole;
   status_akun: StatusAkun;
   wilayah_rw_id?: string;
+  blok_wilayah_id?: string;
   masjid_ids?: string[];
 }
 
@@ -22,7 +23,7 @@ export const AUTH_ROLE_COOKIE = "rwmanage_role";
 export const AUTH_STATUS_COOKIE = "rwmanage_status";
 
 export const isValidRole = (value: unknown): value is AppRole => {
-  return value === "RW" || value === "PENGURUS_MASJID";
+  return value === "RW" || value === "RT" || value === "PENGURUS_MASJID" || value === "SUPERADMIN";
 };
 
 export const isValidStatusAkun = (value: unknown): value is StatusAkun => {

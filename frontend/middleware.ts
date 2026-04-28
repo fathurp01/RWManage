@@ -10,7 +10,9 @@ import {
 const LOGIN_PATH = "/auth/login";
 const STATUS_PATH = "/auth/status";
 const RW_DASHBOARD_PATH = "/dashboard/rw/warga";
+const RT_DASHBOARD_PATH = "/dashboard/rt";
 const MASJID_DASHBOARD_PATH = "/dashboard/masjid";
+const SUPERADMIN_DASHBOARD_PATH = "/dashboard/rw/warga";
 
 const redirectToLogin = (request: NextRequest, reason?: string) => {
   const loginUrl = new URL(LOGIN_PATH, request.url);
@@ -41,16 +43,30 @@ export function middleware(request: NextRequest) {
   }
 
   if (pathname === "/dashboard") {
-    const destination = role === "RW" ? RW_DASHBOARD_PATH : MASJID_DASHBOARD_PATH;
+    if (role === "RW") {
+      return NextResponse.redirect(new URL(RW_DASHBOARD_PATH, request.url));
+    } else if (role === "RT") {
+      return NextResponse.redirect(new URL(RT_DASHBOARD_PATH, request.url));
+    } else if (role === "SUPERADMIN") {
+      return NextResponse.redirect(new URL(SUPERADMIN_DASHBOARD_PATH, request.url));
+    } else {
+      return NextResponse.redirect(new URL(MASJID_DASHBOARD_PATH, request.url));
+    }
+  }
+
+  if (pathname.startsWith("/dashboard/masjid") && (role === "RW" || role === "RT" || role === "SUPERADMIN")) {
+    const destination = role === "RW" ? RW_DASHBOARD_PATH : role === "RT" ? RT_DASHBOARD_PATH : SUPERADMIN_DASHBOARD_PATH;
     return NextResponse.redirect(new URL(destination, request.url));
   }
 
-  if (pathname.startsWith("/dashboard/masjid") && role === "RW") {
-    return NextResponse.redirect(new URL(RW_DASHBOARD_PATH, request.url));
+  if (pathname.startsWith("/dashboard/rw") && role !== "RW" && role !== "SUPERADMIN") {
+    const destination = role === "RT" ? RT_DASHBOARD_PATH : MASJID_DASHBOARD_PATH;
+    return NextResponse.redirect(new URL(destination, request.url));
   }
 
-  if (pathname.startsWith("/dashboard/rw") && role === "PENGURUS_MASJID") {
-    return NextResponse.redirect(new URL(MASJID_DASHBOARD_PATH, request.url));
+  if (pathname.startsWith("/dashboard/rt") && role !== "RT") {
+    const destination = role === "RW" ? RW_DASHBOARD_PATH : role === "SUPERADMIN" ? SUPERADMIN_DASHBOARD_PATH : MASJID_DASHBOARD_PATH;
+    return NextResponse.redirect(new URL(destination, request.url));
   }
 
   return NextResponse.next();

@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import axios from "../../../../lib/axios";
+import { api } from "../../../lib/axios";
 
 export default function RtDashboardPage() {
   const [data, setData] = useState<any | null>(null);
@@ -11,10 +11,10 @@ export default function RtDashboardPage() {
     const load = async () => {
       try {
         setLoading(true);
-        const res = await axios.get("/api/rt/iuran");
+        const res = await api.get("/rt/iuran");
         setData(res.data.data ?? res.data);
       } catch (err: any) {
-        setError(err?.response?.data?.message ?? String(err));
+        setError(err?.message ?? String(err));
       } finally {
         setLoading(false);
       }
