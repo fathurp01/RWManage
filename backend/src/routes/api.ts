@@ -37,8 +37,6 @@ import {
   exportRekapDistribusi,
   exportKwitansiZis,
 } from "../controllers/zisController";
-
-
 import {
   exportMasjidReport,
   exportRwReport,
@@ -61,6 +59,82 @@ import {
   revokeRwShareLink,
 } from "../controllers/shareLinkController";
 import { cekKodeUnik, exportPublicKwitansi, getMasjidList } from "../controllers/publicController";
+import {
+  createAnggotaKeluarga,
+  getAnggotaKeluargaList,
+  updateAnggotaKeluarga,
+  deleteAnggotaKeluarga,
+} from "../controllers/anggotaKeluargaController";
+import {
+  createIdentitasWarga,
+  getIdentitasWargaList,
+  updateIdentitasWarga,
+  verifyIdentitasWarga,
+  deleteIdentitasWarga,
+} from "../controllers/identitasWargaController";
+import {
+  createCicilanIuran,
+  getCicilanIuranList,
+  updateCicilanStatus,
+  deleteCicilanIuran,
+} from "../controllers/cicilanIuranController";
+import {
+  createPerformaRonda,
+  getPerformaRondaList,
+  updatePerformaRonda,
+  deletePerformaRonda,
+} from "../controllers/performaRondaController";
+import {
+  createLaporanInsiden,
+  getLaporanInsidenList,
+  updateLaporanInsiden,
+  closeLaporanInsiden,
+  deleteLaporanInsiden,
+} from "../controllers/laporanInsidenController";
+import {
+  getAuditLogList,
+  getAuditLogDetail,
+  getAuditStatistics,
+} from "../controllers/auditLogController";
+import {
+  createLaporanInsidenForRt,
+  createPerformaRondaForRt,
+  createWargaForRt,
+  deleteLaporanInsidenForRt,
+  deletePerformaRondaForRt,
+  getAuditLogForRt,
+  getLaporanInsidenForRt,
+  getPerformaRondaForRt,
+  getWargaForRt,
+  updateLaporanInsidenForRt,
+  updatePerformaRondaForRt,
+} from "../controllers/rtController";
+import {
+  getUserPreference,
+  updateUserPreference,
+  toggleDarkMode,
+  resetPreference,
+} from "../controllers/userPreferenceController";
+import {
+  createBlokWilayah,
+  getBlokWilayahList,
+  updateBlokWilayah,
+  deleteBlokWilayah,
+} from "../controllers/blokWilayahController";
+import {
+  createMasjid,
+  getMasjidList as getMasjidFullList,
+  getMasjidDetail,
+  updateMasjid,
+  deleteMasjid,
+} from "../controllers/masjidController";
+import {
+  getDashboardOverview,
+  getFinancialSummary,
+  getActivityLog,
+  getSystemHealth,
+  getApprovalQueue,
+} from "../controllers/superAdminDashboardController";
 import {
   checkApproval,
   checkRole,
@@ -95,7 +169,6 @@ import {
   updateTransaksiZisSchema,
   exportZisQuerySchema,
   getRwMasjidListQuerySchema,
-
   exportReportQuerySchema,
   getKasMasjidQuerySchema,
   getIuranWargaQuerySchema,
@@ -120,10 +193,49 @@ import {
   updateKasMasjidSchema,
   wargaParamsSchema,
   updateKasRWSchema,
+  createAnggotaKeluargaSchema,
+  updateAnggotaKeluargaSchema,
+  anggotaKeluargaParamsSchema,
+  createIdentitasWargaSchema,
+  updateIdentitasWargaSchema,
+  identitasWargaParamsSchema,
+  createCicilanIuranSchema,
+  getCicilanIuranQuerySchema,
+  cicilanIuranParamsSchema,
+  createPerformaRondaSchema,
+  getPerformaRondaQuerySchema,
+  updatePerformaRondaSchema,
+  performaRondaParamsSchema,
+  createLaporanInsidenSchema,
+  getLaporanInsidenQuerySchema,
+  updateLaporanInsidenSchema,
+  laporanInsidenParamsSchema,
+  getAuditLogQuerySchema,
+  auditLogParamsSchema,
+  updateUserPreferenceSchema,
+  createBlokWilayahSchema,
+  updateBlokWilayahSchema,
+  blokWilayahParamsSchema,
+  getBlokWilayahQuerySchema,
+  createMasjidSchema,
+  updateMasjidSchema,
+  masjidParamsSchema,
+  getMasjidListQuerySchema,
+  createRtWargaSchema,
+  createRtPerformaRondaSchema,
+  getRtPerformaRondaQuerySchema,
+  updateRtPerformaRondaSchema,
+  rtPerformaRondaParamsSchema,
+  createRtLaporanInsidenSchema,
+  getRtLaporanInsidenQuerySchema,
+  updateRtLaporanInsidenSchema,
+  rtLaporanInsidenParamsSchema,
+  getRtAuditLogQuerySchema,
 } from "../validation/schemas";
 
 const router = Router();
 
+// ==================== AUTH ROUTES ====================
 router.post("/auth/register", authRateLimit, validateBody(registerSchema), register);
 router.post("/auth/login", authRateLimit, validateBody(loginSchema), login);
 router.patch(
@@ -144,7 +256,6 @@ router.get(
   validateQuery(listPendingPengurusQuerySchema),
   listPendingPengurus
 );
-
 router.get(
   "/auth/pending-registrations",
   authRateLimit,
@@ -154,7 +265,6 @@ router.get(
   validateQuery(listPendingRegistrationsQuerySchema),
   listPendingRegistrations
 );
-
 router.patch(
   "/auth/approve-registration",
   authRateLimit,
@@ -165,6 +275,7 @@ router.patch(
   approveRegistration
 );
 
+// ==================== WARGA ROUTES ====================
 router.post(
   "/rw/warga",
   rwActionRateLimit,
@@ -211,6 +322,261 @@ router.delete(
   validateParams(wargaParamsSchema),
   deleteWarga
 );
+
+// ==================== ANGGOTA KELUARGA ROUTES ====================
+router.post(
+  "/rw/anggota-keluarga",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateBody(createAnggotaKeluargaSchema),
+  createAnggotaKeluarga
+);
+router.get(
+  "/rw/anggota-keluarga",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getAnggotaKeluargaList
+);
+router.patch(
+  "/rw/anggota-keluarga/:anggota_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(anggotaKeluargaParamsSchema),
+  validateBody(updateAnggotaKeluargaSchema),
+  updateAnggotaKeluarga
+);
+router.delete(
+  "/rw/anggota-keluarga/:anggota_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(anggotaKeluargaParamsSchema),
+  deleteAnggotaKeluarga
+);
+
+// ==================== IDENTITAS WARGA ROUTES ====================
+router.post(
+  "/rw/identitas-warga",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  upload.single("dokumen"),
+  validateBody(createIdentitasWargaSchema),
+  createIdentitasWarga
+);
+router.get(
+  "/rw/identitas-warga",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getIdentitasWargaList
+);
+router.patch(
+  "/rw/identitas-warga/:identitas_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  upload.single("dokumen"),
+  validateParams(identitasWargaParamsSchema),
+  validateBody(updateIdentitasWargaSchema),
+  updateIdentitasWarga
+);
+router.patch(
+  "/rw/identitas-warga/:identitas_id/verify",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(identitasWargaParamsSchema),
+  verifyIdentitasWarga
+);
+router.delete(
+  "/rw/identitas-warga/:identitas_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(identitasWargaParamsSchema),
+  deleteIdentitasWarga
+);
+
+// ==================== CICILAN IURAN ROUTES ====================
+router.post(
+  "/rw/cicilan-iuran",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateBody(createCicilanIuranSchema),
+  createCicilanIuran
+);
+router.get(
+  "/rw/cicilan-iuran",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateQuery(getCicilanIuranQuerySchema),
+  getCicilanIuranList
+);
+router.patch(
+  "/rw/cicilan-iuran/:cicilan_id/bayar",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(cicilanIuranParamsSchema),
+  updateCicilanStatus
+);
+router.delete(
+  "/rw/cicilan-iuran/:cicilan_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(cicilanIuranParamsSchema),
+  deleteCicilanIuran
+);
+
+// ==================== PERFORMA RONDA ROUTES ====================
+router.post(
+  "/rw/performa-ronda",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateBody(createPerformaRondaSchema),
+  createPerformaRonda
+);
+router.get(
+  "/rw/performa-ronda",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateQuery(getPerformaRondaQuerySchema),
+  getPerformaRondaList
+);
+router.patch(
+  "/rw/performa-ronda/:performa_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(performaRondaParamsSchema),
+  validateBody(updatePerformaRondaSchema),
+  updatePerformaRonda
+);
+router.delete(
+  "/rw/performa-ronda/:performa_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(performaRondaParamsSchema),
+  deletePerformaRonda
+);
+
+// ==================== LAPORAN INSIDEN ROUTES ====================
+router.post(
+  "/rw/laporan-insiden",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  upload.single("foto_bukti"),
+  validateBody(createLaporanInsidenSchema),
+  createLaporanInsiden
+);
+router.get(
+  "/rw/laporan-insiden",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateQuery(getLaporanInsidenQuerySchema),
+  getLaporanInsidenList
+);
+router.patch(
+  "/rw/laporan-insiden/:laporan_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  upload.single("foto_bukti"),
+  validateParams(laporanInsidenParamsSchema),
+  validateBody(updateLaporanInsidenSchema),
+  updateLaporanInsiden
+);
+router.patch(
+  "/rw/laporan-insiden/:laporan_id/close",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(laporanInsidenParamsSchema),
+  closeLaporanInsiden
+);
+router.delete(
+  "/rw/laporan-insiden/:laporan_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(laporanInsidenParamsSchema),
+  deleteLaporanInsiden
+);
+
+// ==================== BLOK WILAYAH ROUTES ====================
+router.post(
+  "/rw/blok-wilayah",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateBody(createBlokWilayahSchema),
+  createBlokWilayah
+);
+router.get(
+  "/rw/blok-wilayah-list",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateQuery(getBlokWilayahQuerySchema),
+  getBlokWilayahList
+);
+router.patch(
+  "/rw/blok-wilayah/:blok_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(blokWilayahParamsSchema),
+  validateBody(updateBlokWilayahSchema),
+  updateBlokWilayah
+);
+router.delete(
+  "/rw/blok-wilayah/:blok_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(blokWilayahParamsSchema),
+  deleteBlokWilayah
+);
+
+// ==================== IURAN ROUTES ====================
 router.get(
   "/rw/blok-wilayah",
   rwActionRateLimit,
@@ -219,6 +585,181 @@ router.get(
   checkApproval,
   getBlokWilayah
 );
+router.get(
+  "/rw/iuran-warga",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateQuery(getIuranWargaQuerySchema),
+  getIuranWarga
+);
+router.get(
+  "/rt/iuran",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateQuery(getIuranRtQuerySchema),
+  (req, res) => {
+    const { getIuranForRt } = require("../controllers/rtController");
+    return getIuranForRt(req, res);
+  }
+);
+router.get(
+  "/rt/warga",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  getWargaForRt
+);
+router.post(
+  "/rt/warga",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateBody(createRtWargaSchema),
+  createWargaForRt
+);
+router.get(
+  "/rt/performa-ronda",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateQuery(getRtPerformaRondaQuerySchema),
+  getPerformaRondaForRt
+);
+router.post(
+  "/rt/performa-ronda",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateBody(createRtPerformaRondaSchema),
+  createPerformaRondaForRt
+);
+router.patch(
+  "/rt/performa-ronda/:performa_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateParams(rtPerformaRondaParamsSchema),
+  validateBody(updateRtPerformaRondaSchema),
+  updatePerformaRondaForRt
+);
+router.delete(
+  "/rt/performa-ronda/:performa_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateParams(rtPerformaRondaParamsSchema),
+  deletePerformaRondaForRt
+);
+router.get(
+  "/rt/laporan-insiden",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateQuery(getRtLaporanInsidenQuerySchema),
+  getLaporanInsidenForRt
+);
+router.post(
+  "/rt/laporan-insiden",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  upload.single("foto_bukti"),
+  validateBody(createRtLaporanInsidenSchema),
+  createLaporanInsidenForRt
+);
+router.patch(
+  "/rt/laporan-insiden/:laporan_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  upload.single("foto_bukti"),
+  validateParams(rtLaporanInsidenParamsSchema),
+  validateBody(updateRtLaporanInsidenSchema),
+  updateLaporanInsidenForRt
+);
+router.delete(
+  "/rt/laporan-insiden/:laporan_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateParams(rtLaporanInsidenParamsSchema),
+  deleteLaporanInsidenForRt
+);
+router.get(
+  "/rt/audit-logs",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateQuery(getRtAuditLogQuerySchema),
+  getAuditLogForRt
+);
+router.patch(
+  "/rw/bayar-iuran",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateBody(bayarIuranSchema),
+  bayarIuran
+);
+
+// ==================== KAS RW ROUTES ====================
+router.post(
+  "/rw/kas",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  upload.single("bukti_foto"),
+  validateBody(createKasRWSchema),
+  createKasRW
+);
+router.get(
+  "/rw/kas",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateQuery(getKasRWQuerySchema),
+  getKasRW
+);
+router.patch(
+  "/rw/kas/:kas_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  upload.single("bukti_foto"),
+  validateParams(kasRWParamsSchema),
+  validateBody(updateKasRWSchema),
+  updateKasRW
+);
+router.delete(
+  "/rw/kas/:kas_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(kasRWParamsSchema),
+  deleteKasRW
+);
+
+// ==================== RW MASJID ROUTES ====================
 router.get(
   "/rw/masjid",
   rwActionRateLimit,
@@ -247,58 +788,56 @@ router.patch(
   validateBody(updateRwMasjidSchema),
   updateRwMasjid
 );
-router.get(
-  "/rw/iuran-warga",
+
+// ==================== MASJID (FULL CRUD) ROUTES ====================
+router.post(
+  "/rw/masjid-full",
   rwActionRateLimit,
   verifyToken,
   checkRole(["RW"]),
   checkApproval,
-  validateQuery(getIuranWargaQuerySchema),
-  getIuranWarga
+  validateBody(createMasjidSchema),
+  createMasjid
 );
-
 router.get(
-  "/rt/iuran",
+  "/rw/masjid-full",
   rwActionRateLimit,
   verifyToken,
-  checkRole(["RT"]),
+  checkRole(["RW"]),
   checkApproval,
-  validateQuery(getIuranRtQuerySchema),
-  // handler from rtController
-  (req, res) => {
-    // lazy import to avoid circular issues
-    const { getIuranForRt } = require("../controllers/rtController");
-    return getIuranForRt(req, res);
-  }
+  validateQuery(getMasjidListQuerySchema),
+  getMasjidFullList
+);
+router.get(
+  "/rw/masjid-full/:masjid_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(masjidParamsSchema),
+  getMasjidDetail
 );
 router.patch(
-  "/rw/bayar-iuran",
+  "/rw/masjid-full/:masjid_id",
   rwActionRateLimit,
   verifyToken,
   checkRole(["RW"]),
   checkApproval,
-  validateBody(bayarIuranSchema),
-  bayarIuran
+  validateParams(masjidParamsSchema),
+  validateBody(updateMasjidSchema),
+  updateMasjid
 );
-router.post(
-  "/rw/kas",
+router.delete(
+  "/rw/masjid-full/:masjid_id",
   rwActionRateLimit,
   verifyToken,
   checkRole(["RW"]),
   checkApproval,
-  upload.single("bukti_foto"),
-  validateBody(createKasRWSchema),
-  createKasRW
+  validateParams(masjidParamsSchema),
+  deleteMasjid
 );
-router.get(
-  "/rw/kas",
-  rwActionRateLimit,
-  verifyToken,
-  checkRole(["RW"]),
-  checkApproval,
-  validateQuery(getKasRWQuerySchema),
-  getKasRW
-);
+
+// ==================== RW REPORTS ROUTES ====================
 router.get(
   "/rw/report",
   rwActionRateLimit,
@@ -317,6 +856,8 @@ router.get(
   validateQuery(exportReportQuerySchema),
   exportRwReport
 );
+
+// ==================== RW SHARE LINKS ROUTES ====================
 router.post(
   "/rw/share-links",
   rwActionRateLimit,
@@ -343,27 +884,8 @@ router.patch(
   validateParams(shareLinkTokenParamsSchema),
   revokeRwShareLink
 );
-router.patch(
-  "/rw/kas/:kas_id",
-  rwActionRateLimit,
-  verifyToken,
-  checkRole(["RW"]),
-  checkApproval,
-  upload.single("bukti_foto"),
-  validateParams(kasRWParamsSchema),
-  validateBody(updateKasRWSchema),
-  updateKasRW
-);
-router.delete(
-  "/rw/kas/:kas_id",
-  rwActionRateLimit,
-  verifyToken,
-  checkRole(["RW"]),
-  checkApproval,
-  validateParams(kasRWParamsSchema),
-  deleteKasRW
-);
 
+// ==================== ZIS TRANSAKSI ROUTES ====================
 router.post(
   "/zis/transaksi",
   zisActionRateLimit,
@@ -446,6 +968,8 @@ router.delete(
   validateParams(transaksiZisParamsSchema),
   deleteTransaksiZis
 );
+
+// ==================== MASJID REPORT ROUTES ====================
 router.get(
   "/masjid/report",
   zisActionRateLimit,
@@ -464,6 +988,8 @@ router.get(
   validateQuery(exportReportQuerySchema),
   exportMasjidReport
 );
+
+// ==================== MASJID SHARE LINKS ROUTES ====================
 router.post(
   "/masjid/share-links",
   zisActionRateLimit,
@@ -491,6 +1017,7 @@ router.patch(
   revokeMasjidShareLink
 );
 
+// ==================== KAS MASJID ROUTES ====================
 router.post(
   "/masjid/kas",
   zisActionRateLimit,
@@ -529,13 +1056,114 @@ router.delete(
   deleteKasMasjid
 );
 
+// ==================== USER PREFERENCE ROUTES ====================
+router.get(
+  "/user/preference",
+  rwActionRateLimit,
+  verifyToken,
+  checkApproval,
+  getUserPreference
+);
+router.patch(
+  "/user/preference",
+  rwActionRateLimit,
+  verifyToken,
+  checkApproval,
+  validateBody(updateUserPreferenceSchema),
+  updateUserPreference
+);
+router.patch(
+  "/user/preference/dark-mode/toggle",
+  rwActionRateLimit,
+  verifyToken,
+  checkApproval,
+  toggleDarkMode
+);
+router.post(
+  "/user/preference/reset",
+  rwActionRateLimit,
+  verifyToken,
+  checkApproval,
+  resetPreference
+);
+
+// ==================== AUDIT LOG ROUTES ====================
+router.get(
+  "/admin/audit-logs",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW", "SUPERADMIN"]),
+  checkApproval,
+  validateQuery(getAuditLogQuerySchema),
+  getAuditLogList
+);
+router.get(
+  "/admin/audit-logs/:log_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW", "SUPERADMIN"]),
+  checkApproval,
+  validateParams(auditLogParamsSchema),
+  getAuditLogDetail
+);
+router.get(
+  "/admin/audit-logs/statistics",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["SUPERADMIN"]),
+  checkApproval,
+  getAuditStatistics
+);
+
+// ==================== SUPERADMIN DASHBOARD ROUTES ====================
+router.get(
+  "/admin/dashboard/overview",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["SUPERADMIN"]),
+  checkApproval,
+  getDashboardOverview
+);
+router.get(
+  "/admin/dashboard/financial",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["SUPERADMIN"]),
+  checkApproval,
+  getFinancialSummary
+);
+router.get(
+  "/admin/dashboard/activity",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["SUPERADMIN"]),
+  checkApproval,
+  getActivityLog
+);
+router.get(
+  "/admin/dashboard/health",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["SUPERADMIN"]),
+  checkApproval,
+  getSystemHealth
+);
+router.get(
+  "/admin/dashboard/approval-queue",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["SUPERADMIN"]),
+  checkApproval,
+  getApprovalQueue
+);
+
+// ==================== PUBLIC ROUTES ====================
 router.get(
   "/public/masjid-list",
   publicRateLimit,
   validateQuery(masjidListQuerySchema),
   getMasjidList
 );
-
 router.get(
   "/public/cek-kode/:kode_unik",
   publicRateLimit,

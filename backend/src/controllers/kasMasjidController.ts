@@ -326,7 +326,8 @@ export const updateKasMasjid = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { kas_id } = req.params as KasMasjidIdParams;
+    const raw = (req.params as Record<string, unknown>)?.kas_id;
+    const kas_id = Array.isArray(raw) ? raw[0] : (raw as string | undefined);
     const { jenis_transaksi, tanggal, keterangan, nominal, bukti_url } =
       req.body as UpdateKasMasjidBody;
 
@@ -472,7 +473,8 @@ export const deleteKasMasjid = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { kas_id } = req.params as KasMasjidIdParams;
+    const raw = (req.params as Record<string, unknown>)?.kas_id;
+    const kas_id = Array.isArray(raw) ? raw[0] : (raw as string | undefined);
 
     if (!kas_id) {
       res.status(400).json({

@@ -34,6 +34,38 @@ enum JenisBayar {
   BERAS
 }
 
+enum StatusKehadiran {
+  HADIR
+  LIBUR
+  IZIN
+  ALFA
+}
+
+enum StatusInsiden {
+  LAPORAN
+  PROSES
+  SELESAI
+  DITUTUP
+}
+
+enum TipeDokumen {
+  KTP
+  PASPORT
+  SIM
+  LAINNYA
+}
+
+enum AksiAudit {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  APPROVE
+  REJECT
+}
+
 model User {
   id               String           @id @default(uuid())
   nama             String
@@ -49,6 +81,8 @@ model User {
   blok_wilayah     BlokWilayah?     @relation(fields: [blok_wilayah_id], references: [id])
   wilayah_rw       WilayahRW?
   pengurus_masjid  PengurusMasjid[]
+  preference       UserPreference?
+  audit_logs       AuditLog[]
 
   @@map("users")
 }
@@ -62,6 +96,7 @@ model WilayahRW {
   user          User          @relation(fields: [user_id], references: [id])
   blok_wilayah  BlokWilayah[]
   kas_rw        KasRW[]
+  laporan_insiden LaporanInsiden[]
 
   @@map("wilayah_rw")
 }
@@ -71,11 +106,13 @@ model BlokWilayah {
   wilayah_rw_id String
   nama_blok     String
   no_rt         String?
+  created_at    DateTime    @default(now())
   
   wilayah_rw    WilayahRW   @relation(fields: [wilayah_rw_id], references: [id])
   masjid        Masjid[]
   users         User[]
   warga         Warga[]
+  performa_ronda PerformaRonda[]
 
   @@map("blok_wilayah")
 }
@@ -107,31 +144,88 @@ model PengurusMasjid {
 }
 
 model Warga {
-  id                  String       @id @default(uuid())
+  id                  String            @id @default(uuid())
   blok_wilayah_id     String
   nama_kk             String
-  tarif_iuran_bulanan Decimal      @db.Decimal(10, 2)
+  tarif_iuran_bulanan Decimal           @db.Decimal(10, 2)
   deleted_at          DateTime?
   
-  blok_wilayah        BlokWilayah  @relation(fields: [blok_wilayah_id], references: [id])
+  blok_wilayah        BlokWilayah       @relation(fields: [blok_wilayah_id], references: [id])
   iuran_warga         IuranWarga[]
+  anggota_keluarga    AnggotaKeluarga[]
+  identitas           IdentitasWarga[]
+  cicilan_iuran       CicilanIuran[]
 
   @@map("warga")
 }
 
+model AnggotaKeluarga {
+  id              String    @id @default(uuid())
+  warga_id        String
+  nama            String
+  hubungan        String
+  nik             String?
+  tanggal_lahir   DateTime?
+  pendidikan      String?
+  pekerjaan       String?
+  deleted_at      DateTime?
+  created_at      DateTime  @default(now())
+  
+  warga           Warga     @relation(fields: [warga_id], references: [id])
+
+  @@map("anggota_keluarga")
+}
+
+model IdentitasWarga {
+  id              String      @id @default(uuid())
+  warga_id        String
+  tipe_dokumen    TipeDokumen
+  nomor_dokumen   String
+  tanggal_terbit  DateTime?
+  tanggal_berlaku DateTime?
+  dokumen_url     String?
+  verified_at     DateTime?
+  verified_by     String?
+  deleted_at      DateTime?
+  created_at      DateTime    @default(now())
+  
+  warga           Warga       @relation(fields: [warga_id], references: [id])
+
+  @@map("identitas_warga")
+}
+
 model IuranWarga {
-  id            String      @id @default(uuid())
+  id            String           @id @default(uuid())
   warga_id      String
   bulan         Int
   tahun         Int
-  nominal       Decimal     @db.Decimal(10, 2)
-  status        StatusIuran @default(BELUM)
-  kode_unik     String?     @unique
+  nominal       Decimal          @db.Decimal(10, 2)
+  status        StatusIuran      @default(BELUM)
+  kode_unik     String?          @unique
   tanggal_bayar DateTime?
   
-  warga         Warga       @relation(fields: [warga_id], references: [id])
+  warga         Warga            @relation(fields: [warga_id], references: [id])
+  cicilan       CicilanIuran[]
 
   @@map("iuran_warga")
+}
+
+model CicilanIuran {
+  id                String      @id @default(uuid())
+  warga_id          String
+  iuran_id          String
+  total_cicilan     Decimal     @db.Decimal(10, 2)
+  nominal_per_bulan Decimal     @db.Decimal(10, 2)
+  jumlah_bulan      Int
+  bulan_mulai       Int
+  tahun_mulai       Int
+  sudah_lunas       Boolean     @default(false)
+  created_at        DateTime    @default(now())
+  
+  warga             Warga       @relation(fields: [warga_id], references: [id])
+  iuran             IuranWarga  @relation(fields: [iuran_id], references: [id])
+
+  @@map("cicilan_iuran")
 }
 
 model KasRW {
@@ -196,6 +290,74 @@ model PengaturanZis {
   masjid              Masjid  @relation(fields: [masjid_id], references: [id])
 
   @@map("pengaturan_zis")
+}
+
+model PerformaRonda {
+  id               String          @id @default(uuid())
+  blok_wilayah_id  String
+  tanggal          DateTime
+  nama_petugas     String
+  status_kehadiran StatusKehadiran
+  catatan          String?
+  created_at       DateTime        @default(now())
+  
+  blok_wilayah     BlokWilayah     @relation(fields: [blok_wilayah_id], references: [id])
+
+  @@map("performa_ronda")
+}
+
+model LaporanInsiden {
+  id                      String        @id @default(uuid())
+  wilayah_rw_id           String
+  tipe_insiden            String
+  tanggal_insiden         DateTime
+  lokasi                  String
+  deskripsi               String        @db.Text
+  status                  StatusInsiden @default(LAPORAN)
+  pelapor_nama            String
+  pelapor_no_hp           String?
+  foto_bukti_url          String?
+  ditindaklanjuti_tanggal DateTime?
+  tindakan_diambil        String?       @db.Text
+  created_at              DateTime      @default(now())
+  updated_at              DateTime      @updatedAt
+  
+  wilayah_rw              WilayahRW     @relation(fields: [wilayah_rw_id], references: [id])
+
+  @@map("laporan_insiden")
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  user_id     String
+  aksi        AksiAudit
+  entitas     String
+  entitas_id  String
+  data_lama   String?     @db.Text
+  data_baru   String?     @db.Text
+  keterangan  String?     @db.Text
+  ip_address  String?
+  created_at  DateTime    @default(now())
+  
+  user        User        @relation(fields: [user_id], references: [id])
+
+  @@map("audit_log")
+}
+
+model UserPreference {
+  id                String    @id @default(uuid())
+  user_id           String    @unique
+  dark_mode         Boolean   @default(false)
+  tema_warna        String?   @default("blue")
+  bahasa            String?   @default("id")
+  notifikasi_email  Boolean   @default(true)
+  notifikasi_sms    Boolean   @default(true)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  
+  user              User      @relation(fields: [user_id], references: [id])
+
+  @@map("user_preference")
 }
 
 model ShareLink {

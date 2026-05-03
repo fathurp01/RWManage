@@ -6,6 +6,12 @@ async function main() {
   console.log('Seeding data...');
 
   await prisma.shareLink.deleteMany();
+  await prisma.auditLog.deleteMany();
+  await prisma.laporanInsiden.deleteMany();
+  await prisma.performaRonda.deleteMany();
+  await prisma.cicilanIuran.deleteMany();
+  await prisma.identitasWarga.deleteMany();
+  await prisma.anggotaKeluarga.deleteMany();
   await prisma.kasMasjid.deleteMany();
   await prisma.pengaturanZis.deleteMany();
   await prisma.transaksiZis.deleteMany();
@@ -393,6 +399,142 @@ async function main() {
     ],
   });
 
+  const iuranBudiJanuari = await prisma.iuranWarga.findFirst({
+    where: {
+      warga_id: wargaBudi.id,
+      tahun: currentYear,
+      bulan: 1,
+    },
+  });
+
+  if (iuranBudiJanuari) {
+    await prisma.cicilanIuran.create({
+      data: {
+        warga_id: wargaBudi.id,
+        iuran_id: iuranBudiJanuari.id,
+        total_cicilan: 50000,
+        nominal_per_bulan: 25000,
+        jumlah_bulan: 2,
+        bulan_mulai: 1,
+        tahun_mulai: currentYear,
+        sudah_lunas: false,
+      },
+    });
+  }
+
+  await prisma.anggotaKeluarga.createMany({
+    data: [
+      {
+        warga_id: wargaBudi.id,
+        nama: 'Sari Santoso',
+        hubungan: 'ISTRI',
+        nik: '3210000000000001',
+        tanggal_lahir: new Date('1990-05-15T00:00:00.000Z'),
+        pendidikan: 'SARJANA',
+        pekerjaan: 'Ibu Rumah Tangga',
+      },
+      {
+        warga_id: wargaSiti.id,
+        nama: 'Bima Amin',
+        hubungan: 'ANAK',
+        nik: '3210000000000002',
+        tanggal_lahir: new Date('2012-08-20T00:00:00.000Z'),
+        pendidikan: 'SMP',
+        pekerjaan: 'Pelajar',
+      },
+    ],
+  });
+
+  await prisma.identitasWarga.createMany({
+    data: [
+      {
+        warga_id: wargaBudi.id,
+        tipe_dokumen: 'KTP',
+        nomor_dokumen: '3171000000000001',
+        tanggal_terbit: new Date('2018-01-01T00:00:00.000Z'),
+        tanggal_berlaku: new Date('2033-01-01T00:00:00.000Z'),
+        dokumen_url: '/uploads/sample-ktp-budi.pdf',
+      },
+      {
+        warga_id: wargaSiti.id,
+        tipe_dokumen: 'SIM',
+        nomor_dokumen: 'SIM-001-2026',
+        tanggal_terbit: new Date('2020-02-01T00:00:00.000Z'),
+        tanggal_berlaku: new Date('2030-02-01T00:00:00.000Z'),
+        dokumen_url: '/uploads/sample-sim-siti.pdf',
+      },
+    ],
+  });
+
+  await prisma.performaRonda.createMany({
+    data: [
+      {
+        blok_wilayah_id: blokA.id,
+        tanggal: new Date(currentYear, 0, 3, 21, 0, 0),
+        nama_petugas: 'Joko',
+        status_kehadiran: 'HADIR',
+        catatan: 'Ronda malam berjalan lancar.',
+      },
+      {
+        blok_wilayah_id: blokB.id,
+        tanggal: new Date(currentYear, 0, 4, 21, 0, 0),
+        nama_petugas: 'Rudi',
+        status_kehadiran: 'IZIN',
+        catatan: 'Sedang sakit.',
+      },
+    ],
+  });
+
+  await prisma.laporanInsiden.createMany({
+    data: [
+      {
+        wilayah_rw_id: wilayahRwId,
+        tipe_insiden: 'Penerangan jalan mati',
+        tanggal_insiden: new Date(currentYear, 1, 10, 19, 30, 0),
+        lokasi: 'Gang Melati Blok A',
+        deskripsi: 'Lampu jalan mati sejak tiga hari lalu.',
+        status: 'PROSES',
+        pelapor_nama: 'Ketua RT 001',
+        pelapor_no_hp: '081234567894',
+        foto_bukti_url: '/uploads/sample-insiden-1.jpg',
+      },
+      {
+        wilayah_rw_id: wilayahRwId,
+        tipe_insiden: 'Genangan air',
+        tanggal_insiden: new Date(currentYear, 1, 12, 7, 45, 0),
+        lokasi: 'Depan Pos RW',
+        deskripsi: 'Air tergenang setelah hujan deras.',
+        status: 'LAPORAN',
+        pelapor_nama: 'Warga Blok B',
+        pelapor_no_hp: '081234567895',
+        foto_bukti_url: null,
+      },
+    ],
+  });
+
+  await prisma.auditLog.createMany({
+    data: [
+      {
+        user_id: rwUser.id,
+        aksi: 'CREATE',
+        entitas: 'Seed',
+        entitas_id: rwUser.id,
+        data_baru: JSON.stringify({ message: 'Initial seed created' }),
+        keterangan: 'Seed awal untuk pengujian',
+        ip_address: '127.0.0.1',
+      },
+      {
+        user_id: rtUserA.id,
+        aksi: 'CREATE',
+        entitas: 'PerformaRonda',
+        entitas_id: blokA.id,
+        data_baru: JSON.stringify({ blok_wilayah_id: blokA.id, nama_petugas: 'Joko' }),
+        keterangan: 'Contoh audit log',
+        ip_address: '127.0.0.1',
+      },
+    ],
+  });
+
   console.log('Seeding selesai!');
   console.log('Akun demo:');
   console.log('- RW: rw@rwmanage.com / rw123');
@@ -403,6 +545,7 @@ async function main() {
   console.log('- Pengurus APPROVED: masjid@rwmanage.com / masjid123');
   console.log('- Pengurus PENDING: pending@rwmanage.com / pending123');
   console.log('- Pengurus REJECTED: rejected@rwmanage.com / rejected123');
+  console.log('- Seed RT/RW feature data: warga, ronda, insiden, anggota keluarga, identitas, cicilan, audit');
 }
 
 main()

@@ -297,7 +297,7 @@ export default function LoginPage() {
             >
               <div className="flex flex-col gap-5">
                 <span
-                  className="inline-flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-md shadow-emerald-500/30 group-hover:shadow-lg group-hover:shadow-emerald-500/40 transition-all duration-300"
+                  className="inline-flex size-14 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-400 to-teal-600 text-white shadow-md shadow-emerald-500/30 group-hover:shadow-lg group-hover:shadow-emerald-500/40 transition-all duration-300"
                   aria-hidden
                 >
                   <HandCoins className="size-7" />
@@ -342,7 +342,7 @@ export default function LoginPage() {
             >
               <div className="flex flex-col gap-5">
                 <span
-                  className="inline-flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30 group-hover:shadow-lg group-hover:shadow-indigo-500/40 transition-all duration-300"
+                  className="inline-flex size-14 items-center justify-center rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30 group-hover:shadow-lg group-hover:shadow-indigo-500/40 transition-all duration-300"
                   aria-hidden
                 >
                   <Landmark className="size-7" />
@@ -422,8 +422,8 @@ export default function LoginPage() {
               <span
                 className={`inline-flex size-16 items-center justify-center rounded-2xl text-white shadow-md transition-all duration-200 ${
                   systemChoice === "masjid"
-                    ? "bg-gradient-to-br from-emerald-400 to-teal-600 shadow-emerald-500/30"
-                    : "bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-500/30"
+                    ? "bg-linear-to-br from-emerald-400 to-teal-600 shadow-emerald-500/30"
+                    : "bg-linear-to-br from-indigo-500 to-violet-600 shadow-indigo-500/30"
                 }`}
               >
                 {systemLabel[systemChoice].icon}
@@ -502,8 +502,8 @@ export default function LoginPage() {
                 disabled={isPending}
                 className={`w-full justify-center gap-2.5 h-12 text-base font-bold rounded-2xl text-white shadow-lg transition-all duration-200 ${
                   systemChoice === "masjid"
-                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-emerald-500/30 hover:shadow-emerald-500/40"
-                    : "bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 shadow-indigo-500/30 hover:shadow-indigo-500/40"
+                    ? "bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-emerald-500/30 hover:shadow-emerald-500/40"
+                    : "bg-linear-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 shadow-indigo-500/30 hover:shadow-indigo-500/40"
                 }`}
               >
                 {isPending ? (

@@ -12,7 +12,7 @@ const STATUS_PATH = "/auth/status";
 const RW_DASHBOARD_PATH = "/dashboard/rw/warga";
 const RT_DASHBOARD_PATH = "/dashboard/rt";
 const MASJID_DASHBOARD_PATH = "/dashboard/masjid";
-const SUPERADMIN_DASHBOARD_PATH = "/dashboard/rw/warga";
+const SUPERADMIN_DASHBOARD_PATH = "/dashboard/superadmin";
 
 const redirectToLogin = (request: NextRequest, reason?: string) => {
   const loginUrl = new URL(LOGIN_PATH, request.url);

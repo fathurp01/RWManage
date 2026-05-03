@@ -18,6 +18,7 @@ import {
   FileText,
   Link2,
   LogOut,
+  Settings,
 } from "lucide-react";
 
 type SidebarItem = {
@@ -25,6 +26,13 @@ type SidebarItem = {
   label: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
+};
+
+const settingsItem: SidebarItem = {
+  href: "/dashboard/settings",
+  label: "Pengaturan",
+  description: "Tema, bahasa, dan notifikasi",
+  icon: Settings,
 };
 
 const rwItems: SidebarItem[] = [
@@ -39,6 +47,18 @@ const rwItems: SidebarItem[] = [
     label: "Iuran Warga",
     description: "Catat dan cek pembayaran iuran",
     icon: Users,
+  },
+  {
+    href: "/dashboard/rw/anggota-keluarga",
+    label: "Manajemen Anggota Keluarga",
+    description: "Kelola data anggota keluarga per KK",
+    icon: Users,
+  },
+  {
+    href: "/dashboard/rw/identitas",
+    label: "Data KTP / Identitas",
+    description: "Simpan NIK dan data identitas warga",
+    icon: SquarePen,
   },
   {
     href: "/dashboard/rw/approval",
@@ -69,6 +89,30 @@ const rwItems: SidebarItem[] = [
     label: "Share Link RW",
     description: "Kelola link transparansi publik",
     icon: Link2,
+  },
+  {
+    href: "/dashboard/rw/cicilan",
+    label: "Cicilan Iuran",
+    description: "Atur cicilan tagihan warga",
+    icon: HandCoins,
+  },
+  {
+    href: "/dashboard/rw/ronda",
+    label: "Performa Ronda",
+    description: "Pantau kehadiran petugas ronda",
+    icon: Users,
+  },
+  {
+    href: "/dashboard/rw/insiden",
+    label: "Laporan Insiden",
+    description: "Kelola kejadian keamanan lingkungan",
+    icon: FileText,
+  },
+  {
+    href: "/dashboard/rw/audit-logs",
+    label: "Audit Logs",
+    description: "Lacak aktivitas pengguna",
+    icon: ShieldCheck,
   },
 ];
 
@@ -112,20 +156,56 @@ const rtItems: SidebarItem[] = [
     description: "Pantau iuran warga di blok RT",
     icon: LayoutDashboard,
   },
+  {
+    href: "/dashboard/rt/warga",
+    label: "Kelola Warga",
+    description: "Create, update, delete warga per blok",
+    icon: Users,
+  },
+  {
+    href: "/dashboard/rt/iuran-status",
+    label: "Status Iuran",
+    description: "Filter LUNAS / BELUM per bulan/tahun",
+    icon: HandCoins,
+  },
+  {
+    href: "/dashboard/rt/ronda",
+    label: "Performa Ronda",
+    description: "Track kehadiran petugas ronda",
+    icon: Users,
+  },
+  {
+    href: "/dashboard/rt/insiden",
+    label: "Laporan Kejadian",
+    description: "Catat insiden keamanan lingkungan",
+    icon: FileText,
+  },
+  {
+    href: "/dashboard/rt/audit-logs",
+    label: "Audit Trail",
+    description: "Lacak perubahan data oleh pengguna",
+    icon: FileText,
+  },
 ];
 
 const superadminItems: SidebarItem[] = [
   {
     href: "/dashboard/superadmin",
+    label: "Overview Superadmin",
+    description: "Pantau kesehatan dan statistik sistem",
+    icon: LayoutDashboard,
+  },
+  {
+    href: "/dashboard/superadmin/approvals",
     label: "Persetujuan User",
-    description: "Kelola persetujuan akun pengguna",
+    description: "Setujui atau tolak pendaftaran",
     icon: ShieldCheck,
   },
   {
-    href: "/dashboard/rw/warga",
-    label: "Data Semua Warga",
-    description: "Lihat semua data iuran warga",
-    icon: Users,
+    href: "/dashboard/rw/audit-logs",
+    label: "Audit Logs",
+    description: "Lihat jejak aktivitas sistem",
+    icon: FileText,
   },
 ];
 
@@ -313,6 +393,8 @@ export function DashboardSidebar({ role }: { role: AppRole | null }) {
           );
         })}
       </nav>
+
+      
 
       {/* Spacer */}
       <div className="flex-1" />
