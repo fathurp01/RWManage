@@ -29,6 +29,12 @@ enum StatusIuran {
   BELUM
 }
 
+enum StatusSetoran {
+  BELUM
+  PENDING
+  TERKONFIRMASI
+}
+
 enum JenisBayar {
   UANG
   BERAS
@@ -97,6 +103,8 @@ model WilayahRW {
   blok_wilayah  BlokWilayah[]
   kas_rw        KasRW[]
   laporan_insiden LaporanInsiden[]
+  pengaturan_iuran PengaturanIuranRW?
+  setoran_iuran   SetoranIuranRT[]
 
   @@map("wilayah_rw")
 }
@@ -113,6 +121,8 @@ model BlokWilayah {
   users         User[]
   warga         Warga[]
   performa_ronda PerformaRonda[]
+  kas_rt        KasRT[]
+  setoran_iuran SetoranIuranRT[]
 
   @@map("blok_wilayah")
 }
@@ -147,7 +157,6 @@ model Warga {
   id                  String            @id @default(uuid())
   blok_wilayah_id     String
   nama_kk             String
-  tarif_iuran_bulanan Decimal           @db.Decimal(10, 2)
   deleted_at          DateTime?
   
   blok_wilayah        BlokWilayah       @relation(fields: [blok_wilayah_id], references: [id])
@@ -200,12 +209,16 @@ model IuranWarga {
   bulan         Int
   tahun         Int
   nominal       Decimal          @db.Decimal(10, 2)
+  nominal_kas_rt  Decimal?       @db.Decimal(10, 2)
+  nominal_kas_rw  Decimal?       @db.Decimal(10, 2)
   status        StatusIuran      @default(BELUM)
   kode_unik     String?          @unique
   tanggal_bayar DateTime?
+  setoran_id    String?
   
   warga         Warga            @relation(fields: [warga_id], references: [id])
   cicilan       CicilanIuran[]
+  setoran       SetoranIuranRT?  @relation(fields: [setoran_id], references: [id])
 
   @@map("iuran_warga")
 }
@@ -373,3 +386,50 @@ model ShareLink {
   @@index([expires_at])
   @@map("share_link")
 }
+
+model PengaturanIuranRW {
+  id              String      @id @default(uuid())
+  wilayah_rw_id   String      @unique
+  nominal_iuran   Decimal     @db.Decimal(10, 2)
+  persen_rt       Float       @default(70.0)
+  persen_rw       Float       @default(30.0)
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+  
+  wilayah_rw      WilayahRW   @relation(fields: [wilayah_rw_id], references: [id])
+
+  @@map("pengaturan_iuran_rw")
+}
+
+model KasRT {
+  id              String         @id @default(uuid())
+  blok_wilayah_id String
+  jenis_transaksi JenisTransaksi
+  tanggal         DateTime       @default(now())
+  keterangan      String         @db.Text
+  nominal         Decimal        @db.Decimal(10, 2)
+  bukti_url       String?
+  kode_unik       String         @unique
+  
+  blok_wilayah    BlokWilayah    @relation(fields: [blok_wilayah_id], references: [id])
+
+  @@map("kas_rt")
+}
+
+model SetoranIuranRT {
+  id              String         @id @default(uuid())
+  blok_wilayah_id String
+  wilayah_rw_id   String
+  nominal         Decimal        @db.Decimal(10, 2)
+  status          StatusSetoran  @default(PENDING)
+  tanggal_setor   DateTime       @default(now())
+  tanggal_konfirmasi DateTime?
+  bukti_url       String?
+  
+  blok_wilayah    BlokWilayah    @relation(fields: [blok_wilayah_id], references: [id])
+  wilayah_rw      WilayahRW      @relation(fields: [wilayah_rw_id], references: [id])
+  iuran_warga     IuranWarga[]
+
+  @@map("setoran_iuran_rt")
+}
+

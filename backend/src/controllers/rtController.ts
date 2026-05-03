@@ -61,7 +61,7 @@ export const getIuranForRt = async (req: Request, res: Response): Promise<void> 
       select: {
         id: true,
         nama_kk: true,
-        tarif_iuran_bulanan: true,
+        
         iuran_warga: {
           where: {
             tahun: tahunInt,
@@ -76,6 +76,19 @@ export const getIuranForRt = async (req: Request, res: Response): Promise<void> 
             status: true,
             kode_unik: true,
             tanggal_bayar: true,
+            cicilan: {
+              select: {
+                id: true,
+                total_cicilan: true,
+                nominal_per_bulan: true,
+                jumlah_bulan: true,
+                bulan_mulai: true,
+                tahun_mulai: true,
+                sudah_lunas: true,
+                created_at: true,
+              },
+              orderBy: { created_at: "desc" },
+            },
           },
           orderBy: { bulan: "asc" },
         },
@@ -104,10 +117,11 @@ export const getIuranForRt = async (req: Request, res: Response): Promise<void> 
             id: null,
             bulan: bulanItem,
             tahun: tahunInt,
-            nominal: warga.tarif_iuran_bulanan,
+            nominal: new Prisma.Decimal(0),
             status: StatusIuran.BELUM,
             kode_unik: null,
             tanggal_bayar: null,
+            cicilan: [],
           };
         })
         .filter((item): item is NonNullable<typeof item> => Boolean(item));
@@ -115,7 +129,7 @@ export const getIuranForRt = async (req: Request, res: Response): Promise<void> 
       return {
         id: warga.id,
         nama_kk: warga.nama_kk,
-        tarif_iuran_bulanan: warga.tarif_iuran_bulanan,
+        
         iuran: iuranBySelection,
       };
     }).filter((item) => item.iuran.length > 0 || status !== StatusIuran.LUNAS);
@@ -154,7 +168,7 @@ export const getWargaForRt = async (req: Request, res: Response): Promise<void> 
       select: {
         id: true,
         nama_kk: true,
-        tarif_iuran_bulanan: true,
+        
         blok_wilayah_id: true,
       },
       orderBy: { nama_kk: "asc" },
@@ -172,15 +186,15 @@ export const getWargaForRt = async (req: Request, res: Response): Promise<void> 
 
 export const createWargaForRt = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { nama_kk, tarif_iuran_bulanan } = req.body as { nama_kk?: string; tarif_iuran_bulanan?: number | string };
+    const { nama_kk } = req.body as { nama_kk?: string };
 
     if (!req.user?.id) {
       res.status(401).json({ success: false, message: "User belum terautentikasi." });
       return;
     }
 
-    if (!nama_kk || tarif_iuran_bulanan === undefined) {
-      res.status(400).json({ success: false, message: "nama_kk dan tarif_iuran_bulanan wajib diisi." });
+    if (!nama_kk) {
+      res.status(400).json({ success: false, message: "nama_kk wajib diisi." });
       return;
     }
 
@@ -190,9 +204,12 @@ export const createWargaForRt = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const nominal = Number(tarif_iuran_bulanan);
-    if (!Number.isFinite(nominal) || nominal <= 0) {
-      res.status(400).json({ success: false, message: "tarif_iuran_bulanan harus berupa angka lebih dari 0." });
+    const pengaturan = await prisma.pengaturanIuranRW.findUnique({
+      where: { wilayah_rw_id: blok.wilayah_rw_id }
+    });
+    
+    if (!pengaturan) {
+      res.status(400).json({ success: false, message: "Pengaturan iuran belum di-set oleh RW."});
       return;
     }
 
@@ -202,7 +219,7 @@ export const createWargaForRt = async (req: Request, res: Response): Promise<voi
         data: {
           blok_wilayah_id: blok.id,
           nama_kk: nama_kk.trim(),
-          tarif_iuran_bulanan: new Prisma.Decimal(nominal),
+          
         },
       });
 
@@ -211,7 +228,7 @@ export const createWargaForRt = async (req: Request, res: Response): Promise<voi
           warga_id: created.id,
           bulan: idx + 1,
           tahun: currentYear,
-          nominal: new Prisma.Decimal(nominal),
+          nominal: pengaturan.nominal_iuran,
           status: StatusIuran.BELUM,
         })),
       });
@@ -223,7 +240,7 @@ export const createWargaForRt = async (req: Request, res: Response): Promise<voi
       aksi: AksiAudit.CREATE,
       entitas: "Warga",
       entitas_id: warga.id,
-      data_baru: { nama_kk: warga.nama_kk, tarif_iuran_bulanan: warga.tarif_iuran_bulanan.toString(), blok_wilayah_id: blok.id },
+      data_baru: { nama_kk: warga.nama_kk,  blok_wilayah_id: blok.id },
     });
 
     res.status(201).json({
@@ -631,5 +648,171 @@ export const getAuditLogForRt = async (req: Request, res: Response): Promise<voi
     res.status(200).json({ success: true, message: "Data audit log RT berhasil diambil.", data });
   } catch {
     res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengambil data audit log RT." });
+  }
+};
+
+export const bayarIuranForRt = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { iuran_id } = req.body as { iuran_id?: string };
+
+    if (!req.user?.id || req.user.role !== "RT") {
+      res.status(401).json({ success: false, message: "Akses ditolak. Hanya RT." });
+      return;
+    }
+
+    if (!iuran_id) {
+      res.status(400).json({ success: false, message: "iuran_id wajib diisi." });
+      return;
+    }
+
+    const blok = await getRtBlockContext(req);
+    if (!blok) {
+      res.status(403).json({ success: false, message: "Data blok wilayah RT tidak ditemukan." });
+      return;
+    }
+
+    const existingIuran = await prisma.iuranWarga.findUnique({
+      where: { id: iuran_id },
+      include: { warga: true }
+    });
+
+    if (!existingIuran || existingIuran.warga.blok_wilayah_id !== blok.id) {
+      res.status(404).json({ success: false, message: "Data iuran tidak ditemukan atau bukan milik RT ini." });
+      return;
+    }
+
+    if (existingIuran.status === StatusIuran.LUNAS) {
+      res.status(400).json({ success: false, message: "Iuran sudah berstatus LUNAS." });
+      return;
+    }
+
+    const pengaturan = await prisma.pengaturanIuranRW.findUnique({
+      where: { wilayah_rw_id: blok.wilayah_rw_id }
+    });
+
+    if (!pengaturan) {
+      res.status(400).json({ success: false, message: "Master Data Pengaturan Iuran belum diatur oleh RW." });
+      return;
+    }
+
+    const nominalBayar = Number(pengaturan.nominal_iuran);
+    const pRt = Number(pengaturan.persen_rt);
+    const pRw = Number(pengaturan.persen_rw);
+
+    const nominal_kas_rt = new Prisma.Decimal((nominalBayar * pRt) / 100);
+    const nominal_kas_rw = new Prisma.Decimal((nominalBayar * pRw) / 100);
+    const nominalDecimal = new Prisma.Decimal(nominalBayar);
+
+    const paymentDate = new Date();
+    
+    // Generate kode unik helpers directly via crypto
+    const { randomBytes } = require("crypto");
+    const year2 = String(paymentDate.getFullYear()).slice(-2);
+    const month2 = String(paymentDate.getMonth() + 1).padStart(2, "0");
+    const suffixIur = randomBytes(3).toString("hex").toUpperCase();
+    const kodeIuran = `IUR-${year2}${month2}-${suffixIur}`;
+    
+    const suffixKas = randomBytes(3).toString("hex").toUpperCase();
+    const kodeKas = `KRT-${year2}${month2}-${suffixKas}`;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const updated = await tx.iuranWarga.update({
+        where: { id: iuran_id },
+        data: {
+          status: StatusIuran.LUNAS,
+          tanggal_bayar: paymentDate,
+          kode_unik: kodeIuran,
+          nominal_kas_rt,
+          nominal_kas_rw,
+          nominal: nominalDecimal, // update the actual nominal based on latest setting
+        }
+      });
+
+      // Tambahkan ke Kas RT (70% misalnya)
+      await tx.kasRT.create({
+        data: {
+          blok_wilayah_id: blok.id,
+          jenis_transaksi: "MASUK",
+          tanggal: paymentDate,
+          keterangan: `Iuran warga ${existingIuran.warga.nama_kk} bln ${updated.bulan}/${updated.tahun}`,
+          nominal: nominal_kas_rt,
+          kode_unik: kodeKas,
+        }
+      });
+
+      return updated;
+    });
+
+    await recordAudit(req, {
+      aksi: AksiAudit.UPDATE,
+      entitas: "IuranWarga",
+      entitas_id: result.id,
+      data_baru: result,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Pembayaran iuran berhasil. Saldo otomatis dibagi.",
+      data: result,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat memproses pembayaran iuran." });
+  }
+};
+
+export const resetIuranStatusForRt = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { iuran_id } = req.body as { iuran_id?: string };
+
+    if (!req.user?.id || req.user.role !== "RT") {
+      res.status(401).json({ success: false, message: "Akses ditolak. Hanya RT." });
+      return;
+    }
+
+    if (!iuran_id) {
+      res.status(400).json({ success: false, message: "iuran_id wajib diisi." });
+      return;
+    }
+
+    const blok = await getRtBlockContext(req);
+    if (!blok) {
+      res.status(403).json({ success: false, message: "Data blok wilayah RT tidak ditemukan." });
+      return;
+    }
+
+    const existingIuran = await prisma.iuranWarga.findUnique({
+      where: { id: iuran_id },
+      include: { warga: true },
+    });
+
+    if (!existingIuran || existingIuran.warga.blok_wilayah_id !== blok.id) {
+      res.status(404).json({ success: false, message: "Data iuran tidak ditemukan atau bukan milik RT ini." });
+      return;
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.cicilanIuran.deleteMany({ where: { iuran_id } });
+
+      return tx.iuranWarga.update({
+        where: { id: iuran_id },
+        data: {
+          status: StatusIuran.BELUM,
+          tanggal_bayar: null,
+          kode_unik: null,
+          nominal_kas_rt: null,
+          nominal_kas_rw: null,
+          nominal: existingIuran.nominal,
+        },
+      });
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Status iuran berhasil direset.",
+      data: updated,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat mereset status iuran." });
   }
 };

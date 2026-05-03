@@ -17,6 +17,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Clock,
+  FileText,
 } from "lucide-react";
 
 interface RwDashboardReportResponse {
@@ -154,10 +155,10 @@ export default function DashboardRwIndexPage() {
           </p>
         </div>
         <div className="inline-flex gap-2">
-          <Link href="/dashboard/rw/warga">
+          <Link href="/dashboard/rw/iuran-khusus">
             <Button variant="outline" className="gap-2">
-              <Users className="size-4" />
-              Iuran Warga
+              <FileText className="size-4" />
+              Iuran Khusus
             </Button>
           </Link>
           <Link href="/dashboard/rw/kas">

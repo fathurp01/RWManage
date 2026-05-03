@@ -9,7 +9,7 @@ import {
 
 const LOGIN_PATH = "/auth/login";
 const STATUS_PATH = "/auth/status";
-const RW_DASHBOARD_PATH = "/dashboard/rw/warga";
+const RW_DASHBOARD_PATH = "/dashboard/rw";
 const RT_DASHBOARD_PATH = "/dashboard/rt";
 const MASJID_DASHBOARD_PATH = "/dashboard/masjid";
 const SUPERADMIN_DASHBOARD_PATH = "/dashboard/superadmin";

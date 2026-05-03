@@ -37,7 +37,7 @@ export const rtClient = {
     return res.data.data ?? [];
   },
 
-  async createWarga(payload: { nama_kk: string; tarif_iuran_bulanan: number }): Promise<RtWargaRecord> {
+  async createWarga(payload: { nama_kk: string }): Promise<RtWargaRecord> {
     const res = await api.post<{ data: RtWargaRecord }>("/rt/warga", payload);
     return res.data.data;
   },

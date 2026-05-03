@@ -52,7 +52,7 @@ const inferRoleFromNextPath = (nextPath: string | null): AppRole | null => {
 const toRedirectPath = (role: AuthStoragePayload["user"]["role"], nextPath: string | null): string => {
   if (nextPath && nextPath.startsWith("/")) return nextPath;
   return role === "RW" || role === "RT" || role === "SUPERADMIN"
-    ? "/dashboard/rw/warga"
+    ? "/dashboard/rw"
     : "/dashboard/masjid";
 };
 

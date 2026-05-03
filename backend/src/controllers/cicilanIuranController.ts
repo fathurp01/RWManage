@@ -1,3 +1,4 @@
+import { Role } from "@prisma/client";
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 
@@ -7,6 +8,23 @@ interface CreateCicilanBody {
   bulan_mulai?: number | string;
   tahun_mulai?: number | string;
 }
+
+const hasCicilanAccess = (
+  role: Role | undefined,
+  owner: { rwUserId?: string | null; blokWilayahId?: string | null },
+  userId?: string,
+  userBlokWilayahId?: string
+): boolean => {
+  if (role === Role.RW) {
+    return owner.rwUserId === userId;
+  }
+
+  if (role === Role.RT) {
+    return owner.blokWilayahId === userBlokWilayahId;
+  }
+
+  return false;
+};
 
 export const createCicilanIuran = async (
   req: Request,
@@ -61,6 +79,7 @@ export const createCicilanIuran = async (
         warga: {
           select: {
             id: true,
+            blok_wilayah_id: true,
             blok_wilayah: {
               select: { wilayah_rw: { select: { user_id: true } } },
             },
@@ -78,7 +97,17 @@ export const createCicilanIuran = async (
       return;
     }
 
-    if (iuran.warga.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
+    if (
+      !hasCicilanAccess(
+        req.user.role,
+        {
+          rwUserId: iuran.warga.blok_wilayah.wilayah_rw.user_id,
+          blokWilayahId: iuran.warga.blok_wilayah_id,
+        },
+        req.user.id,
+        req.user.blok_wilayah_id
+      )
+    ) {
       res.status(403).json({
         success: false,
         message: "Akses ditolak.",
@@ -145,6 +174,7 @@ export const getCicilanIuranList = async (
       const warga = await prisma.warga.findUnique({
         where: { id: warga_id },
         select: {
+          blok_wilayah_id: true,
           blok_wilayah: {
             select: { wilayah_rw: { select: { user_id: true } } },
           },
@@ -159,7 +189,17 @@ export const getCicilanIuranList = async (
         return;
       }
 
-      if (warga.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
+      if (
+        !hasCicilanAccess(
+          req.user.role,
+          {
+            rwUserId: warga.blok_wilayah.wilayah_rw.user_id,
+            blokWilayahId: warga.blok_wilayah_id,
+          },
+          req.user.id,
+          req.user.blok_wilayah_id
+        )
+      ) {
         res.status(403).json({
           success: false,
           message: "Akses ditolak.",
@@ -220,11 +260,25 @@ export const updateCicilanStatus = async (
     const cicilan = await prisma.cicilanIuran.findUnique({
       where: { id: cicilan_id },
       select: {
+        id: true,
         warga: {
           select: {
+            nama_kk: true,
+            blok_wilayah_id: true,
             blok_wilayah: {
-              select: { wilayah_rw: { select: { user_id: true } } },
+              select: {
+                wilayah_rw_id: true,
+                wilayah_rw: { select: { user_id: true } },
+              },
             },
+          },
+        },
+        iuran: {
+          select: {
+            id: true,
+            bulan: true,
+            tahun: true,
+            nominal: true,
           },
         },
       },
@@ -238,7 +292,17 @@ export const updateCicilanStatus = async (
       return;
     }
 
-    if (cicilan.warga.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
+    if (
+      !hasCicilanAccess(
+        req.user.role,
+        {
+          rwUserId: cicilan.warga.blok_wilayah.wilayah_rw.user_id,
+          blokWilayahId: cicilan.warga.blok_wilayah_id,
+        },
+        req.user.id,
+        req.user.blok_wilayah_id
+      )
+    ) {
       res.status(403).json({
         success: false,
         message: "Akses ditolak.",
@@ -246,9 +310,58 @@ export const updateCicilanStatus = async (
       return;
     }
 
-    const updated = await prisma.cicilanIuran.update({
-      where: { id: cicilan_id },
-      data: { sudah_lunas: true },
+    const paymentDate = new Date();
+    const { randomBytes } = require("crypto");
+    const year2 = String(paymentDate.getFullYear()).slice(-2);
+    const month2 = String(paymentDate.getMonth() + 1).padStart(2, "0");
+    const suffixIur = randomBytes(3).toString("hex").toUpperCase();
+    const kodeIuran = `IUR-${year2}${month2}-${suffixIur}`;
+
+    const suffixKas = randomBytes(3).toString("hex").toUpperCase();
+    const kodeKas = `KRT-${year2}${month2}-${suffixKas}`;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedCicilan = await tx.cicilanIuran.update({
+        where: { id: cicilan_id },
+        data: { sudah_lunas: true },
+      });
+
+      const pengaturan = await tx.pengaturanIuranRW.findUnique({
+        where: { wilayah_rw_id: cicilan.warga.blok_wilayah.wilayah_rw_id },
+      });
+
+      const nominalBayar = Number(cicilan.iuran.nominal);
+      const pRt = Number(pengaturan?.persen_rt ?? 70);
+      const pRw = Number(pengaturan?.persen_rw ?? 30);
+
+      const nominal_kas_rt = new Prisma.Decimal((nominalBayar * pRt) / 100);
+      const nominal_kas_rw = new Prisma.Decimal((nominalBayar * pRw) / 100);
+      const nominalDecimal = new Prisma.Decimal(nominalBayar);
+
+      await tx.iuranWarga.update({
+        where: { id: cicilan.iuran.id },
+        data: {
+          status: StatusIuran.LUNAS,
+          tanggal_bayar: paymentDate,
+          kode_unik: kodeIuran,
+          nominal_kas_rt,
+          nominal_kas_rw,
+          nominal: nominalDecimal,
+        },
+      });
+
+      await tx.kasRT.create({
+        data: {
+          blok_wilayah_id: cicilan.warga.blok_wilayah_id,
+          jenis_transaksi: "MASUK",
+          tanggal: paymentDate,
+          keterangan: `Cicilan iuran warga ${cicilan.warga.nama_kk} bln ${cicilan.iuran.bulan}/${cicilan.iuran.tahun}`,
+          nominal: nominal_kas_rt,
+          kode_unik: kodeKas,
+        },
+      });
+
+      return updatedCicilan;
     });
 
     res.status(200).json({
@@ -294,6 +407,7 @@ export const deleteCicilanIuran = async (
       select: {
         warga: {
           select: {
+            blok_wilayah_id: true,
             blok_wilayah: {
               select: { wilayah_rw: { select: { user_id: true } } },
             },
@@ -310,7 +424,17 @@ export const deleteCicilanIuran = async (
       return;
     }
 
-    if (cicilan.warga.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
+    if (
+      !hasCicilanAccess(
+        req.user.role,
+        {
+          rwUserId: cicilan.warga.blok_wilayah.wilayah_rw.user_id,
+          blokWilayahId: cicilan.warga.blok_wilayah_id,
+        },
+        req.user.id,
+        req.user.blok_wilayah_id
+      )
+    ) {
       res.status(403).json({
         success: false,
         message: "Akses ditolak.",

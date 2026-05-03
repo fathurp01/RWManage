@@ -80,17 +80,21 @@ export default function RtInsidenPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold">Laporan Insiden (RT)</h1>
-        <p className="text-sm text-gray-600">Laporkan insiden di wilayah RT Anda dan kelola tindak lanjutnya.</p>
-      </div>
+    <main className="flex flex-1 flex-col gap-6">
+      <header className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">RT</Badge>
+          <span className="text-sm text-slate-500 dark:text-muted-foreground">Manajemen laporan insiden</span>
+        </div>
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">Laporan Insiden</h1>
+        <p className="text-base text-slate-500 dark:text-muted-foreground">Catat laporan dan kelola status tindak lanjut.</p>
+      </header>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
           <CardTitle>Buat Laporan</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="pt-5 space-y-3">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Input placeholder="Judul/Tipe Insiden" value={judul} onChange={(e) => setJudul(e.target.value)} />
             <Input placeholder="Lokasi" value={lokasi} onChange={(e) => setLokasi(e.target.value)} />
@@ -111,29 +115,31 @@ export default function RtInsidenPage() {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Daftar Laporan</CardTitle>
-          <select className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "ALL" | RtStatusInsiden)}>
-            <option value="ALL">Semua Status</option>
-            <option value="LAPORAN">LAPORAN</option>
-            <option value="PROSES">PROSES</option>
-            <option value="SELESAI">SELESAI</option>
-            <option value="DITUTUP">DITUTUP</option>
-          </select>
+        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle>Daftar Laporan</CardTitle>
+            <select className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "ALL" | RtStatusInsiden)}>
+              <option value="ALL">Semua Status</option>
+              <option value="LAPORAN">LAPORAN</option>
+              <option value="PROSES">PROSES</option>
+              <option value="SELESAI">SELESAI</option>
+              <option value="DITUTUP">DITUTUP</option>
+            </select>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-5">
           {loading ? (
-            <div>Memuat...</div>
+            <div className="text-sm text-slate-500">Memuat...</div>
           ) : rows.length === 0 ? (
-            <div className="text-gray-500">Belum ada laporan</div>
+            <div className="text-sm text-slate-500">Belum ada laporan</div>
           ) : (
             <ul className="space-y-3">
               {rows.map((row) => (
                 <li key={row.id} className="flex items-center justify-between rounded-md border px-3 py-2">
                   <div>
                     <div className="font-medium">{row.tipe_insiden}</div>
-                    <div className="text-sm text-gray-500">{row.lokasi}</div>
-                    <div className="text-xs text-gray-500">{new Date(row.created_at).toLocaleString("id-ID")}</div>
+                    <div className="text-sm text-slate-500">{row.lokasi}</div>
+                    <div className="text-xs text-slate-500">{new Date(row.created_at).toLocaleString("id-ID")}</div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant={row.status === "DITUTUP" ? "success" : "pending"}>{row.status}</Badge>
@@ -148,6 +154,6 @@ export default function RtInsidenPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

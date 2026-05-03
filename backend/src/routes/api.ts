@@ -98,17 +98,40 @@ import {
 } from "../controllers/auditLogController";
 import {
   createLaporanInsidenForRt,
-  createPerformaRondaForRt,
-  createWargaForRt,
-  deleteLaporanInsidenForRt,
-  deletePerformaRondaForRt,
   getAuditLogForRt,
   getLaporanInsidenForRt,
   getPerformaRondaForRt,
-  getWargaForRt,
+  resetIuranStatusForRt,
   updateLaporanInsidenForRt,
+  deleteLaporanInsidenForRt,
+  createWargaForRt,
+  getWargaForRt,
+  getIuranForRt,
+  bayarIuranForRt,
+  createPerformaRondaForRt,
   updatePerformaRondaForRt,
+  deletePerformaRondaForRt,
 } from "../controllers/rtController";
+import {
+  getPengaturanIuranRW,
+  upsertPengaturanIuranRW,
+} from "../controllers/pengaturanIuranController";
+import {
+  getKasRT,
+  createKasRT,
+  updateKasRT,
+  deleteKasRT,
+  getAllKasRTSummary,
+} from "../controllers/kasRTController";
+import {
+  getSetoranRT,
+  submitSetoran,
+  getSetoranForRW,
+  approveSetoran,
+} from "../controllers/setoranIuranController";
+import {
+  updateKasRTSchema,
+} from "../validation/schemas";
 import {
   getUserPreference,
   updateUserPreference,
@@ -231,6 +254,9 @@ import {
   updateRtLaporanInsidenSchema,
   rtLaporanInsidenParamsSchema,
   getRtAuditLogQuerySchema,
+  pengaturanIuranRWSchema,
+  createKasRTSchema,
+  approveSetoranSchema,
 } from "../validation/schemas";
 
 const router = Router();
@@ -443,6 +469,42 @@ router.delete(
   rwActionRateLimit,
   verifyToken,
   checkRole(["RW"]),
+  checkApproval,
+  validateParams(cicilanIuranParamsSchema),
+  deleteCicilanIuran
+);
+router.post(
+  "/rt/cicilan-iuran",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateBody(createCicilanIuranSchema),
+  createCicilanIuran
+);
+router.get(
+  "/rt/cicilan-iuran",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateQuery(getCicilanIuranQuerySchema),
+  getCicilanIuranList
+);
+router.patch(
+  "/rt/cicilan-iuran/:cicilan_id/bayar",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateParams(cicilanIuranParamsSchema),
+  updateCicilanStatus
+);
+router.delete(
+  "/rt/cicilan-iuran/:cicilan_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
   checkApproval,
   validateParams(cicilanIuranParamsSchema),
   deleteCicilanIuran
@@ -717,6 +779,146 @@ router.patch(
   validateBody(bayarIuranSchema),
   bayarIuran
 );
+router.post(
+  "/rt/iuran/bayar",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateBody(bayarIuranSchema),
+  bayarIuranForRt
+);
+router.patch(
+  "/rt/iuran/reset",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateBody(bayarIuranSchema),
+  resetIuranStatusForRt
+);
+
+// ==================== PENGATURAN IURAN RW ROUTES ====================
+router.get(
+  "/rw/pengaturan-iuran",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getPengaturanIuranRW
+);
+router.post(
+  "/rw/pengaturan-iuran",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateBody(pengaturanIuranRWSchema),
+  upsertPengaturanIuranRW
+);
+
+// ==================== KAS RT ROUTES ====================
+router.get(
+  "/rt/kas",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT", "RW"]),
+  checkApproval,
+  getKasRT
+);
+router.post(
+  "/rt/kas",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateBody(createKasRTSchema),
+  createKasRT
+);
+router.get(
+  "/rw/kas-rt-summary",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getAllKasRTSummary
+);
+
+// ==================== SETORAN IURAN RT ROUTES ====================
+// ==================== KAS RT ROUTES ====================
+router.get(
+  "/rt/kas",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT", "RW"]),
+  checkApproval,
+  getKasRT
+);
+router.post(
+  "/rt/kas",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  upload.single("bukti_foto"),
+  validateBody(createKasRTSchema),
+  createKasRT
+);
+router.put(
+  "/rt/kas/:kas_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  upload.single("bukti_foto"),
+  validateBody(updateKasRTSchema),
+  updateKasRT
+);
+router.delete(
+  "/rt/kas/:kas_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  deleteKasRT
+);
+
+// ==================== SETORAN RT TO RW ROUTES ====================
+router.get(
+  "/rt/setoran",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  getSetoranRT
+);
+router.post(
+  "/rt/setoran/submit",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  upload.single("bukti_foto"),
+  submitSetoran
+);
+router.get(
+  "/rw/setoran-rt",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getSetoranForRW
+);
+router.post(
+  "/rw/setoran-rt/:setoran_id/approve",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateBody(approveSetoranSchema),
+  approveSetoran
+);
+
 
 // ==================== KAS RW ROUTES ====================
 router.post(

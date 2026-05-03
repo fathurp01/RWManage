@@ -6,7 +6,7 @@ import { prisma } from "../lib/prisma";
 interface CreateWargaBody {
   blok_wilayah_id?: string;
   nama_kk?: string;
-  tarif_iuran_bulanan?: number | string;
+  
 }
 
 interface GetIuranWargaQuery {
@@ -27,7 +27,7 @@ interface WargaIdParams {
 
 interface UpdateWargaBody {
   nama_kk?: string;
-  tarif_iuran_bulanan?: number | string;
+  
 }
 
 interface BayarIuranBody {
@@ -132,16 +132,12 @@ export const createWargaWithClient = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { blok_wilayah_id, nama_kk, tarif_iuran_bulanan } =
-      req.body as CreateWargaBody;
+    const { blok_wilayah_id, nama_kk } = req.body as CreateWargaBody;
 
-    const nominalIuran = parsePositiveNumber(tarif_iuran_bulanan);
-
-    if (!blok_wilayah_id || !nama_kk || nominalIuran === null) {
+    if (!blok_wilayah_id || !nama_kk) {
       res.status(400).json({
         success: false,
-        message:
-          "blok_wilayah_id, nama_kk, dan tarif_iuran_bulanan (angka > 0) wajib diisi.",
+        message: "blok_wilayah_id dan nama_kk wajib diisi.",
       });
       return;
     }
@@ -187,6 +183,13 @@ export const createWargaWithClient = async (
       return;
     }
 
+    const pengaturan = await client.pengaturanIuranRW.findUnique({
+      where: { wilayah_rw_id: rwWilayah.id }
+    });
+    if (!pengaturan) {
+      res.status(400).json({ success: false, message: "Pengaturan Iuran RW belum dikonfigurasi." });
+      return;
+    }
     const currentYear = new Date().getFullYear();
 
     const result = await client.$transaction(async (tx) => {
@@ -194,7 +197,7 @@ export const createWargaWithClient = async (
         data: {
           blok_wilayah_id,
           nama_kk,
-          tarif_iuran_bulanan: new Prisma.Decimal(nominalIuran),
+          
         },
       });
 
@@ -203,7 +206,7 @@ export const createWargaWithClient = async (
           warga_id: warga.id,
           bulan: idx + 1,
           tahun: currentYear,
-          nominal: new Prisma.Decimal(nominalIuran),
+          nominal: pengaturan.nominal_iuran,
           status: StatusIuran.BELUM,
         })),
       });
@@ -219,7 +222,7 @@ export const createWargaWithClient = async (
         id: result.id,
         nama_kk: result.nama_kk,
         blok_wilayah_id: result.blok_wilayah_id,
-        tarif_iuran_bulanan: result.tarif_iuran_bulanan,
+        
         tahun_iuran_awal: currentYear,
       },
     });
@@ -305,7 +308,7 @@ export const getWargaList = async (req: Request, res: Response): Promise<void> =
       select: {
         id: true,
         nama_kk: true,
-        tarif_iuran_bulanan: true,
+        
         blok_wilayah_id: true,
         blok_wilayah: {
           select: {
@@ -364,7 +367,7 @@ export const getWargaDetail = async (req: Request, res: Response): Promise<void>
       select: {
         id: true,
         nama_kk: true,
-        tarif_iuran_bulanan: true,
+        
         blok_wilayah_id: true,
         deleted_at: true,
         blok_wilayah: {
@@ -399,7 +402,7 @@ export const getWargaDetail = async (req: Request, res: Response): Promise<void>
       data: {
         id: warga.id,
         nama_kk: warga.nama_kk,
-        tarif_iuran_bulanan: warga.tarif_iuran_bulanan,
+        
         blok_wilayah_id: warga.blok_wilayah_id,
         blok_wilayah: {
           nama_blok: warga.blok_wilayah.nama_blok,
@@ -418,7 +421,7 @@ export const getWargaDetail = async (req: Request, res: Response): Promise<void>
 export const updateWarga = async (req: Request, res: Response): Promise<void> => {
   try {
     const { warga_id } = req.params as WargaIdParams;
-    const { nama_kk, tarif_iuran_bulanan } = req.body as UpdateWargaBody;
+    const { nama_kk } = req.body as UpdateWargaBody; const tarif_iuran_bulanan = undefined;
 
     if (!warga_id) {
       res.status(400).json({
@@ -484,7 +487,7 @@ export const updateWarga = async (req: Request, res: Response): Promise<void> =>
 
     const dataToUpdate: {
       nama_kk?: string;
-      tarif_iuran_bulanan?: Prisma.Decimal;
+      
       iuran_warga?: {
         updateMany: {
           where: {
@@ -512,7 +515,7 @@ export const updateWarga = async (req: Request, res: Response): Promise<void> =>
       }
 
       const decimalTarif = new Prisma.Decimal(parsedTarif);
-      dataToUpdate.tarif_iuran_bulanan = decimalTarif;
+      
       dataToUpdate.iuran_warga = {
         updateMany: {
           where: {
@@ -531,7 +534,7 @@ export const updateWarga = async (req: Request, res: Response): Promise<void> =>
       select: {
         id: true,
         nama_kk: true,
-        tarif_iuran_bulanan: true,
+        
         blok_wilayah_id: true,
       },
     });
@@ -726,7 +729,7 @@ export const getIuranWarga = async (
       select: {
         id: true,
         nama_kk: true,
-        tarif_iuran_bulanan: true,
+        
         iuran_warga: {
           where: {
             tahun: tahunInt,
@@ -778,7 +781,7 @@ export const getIuranWarga = async (
           id: null,
           bulan: bulanItem,
           tahun: tahunInt,
-          nominal: warga.tarif_iuran_bulanan,
+          nominal: new Prisma.Decimal(0),
           status: StatusIuran.BELUM,
           kode_unik: null,
           tanggal_bayar: null,
@@ -788,7 +791,7 @@ export const getIuranWarga = async (
       return {
         id: warga.id,
         nama_kk: warga.nama_kk,
-        tarif_iuran_bulanan: warga.tarif_iuran_bulanan,
+        
         iuran: iuranBySelection,
       };
     }).filter((item) => item.iuran.length > 0 || status !== StatusIuran.LUNAS);
@@ -887,9 +890,44 @@ export const bayarIuran = async (req: Request, res: Response): Promise<void> => 
     }
 
     const paymentDate = new Date();
+    
+    // Ambil pengaturan iuran untuk split dana
+    const pengaturan = await prisma.pengaturanIuranRW.findUnique({
+      where: { wilayah_rw_id: rwWilayah.id }
+    });
+
     const updatedIuran = await prisma.$transaction(async (tx) => {
       const kodeIuran = await generateKodeUnik(tx, "IUR");
-      const kodeKas = await generateKodeUnik(tx, "KAS");
+      
+      let nominal_kas_rt = new Prisma.Decimal(0);
+      let nominal_kas_rw = existingIuran.nominal;
+
+      if (pengaturan) {
+        const nRt = (Number(existingIuran.nominal) * pengaturan.persen_rt) / 100;
+        const nRw = (Number(existingIuran.nominal) * pengaturan.persen_rw) / 100;
+        nominal_kas_rt = new Prisma.Decimal(nRt);
+        nominal_kas_rw = new Prisma.Decimal(nRw);
+
+        // Cari blok untuk mendapatkan KasRT ID
+        const iuranData = await tx.iuranWarga.findUnique({
+          where: { id: iuran_id },
+          include: { warga: { include: { blok_wilayah: true } } }
+        });
+
+        if (iuranData) {
+          // Catat ke Kas RT (70%)
+          await tx.kasRT.create({
+            data: {
+              blok_wilayah_id: iuranData.warga.blok_wilayah_id,
+              jenis_transaksi: JenisTransaksi.MASUK,
+              tanggal: paymentDate,
+              keterangan: `Iuran Warga: ${iuranData.warga.nama_kk} (${iuranData.bulan}/${iuranData.tahun})`,
+              nominal: nominal_kas_rt,
+              kode_unik: await generateKodeUnik(tx, "KAS")
+            }
+          });
+        }
+      }
 
       const updated = await tx.iuranWarga.update({
         where: { id: iuran_id },
@@ -897,6 +935,8 @@ export const bayarIuran = async (req: Request, res: Response): Promise<void> => 
           status: StatusIuran.LUNAS,
           tanggal_bayar: paymentDate,
           kode_unik: kodeIuran,
+          nominal_kas_rt,
+          nominal_kas_rw,
         },
         select: {
           id: true,
@@ -910,17 +950,18 @@ export const bayarIuran = async (req: Request, res: Response): Promise<void> => 
         },
       });
 
-      await tx.kasRW.create({
-        data: {
-          wilayah_rw_id: rwWilayah.id,
-          jenis_transaksi: JenisTransaksi.MASUK,
-          tanggal: paymentDate,
-          keterangan: `Pembayaran iuran warga ${existingIuran.warga.nama_kk} bulan ${updated.bulan}/${updated.tahun}`,
-          nominal: updated.nominal,
-          kode_unik: kodeKas,
-        },
-      });
-
+      // Jika tidak ada pengaturan (legacy), semua masuk ke Kas RW
+      // Jika ada pengaturan, yang dicatat ke Kas RW adalah yang SUDAH DISETORKAN nantinya.
+      // Untuk pembayaran langsung, kita anggap RW menerima uang, tapi porsi RT harus tetap tercatat.
+      // Namun biasanya RW bayar iuran warga itu jarang, biasanya RT.
+      // Jika RW yang input, maka uang fisik ada di RW.
+      
+      // Sesuai requirement: "RW bertindak sebagai pengatur pusat".
+      // Jika RW input bayar, kita tetap masukkan nominal_kas_rw ke Kas RW? 
+      // Tidak, karena Kas RW di sini adalah kas internal operasional RW.
+      // Uang iuran masuk ke Kas RW HANYA setelah RT SETOR dan RW APPROVE.
+      // Jadi jika RW input bayar, nominal_kas_rw masuk ke "Titipan RW" di level Blok (implisit via IuranWarga.nominal_kas_rw).
+      
       return updated;
     });
 

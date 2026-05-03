@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, getApiError } from "@/lib/axios";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface AuditItem {
   id: string;
@@ -44,36 +45,40 @@ export default function RtAuditLogsPage() {
   }, [load]);
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold">Audit Logs (RT)</h1>
-        <p className="text-sm text-gray-600">Riwayat perubahan yang relevan untuk RT Anda.</p>
-      </div>
+    <main className="flex flex-1 flex-col gap-6">
+      <header className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">RT</Badge>
+          <span className="text-sm text-slate-500 dark:text-muted-foreground">Jejak aktivitas sistem</span>
+        </div>
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">Audit Logs</h1>
+        <p className="text-base text-slate-500 dark:text-muted-foreground">Riwayat perubahan yang relevan untuk RT Anda.</p>
+      </header>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
           <CardTitle>Riwayat Audit</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-5">
           {loading ? (
-            <div>Memuat...</div>
+            <div className="text-sm text-slate-500">Memuat...</div>
           ) : logs.length === 0 ? (
-            <div className="text-gray-500">Tidak ada entri audit</div>
+            <div className="text-sm text-slate-500">Tidak ada entri audit</div>
           ) : (
             <ul className="space-y-2">
               {logs.map((l) => (
-                <li key={l.id} className="flex items-center justify-between">
+                <li key={l.id} className="flex items-center justify-between rounded-md border px-3 py-2">
                   <div>
-                    <div className="font-medium">{l.aksi} — {l.entitas}</div>
-                    <div className="text-sm text-gray-500">{new Date(l.created_at).toLocaleString()}</div>
+                    <div className="font-medium">{l.aksi} - {l.entitas}</div>
+                    <div className="text-sm text-slate-500">{new Date(l.created_at).toLocaleString()}</div>
                   </div>
-                  <div className="text-sm text-gray-700">by {l.user_id ?? "-"}</div>
+                  <div className="text-sm text-slate-700 dark:text-slate-300">by {l.user_id ?? "-"}</div>
                 </li>
               ))}
             </ul>
           )}
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

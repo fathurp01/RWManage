@@ -1,5 +1,7 @@
 import { api } from "@/lib/axios";
 
+export type CicilanIuranScope = "rw" | "rt";
+
 export interface CicilanIuranRecord {
   id: string;
   warga_id: string;
@@ -20,25 +22,27 @@ export interface CreateCicilanPayload {
   tahun_mulai: number;
 }
 
+const getBasePath = (scope: CicilanIuranScope = "rw"): string => `/${scope}/cicilan-iuran`;
+
 export const cicilanIuranClient = {
-  async listByWarga(warga_id: string): Promise<CicilanIuranRecord[]> {
-    const res = await api.get<{ data: CicilanIuranRecord[] }>("/rw/cicilan-iuran", {
+  async listByWarga(warga_id: string, scope: CicilanIuranScope = "rw"): Promise<CicilanIuranRecord[]> {
+    const res = await api.get<{ data: CicilanIuranRecord[] }>(getBasePath(scope), {
       params: { warga_id },
     });
     return res.data.data ?? [];
   },
 
-  async create(payload: CreateCicilanPayload): Promise<CicilanIuranRecord> {
-    const res = await api.post<{ data: CicilanIuranRecord }>("/rw/cicilan-iuran", payload);
+  async create(payload: CreateCicilanPayload, scope: CicilanIuranScope = "rw"): Promise<CicilanIuranRecord> {
+    const res = await api.post<{ data: CicilanIuranRecord }>(getBasePath(scope), payload);
     return res.data.data;
   },
 
-  async markAsPaid(cicilan_id: string): Promise<CicilanIuranRecord> {
-    const res = await api.patch<{ data: CicilanIuranRecord }>(`/rw/cicilan-iuran/${cicilan_id}/bayar`);
+  async markAsPaid(cicilan_id: string, scope: CicilanIuranScope = "rw"): Promise<CicilanIuranRecord> {
+    const res = await api.patch<{ data: CicilanIuranRecord }>(`${getBasePath(scope)}/${cicilan_id}/bayar`);
     return res.data.data;
   },
 
-  async remove(cicilan_id: string): Promise<void> {
-    await api.delete(`/rw/cicilan-iuran/${cicilan_id}`);
+  async remove(cicilan_id: string, scope: CicilanIuranScope = "rw"): Promise<void> {
+    await api.delete(`${getBasePath(scope)}/${cicilan_id}`);
   },
 };

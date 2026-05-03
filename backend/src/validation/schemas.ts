@@ -79,7 +79,6 @@ export const listPendingPengurusQuerySchema = z.object({
 export const createWargaSchema = z.object({
   blok_wilayah_id: uuidSchema,
   nama_kk: z.string().trim().min(2).max(150),
-  tarif_iuran_bulanan: z.coerce.number().positive(),
 });
 
 export const getIuranWargaQuerySchema = z.object({
@@ -97,13 +96,11 @@ export const getIuranRtQuerySchema = z.object({
 
 export const createRtWargaSchema = z.object({
   nama_kk: z.string().trim().min(2).max(150),
-  tarif_iuran_bulanan: z.coerce.number().positive(),
 });
 
 export const updateRtWargaSchema = z
   .object({
     nama_kk: z.string().trim().min(2).max(150).optional(),
-    tarif_iuran_bulanan: z.coerce.number().positive().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "Minimal satu field harus dikirim untuk update.",
@@ -213,14 +210,11 @@ export const wargaParamsSchema = z.object({
   warga_id: uuidSchema,
 });
 
-export const updateWargaSchema = z
-  .object({
-    nama_kk: z.string().trim().min(2).max(150).optional(),
-    tarif_iuran_bulanan: z.coerce.number().positive().optional(),
-  })
-  .refine((value) => Object.keys(value).length > 0, {
-    message: "Minimal satu field harus dikirim untuk update warga.",
-  });
+export const updateWargaSchema = z.object({
+  nama_kk: z.string().min(1, "Nama KK tidak boleh kosong").optional(),
+}).refine((value) => Object.keys(value).length > 0, {
+  message: "Minimal satu field harus dikirim untuk update warga.",
+});
 
 export const bayarIuranSchema = z.object({
   iuran_id: uuidSchema,
@@ -579,3 +573,42 @@ export const cekKodeUnikQuerySchema = z.object({
   export const getMasjidListQuerySchema = z.object({
     wilayah_rw_id: uuidSchema,
   });
+
+// ==================== PENGATURAN IURAN RW ====================
+export const pengaturanIuranRWSchema = z.object({
+  nominal_iuran: z.coerce.number().positive(),
+  persen_rt: z.coerce.number().min(0).max(100).optional(),
+  persen_rw: z.coerce.number().min(0).max(100).optional(),
+}).refine((data) => {
+  const rt = data.persen_rt ?? 70.0;
+  const rw = data.persen_rw ?? 30.0;
+  return rt + rw === 100;
+}, {
+  message: "Total persen RT dan RW harus 100%",
+});
+
+// ==================== KAS RT ====================
+export const createKasRTSchema = z.object({
+  jenis_transaksi: z.enum(["MASUK", "KELUAR"]),
+  keterangan: z.string().trim().min(1).max(5000),
+  nominal: z.coerce.number().positive(),
+  tanggal: z.string().datetime().optional(),
+  bukti_url: z.string().trim().url().or(z.literal("")).optional(),
+});
+
+export const updateKasRTSchema = z.object({
+  jenis_transaksi: z.enum(["MASUK", "KELUAR"]).optional(),
+  keterangan: z.string().trim().min(1).max(5000).optional(),
+  nominal: z.coerce.number().positive().optional(),
+  tanggal: z.string().datetime().optional(),
+  bukti_url: z.string().trim().url().or(z.literal("")).optional(),
+}).refine((value) => Object.keys(value).length > 0, {
+  message: "Minimal satu field harus dikirim untuk update.",
+});
+
+// ==================== SETORAN IURAN RT ====================
+export const approveSetoranSchema = z.object({
+  status: z.enum(["TERKONFIRMASI", "REJECTED"]),
+  keterangan_rw: z.string().trim().max(1000).optional(),
+});
+

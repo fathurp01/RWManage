@@ -17,6 +17,7 @@ import {
   SquarePen,
   FileText,
   Link2,
+  Wallet,
   LogOut,
   Settings,
 } from "lucide-react";
@@ -41,12 +42,6 @@ const rwItems: SidebarItem[] = [
     label: "Overview RW",
     description: "Pantau tren iuran dan kas",
     icon: LayoutDashboard,
-  },
-  {
-    href: "/dashboard/rw/warga",
-    label: "Iuran Warga",
-    description: "Catat dan cek pembayaran iuran",
-    icon: Users,
   },
   {
     href: "/dashboard/rw/anggota-keluarga",
@@ -79,6 +74,12 @@ const rwItems: SidebarItem[] = [
     icon: BookOpenText,
   },
   {
+    href: "/dashboard/rw/iuran-khusus",
+    label: "Iuran Khusus",
+    description: "Input pemasukan non-RT",
+    icon: Wallet,
+  },
+  {
     href: "/dashboard/rw/reports",
     label: "Laporan RW",
     description: "Lihat ringkasan iuran dan kas",
@@ -91,27 +92,39 @@ const rwItems: SidebarItem[] = [
     icon: Link2,
   },
   {
-    href: "/dashboard/rw/cicilan",
-    label: "Cicilan Iuran",
-    description: "Atur cicilan tagihan warga",
-    icon: HandCoins,
-  },
-  {
     href: "/dashboard/rw/ronda",
-    label: "Performa Ronda",
+    label: "Monitoring Ronda",
     description: "Pantau kehadiran petugas ronda",
     icon: Users,
   },
   {
     href: "/dashboard/rw/insiden",
-    label: "Laporan Insiden",
-    description: "Kelola kejadian keamanan lingkungan",
+    label: "Monitoring Insiden",
+    description: "Pantau kejadian keamanan lingkungan",
     icon: FileText,
   },
   {
     href: "/dashboard/rw/audit-logs",
     label: "Audit Logs",
     description: "Lacak aktivitas pengguna",
+    icon: ShieldCheck,
+  },
+  {
+    href: "/dashboard/rw/pengaturan-iuran",
+    label: "Pengaturan Iuran",
+    description: "Atur nominal & split iuran",
+    icon: Settings,
+  },
+  {
+    href: "/dashboard/rw/monitoring-kas-rt",
+    label: "Monitoring Kas RT",
+    description: "Pantau saldo kas seluruh RT",
+    icon: Building2,
+  },
+  {
+    href: "/dashboard/rw/konfirmasi-setoran",
+    label: "Konfirmasi Setoran",
+    description: "Validasi uang masuk dari RT",
     icon: ShieldCheck,
   },
 ];
@@ -163,9 +176,9 @@ const rtItems: SidebarItem[] = [
     icon: Users,
   },
   {
-    href: "/dashboard/rt/iuran-status",
-    label: "Status Iuran",
-    description: "Filter LUNAS / BELUM per bulan/tahun",
+    href: "/dashboard/rt/cicilan",
+    label: "Cicilan Iuran",
+    description: "Atur cicilan tagihan warga",
     icon: HandCoins,
   },
   {
@@ -185,6 +198,18 @@ const rtItems: SidebarItem[] = [
     label: "Audit Trail",
     description: "Lacak perubahan data oleh pengguna",
     icon: FileText,
+  },
+  {
+    href: "/dashboard/rt/kas",
+    label: "Buku Kas RT",
+    description: "Catat pengeluaran & saldo RT",
+    icon: BookOpenText,
+  },
+  {
+    href: "/dashboard/rt/setoran",
+    label: "Setoran ke RW",
+    description: "Lapor & setor dana iuran ke RW",
+    icon: HandCoins,
   },
 ];
 
