@@ -22,6 +22,8 @@ async function main() {
   const saltRounds = 10;
 
   const passwordHashRW = await bcrypt.hash('rw123', saltRounds);
+  const passwordHashRT = await bcrypt.hash('rt123', saltRounds);
+  const passwordHashSuperadmin = await bcrypt.hash('superadmin123', saltRounds);
   const passwordHashMasjid = await bcrypt.hash('masjid123', saltRounds);
   const passwordHashPending = await bcrypt.hash('pending123', saltRounds);
   const passwordHashRejected = await bcrypt.hash('rejected123', saltRounds);
@@ -146,6 +148,56 @@ async function main() {
         masjid_id: masjidNurHidayah.id,
       },
     ],
+  });
+
+  // RT Users for each blok
+  const [rtUserA, rtUserB, rtUserC] = await Promise.all([
+    prisma.user.create({
+      data: {
+        nama: 'Ketua RT 001 (Blok A)',
+        email: 'rt001@rwmanage.com',
+        password: passwordHashRT,
+        no_hp: '081234567894',
+        role: 'RT',
+        status_akun: 'APPROVED',
+        blok_wilayah_id: blokA.id,
+      },
+    }),
+    prisma.user.create({
+      data: {
+        nama: 'Ketua RT 002 (Blok B)',
+        email: 'rt002@rwmanage.com',
+        password: passwordHashRT,
+        no_hp: '081234567895',
+        role: 'RT',
+        status_akun: 'APPROVED',
+        blok_wilayah_id: blokB.id,
+      },
+    }),
+    prisma.user.create({
+      data: {
+        nama: 'Ketua RT 003 (Blok C)',
+        email: 'rt003@rwmanage.com',
+        password: passwordHashRT,
+        no_hp: '081234567896',
+        role: 'RT',
+        status_akun: 'APPROVED',
+        blok_wilayah_id: blokC.id,
+      },
+    }),
+  ]);
+
+  // SUPERADMIN User
+  await prisma.user.create({
+    data: {
+      nama: 'Superadmin System',
+      email: 'superadmin@rwmanage.com',
+      password: passwordHashSuperadmin,
+      no_hp: '081234567897',
+      role: 'SUPERADMIN',
+      status_akun: 'APPROVED',
+      blok_wilayah_id: blokA.id,
+    },
   });
 
   await prisma.pengaturanZis.createMany({
@@ -344,6 +396,10 @@ async function main() {
   console.log('Seeding selesai!');
   console.log('Akun demo:');
   console.log('- RW: rw@rwmanage.com / rw123');
+  console.log('- RT Blok A: rt001@rwmanage.com / rt123');
+  console.log('- RT Blok B: rt002@rwmanage.com / rt123');
+  console.log('- RT Blok C: rt003@rwmanage.com / rt123');
+  console.log('- Superadmin: superadmin@rwmanage.com / superadmin123');
   console.log('- Pengurus APPROVED: masjid@rwmanage.com / masjid123');
   console.log('- Pengurus PENDING: pending@rwmanage.com / pending123');
   console.log('- Pengurus REJECTED: rejected@rwmanage.com / rejected123');

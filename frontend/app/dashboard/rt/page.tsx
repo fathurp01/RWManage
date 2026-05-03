@@ -107,25 +107,25 @@ export default function RtDashboardPage() {
   const statsCards = [
     {
       label: "Total Warga",
-      value: data?.summary.total_warga ?? 0,
+      value: data?.summary?.total_warga ?? 0,
       icon: Users,
       color: "bg-blue-100 text-blue-700",
     },
     {
       label: "Total Iuran Terjadwal",
-      value: `Rp ${(data?.summary.total_iuran_terjadwal ?? 0).toLocaleString("id-ID")}`,
+      value: `Rp ${(data?.summary?.total_iuran_terjadwal ?? 0).toLocaleString("id-ID")}`,
       icon: DollarSign,
       color: "bg-purple-100 text-purple-700",
     },
     {
       label: "Total Iuran Terbayar",
-      value: `Rp ${(data?.summary.total_iuran_terbayar ?? 0).toLocaleString("id-ID")}`,
+      value: `Rp ${(data?.summary?.total_iuran_terbayar ?? 0).toLocaleString("id-ID")}`,
       icon: TrendingUp,
       color: "bg-green-100 text-green-700",
     },
     {
       label: "Persentase Pembayaran",
-      value: `${(data?.summary.persentase_bayar ?? 0).toFixed(1)}%`,
+      value: `${(data?.summary?.persentase_bayar ?? 0).toFixed(1)}%`,
       icon: Calendar,
       color: "bg-orange-100 text-orange-700",
     },
@@ -195,12 +195,12 @@ export default function RtDashboardPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="bulan">Bulan</Label>
-              <Select value={filterMonth?.toString() ?? ""} onValueChange={(v) => setFilterMonth(v ? parseInt(v) : null)}>
+              <Select value={filterMonth?.toString() ?? "all"} onValueChange={(v) => setFilterMonth(v === "all" ? null : parseInt(v))}>
                 <SelectTrigger id="bulan">
                   <SelectValue placeholder="Semua bulan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua bulan</SelectItem>
+                  <SelectItem value="all">Semua bulan</SelectItem>
                   {months.map((m) => (
                     <SelectItem key={m.value} value={m.value.toString()}>
                       {m.label}
@@ -212,12 +212,12 @@ export default function RtDashboardPage() {
 
             <div className="space-y-2">
               <Label htmlFor="status">Status Bayar</Label>
-              <Select value={filterStatus ?? ""} onValueChange={(v) => setFilterStatus((v as "BELUM" | "LUNAS") || null)}>
+              <Select value={filterStatus ?? "all"} onValueChange={(v) => setFilterStatus(v === "all" ? null : (v as "BELUM" | "LUNAS"))}>
                 <SelectTrigger id="status">
                   <SelectValue placeholder="Semua status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua status</SelectItem>
+                  <SelectItem value="all">Semua status</SelectItem>
                   <SelectItem value="LUNAS">Lunas</SelectItem>
                   <SelectItem value="BELUM">Belum Bayar</SelectItem>
                 </SelectContent>

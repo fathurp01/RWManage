@@ -10,7 +10,7 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "5.0",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "types": ["node", "jest"]

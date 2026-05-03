@@ -1,5 +1,13 @@
 import { Request, Response } from "express";
+import PDFDocument from "pdfkit";
 import { prisma } from "../lib/prisma";
+
+const formatCurrencyId = (value: number): string =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
 
 interface CekKodeUnikParams {
   kode_unik?: string;
@@ -164,6 +172,7 @@ export const cekKodeUnikWithClient = async (
             keterangan: true,
             nominal: true,
             bukti_url: true,
+            bukti_foto_url: true,
             kode_unik: true,
           },
         })
@@ -230,4 +239,156 @@ export const cekKodeUnik = async (req: Request, res: Response): Promise<void> =>
 
 export const getMasjidList = async (req: Request, res: Response): Promise<void> => {
   return getMasjidListWithClient(prisma, req, res);
+};
+
+export const exportPublicKwitansi = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { kode_unik } = req.params as CekKodeUnikParams;
+
+    if (!kode_unik || !kode_unik.trim()) {
+      res.status(400).json({ success: false, message: "Parameter kode_unik wajib diisi." });
+      return;
+    }
+
+    const normalizedKode = kode_unik.trim();
+
+    // Check Iuran Warga
+    const iuran = await prisma.iuranWarga.findUnique({
+      where: { kode_unik: normalizedKode },
+      include: {
+        warga: {
+          include: {
+            blok_wilayah: {
+              include: { wilayah_rw: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (iuran) {
+      await generateKwitansiPdf(res, {
+        sumber: "iuran_warga",
+        title: "Kwitansi Iuran Warga",
+        color: "#4f46e5", // Indigo
+        items: [
+          ["Kode Unik", iuran.kode_unik!],
+          ["Nama KK", iuran.warga.nama_kk],
+          ["Blok/RT", `${iuran.warga.blok_wilayah.nama_blok} - RT ${iuran.warga.blok_wilayah.no_rt}`],
+          ["Periode", `${iuran.bulan} / ${iuran.tahun}`],
+          ["Nominal", formatCurrencyId(Number(iuran.nominal))],
+          ["Status", iuran.status],
+          ["Tanggal Bayar", iuran.tanggal_bayar ? new Date(iuran.tanggal_bayar).toLocaleDateString("id-ID") : "-"],
+        ],
+      });
+      return;
+    }
+
+    // Check Kas RW
+    const kas = await prisma.kasRW.findUnique({
+      where: { kode_unik: normalizedKode },
+      include: { wilayah_rw: true },
+    });
+
+    if (kas) {
+      await generateKwitansiPdf(res, {
+        sumber: "kas_rw",
+        title: `Kwitansi Kas RW ${kas.jenis_transaksi === "MASUK" ? "(Penerimaan)" : "(Pengeluaran)"}`,
+        color: kas.jenis_transaksi === "MASUK" ? "#10b981" : "#ef4444", // Emerald for in, Red for out
+        items: [
+          ["Kode Unik", kas.kode_unik],
+          ["Jenis Transaksi", kas.jenis_transaksi],
+          ["Nominal", formatCurrencyId(Number(kas.nominal))],
+          ["Tanggal", new Date(kas.tanggal).toLocaleDateString("id-ID")],
+          ["Keterangan", kas.keterangan],
+        ],
+      });
+      return;
+    }
+
+    // Check ZIS
+    const zis = await prisma.transaksiZis.findUnique({
+      where: { kode_unik: normalizedKode },
+      include: { masjid: true },
+    });
+
+    if (zis) {
+      await generateKwitansiPdf(res, {
+        sumber: "transaksi_zis",
+        title: "Kwitansi ZIS Masjid",
+        color: "#059669", // Emerald
+        items: [
+          ["Kode Unik", zis.kode_unik],
+          ["Nama Masjid", zis.masjid.nama_masjid],
+          ["Nama KK (Muzakki)", zis.nama_kk],
+          ["Alamat", zis.alamat_muzaqi],
+          ["Jumlah Jiwa", String(zis.jumlah_jiwa)],
+          ["Jenis Bayar", zis.jenis_bayar],
+          ["Nominal Zakat", formatCurrencyId(Number(zis.nominal_zakat))],
+          ["Nominal Infaq", formatCurrencyId(Number(zis.nominal_infaq))],
+          ["Beras (kg)", String(zis.total_beras_kg)],
+          ["Tanggal Transaksi", new Date(zis.waktu_transaksi).toLocaleDateString("id-ID")],
+        ],
+      });
+      return;
+    }
+
+    res.status(404).json({ success: false, message: "Data transaksi tidak ditemukan." });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat meng-export PDF." });
+  }
+};
+
+interface KwitansiDataSource {
+  sumber: string;
+  title: string;
+  color: string;
+  items: [string, string][];
+}
+
+const generateKwitansiPdf = async (res: Response, data: KwitansiDataSource) => {
+  const doc = new PDFDocument({ margin: 50, size: "A4" });
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename="Kwitansi-${data.sumber}-${Date.now()}.pdf"`
+  );
+
+  doc.pipe(res);
+
+  // Header Title
+  doc.fontSize(24).font("Helvetica-Bold").fillColor(data.color).text(data.title, { align: "center" });
+  doc.moveDown(0.5);
+
+  // Subtitle
+  doc.fontSize(12).font("Helvetica").fillColor("#64748b").text("Sistem Informasi RWManage", { align: "center" });
+  doc.moveDown(2);
+
+  // Content
+  doc.fillColor("#334155");
+  data.items.forEach(([label, value]) => {
+    doc.fontSize(12).font("Helvetica-Bold").text(`${label}:`, { continued: true });
+    doc.font("Helvetica").text(` ${value}`);
+    doc.moveDown(0.5);
+  });
+
+  doc.moveDown(2);
+
+  // Footer stamp
+  // Draw a border/stamp
+  doc.rect(400, doc.y, 130, 40)
+    .lineWidth(2)
+    .strokeColor(data.color)
+    .stroke();
+  doc.fontSize(14).font("Helvetica-Bold").fillColor(data.color).text("VERIFIED", 425, doc.y - 30);
+
+  doc.moveDown(3);
+  doc.fontSize(10).fillColor("#94a3b8").text("Dokumen ini dicetak secara otomatis dan sah tanpa tanda tangan basah.", 50, doc.y, { align: "center" });
+
+  // Add generation date
+  doc.text(`Waktu Cetak: ${new Date().toLocaleString("id-ID")}`, { align: "center" });
+
+  doc.end();
 };

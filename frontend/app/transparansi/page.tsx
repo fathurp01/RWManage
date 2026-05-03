@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import React, { useActionState } from "react";
 import { toast } from "sonner";
 import { api, getApiError, type FieldErrors } from "@/lib/axios";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Search, Globe, Receipt, CheckCircle2, Building2 } from "lucide-react";
+import { Search, Globe, Receipt, CheckCircle2, Building2, FileText, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface ReceiptPayload {
   sumber: "iuran_warga" | "kas_rw" | "transaksi_zis";
@@ -76,21 +77,15 @@ const sumberLabels: Record<ReceiptPayload["sumber"], { label: string; variant: "
 };
 
 export default function TransparansiPage() {
-  const [scope, setScope] = useState<"RW" | "MASJID">("RW");
 
   const [formState, formAction, isSubmitting] = useActionState<FormState, FormData>(
     async (_previousState, formData) => {
       const kodeUnik = String(formData.get("kode_unik") ?? "").trim();
-      const selectedScope = String(formData.get("scope") ?? "RW").trim();
 
       const fieldErrors: FieldErrors = {};
 
       if (!kodeUnik) {
         fieldErrors.kode_unik = "Kode unik wajib diisi.";
-      }
-
-      if (selectedScope !== "RW" && selectedScope !== "MASJID") {
-        fieldErrors.scope = "Scope tidak valid.";
       }
 
       if (Object.keys(fieldErrors).length > 0) {
@@ -102,11 +97,7 @@ export default function TransparansiPage() {
       }
 
       try {
-        const response = await api.get<ReceiptResponse>(`/public/cek-kode/${encodeURIComponent(kodeUnik)}`, {
-          params: {
-            scope: selectedScope,
-          },
-        });
+        const response = await api.get<ReceiptResponse>(`/public/cek-kode/${encodeURIComponent(kodeUnik)}`);
 
         toast.success("Data transaksi ditemukan.");
 
@@ -130,6 +121,7 @@ export default function TransparansiPage() {
   );
 
   const receipt = formState.receipt;
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(/\/api\/?$/, "");
 
   const selectClass = "h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 dark:border-white/10 px-3.5 py-2.5 text-sm text-foreground outline-none transition-all duration-200 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 disabled:opacity-50";
 
@@ -199,22 +191,7 @@ export default function TransparansiPage() {
                 ) : null}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="scope" className="text-base font-bold text-slate-700 dark:text-foreground">
-                  Jenis Transaksi
-                </Label>
-                <select
-                  id="scope"
-                  name="scope"
-                  value={scope}
-                  onChange={(event) => setScope(event.target.value as "RW" | "MASJID")}
-                  className="w-full h-14 rounded-2xl border-2 border-input bg-white dark:bg-input/20 dark:border-white/10 px-4 text-base font-medium text-foreground outline-none transition-all duration-200 focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/25 disabled:opacity-50 cursor-pointer"
-                  disabled={isSubmitting}
-                >
-                  <option value="RW">🏠 RW — Iuran Warga / Kas RW</option>
-                  <option value="MASJID">🕌 Masjid — Zakat, Infaq (ZIS)</option>
-                </select>
-              </div>
+
 
               {formState.message ? (
                 <div className="rounded-2xl border-2 border-destructive/30 bg-destructive/8 px-5 py-4">
@@ -224,7 +201,7 @@ export default function TransparansiPage() {
 
               <Button
                 type="submit"
-                variant={scope === "MASJID" ? "masjid" : "rw"}
+                variant="rw"
                 size="elder"
                 className="w-full justify-center gap-3 shadow-lg"
                 disabled={isSubmitting}
@@ -239,18 +216,39 @@ export default function TransparansiPage() {
           {receipt ? (
             <div className="rounded-3xl border-2 border-slate-300 dark:border-white/15 bg-white dark:bg-card shadow-xl overflow-hidden animate-fade-in">
               {/* Paper header */}
-              <div className="bg-linear-to-r from-indigo-600 to-violet-600 px-6 py-5 text-white text-center">
+              <div className={cn(
+                "px-6 py-5 text-white text-center transition-colors duration-300",
+                receipt.sumber === "transaksi_zis" 
+                  ? "bg-linear-to-r from-emerald-600 to-teal-600" 
+                  : "bg-linear-to-r from-indigo-600 to-violet-600"
+              )}>
                 <div className="flex justify-center mb-2">
                   <Receipt className="size-8" />
                 </div>
                 <h2 className="text-xl font-extrabold">Kwitansi Resmi</h2>
-                <p className="text-indigo-200 text-sm mt-1">RWManage — Sistem Manajemen Warga</p>
+                <p className="text-white/80 font-bold text-base mt-1">
+                  {sumberLabels[receipt.sumber].label}
+                </p>
+                <p className="text-white/60 text-xs mt-0.5">RWManage — Sistem Manajemen Warga</p>
               </div>
 
-              {/* Verified banner */}
-              <div className="flex items-center gap-2 justify-center bg-emerald-50 dark:bg-emerald-950/40 border-b-2 border-emerald-200 dark:border-emerald-800/40 px-6 py-3">
-                <CheckCircle2 className="size-5 text-emerald-600" />
-                <span className="text-base font-bold text-emerald-700 dark:text-emerald-300">Data Terverifikasi &amp; Sah</span>
+              {/* Verified banner & Export */}
+              <div className="flex flex-col sm:flex-row items-center gap-4 justify-between bg-emerald-50 dark:bg-emerald-950/40 border-b-2 border-emerald-200 dark:border-emerald-800/40 px-6 py-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="size-5 text-emerald-600" />
+                  <span className="text-base font-bold text-emerald-700 dark:text-emerald-300">Data Terverifikasi &amp; Sah</span>
+                </div>
+                
+                <a 
+                  href={`${process.env.NEXT_PUBLIC_API_URL}/public/cek-kode/${receipt.detail.kode_unik}/export`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-emerald-900/40 border-2 border-emerald-200 dark:border-emerald-700/50 rounded-xl text-sm font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-800/60 transition-colors shadow-sm"
+                >
+                  <FileText className="size-4" />
+                  Unduh PDF
+                  <ExternalLink className="size-3 opacity-50" />
+                </a>
               </div>
 
               {/* Receipt body */}
@@ -275,7 +273,37 @@ export default function TransparansiPage() {
                       ["Nominal", formatCurrency(receipt.detail.nominal)],
                       ["Tanggal", formatDateTime(receipt.detail.tanggal)],
                       ["Keterangan", safeText(receipt.detail.keterangan)],
-                      ["Bukti URL", safeText(receipt.detail.bukti_url)],
+                      ...(receipt.detail.bukti_foto_url
+                        ? [
+                            [
+                              "Bukti Foto",
+                              <a
+                                key="foto"
+                                href={`${baseUrl}${receipt.detail.bukti_foto_url}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+                              >
+                                Lihat Foto Bukti →
+                              </a>,
+                            ] as [string, React.ReactNode],
+                          ]
+                        : receipt.detail.bukti_url
+                        ? [
+                            [
+                              "Bukti Link",
+                              <a
+                                key="link"
+                                href={String(receipt.detail.bukti_url)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline break-all"
+                              >
+                                {String(receipt.detail.bukti_url)}
+                              </a>,
+                            ] as [string, React.ReactNode],
+                          ]
+                        : [["Bukti", "Tanpa bukti"] as [string, React.ReactNode]]),
                     ]}
                   />
                 ) : null}
@@ -311,7 +339,7 @@ export default function TransparansiPage() {
   );
 }
 
-function ReceiptList({ items }: { items: [string, string][] }) {
+function ReceiptList({ items }: { items: [string, React.ReactNode][] }) {
   return (
     <div className="divide-y-2 divide-dashed divide-slate-200 dark:divide-white/10">
       {items.map(([label, value]) => (
@@ -322,9 +350,9 @@ function ReceiptList({ items }: { items: [string, string][] }) {
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-muted-foreground sm:w-36 sm:shrink-0">
             {label}
           </p>
-          <p className="text-base font-bold text-slate-900 dark:text-foreground break-all">
+          <div className="text-base font-bold text-slate-900 dark:text-foreground break-all">
             {value}
-          </p>
+          </div>
         </div>
       ))}
     </div>

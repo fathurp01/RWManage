@@ -60,12 +60,13 @@ import {
   revokeMasjidShareLink,
   revokeRwShareLink,
 } from "../controllers/shareLinkController";
-import { cekKodeUnik, getMasjidList } from "../controllers/publicController";
+import { cekKodeUnik, exportPublicKwitansi, getMasjidList } from "../controllers/publicController";
 import {
   checkApproval,
   checkRole,
   verifyToken,
 } from "../middlewares/authMiddleware";
+import { upload } from "../middlewares/uploadMiddleware";
 import {
   authRateLimit,
   publicRateLimit,
@@ -285,6 +286,7 @@ router.post(
   verifyToken,
   checkRole(["RW"]),
   checkApproval,
+  upload.single("bukti_foto"),
   validateBody(createKasRWSchema),
   createKasRW
 );
@@ -347,6 +349,7 @@ router.patch(
   verifyToken,
   checkRole(["RW"]),
   checkApproval,
+  upload.single("bukti_foto"),
   validateParams(kasRWParamsSchema),
   validateBody(updateKasRWSchema),
   updateKasRW
@@ -539,6 +542,12 @@ router.get(
   validateParams(cekKodeUnikParamsSchema),
   validateQuery(cekKodeUnikQuerySchema),
   cekKodeUnik
+);
+router.get(
+  "/public/cek-kode/:kode_unik/export",
+  publicRateLimit,
+  validateParams(cekKodeUnikParamsSchema),
+  exportPublicKwitansi
 );
 router.get(
   "/public/shared/:token",

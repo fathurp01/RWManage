@@ -148,7 +148,8 @@ export const createKasRWSchema = z.object({
   tanggal: z.string().datetime().optional(),
   keterangan: z.string().trim().min(1).max(5000),
   nominal: z.coerce.number().positive(),
-  bukti_url: z.string().trim().url().optional(),
+  bukti_url: z.string().trim().url().or(z.literal("")).optional(),
+  bukti_foto_url: z.string().trim().optional(),
 });
 
 export const getKasRWQuerySchema = z.object({
@@ -167,7 +168,8 @@ export const updateKasRWSchema = z
     tanggal: z.string().datetime().optional(),
     keterangan: z.string().trim().min(1).max(5000).optional(),
     nominal: z.coerce.number().positive().optional(),
-    bukti_url: z.string().trim().url().optional(),
+    bukti_url: z.string().trim().url().or(z.literal("")).optional(),
+    bukti_foto_url: z.string().trim().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "Minimal satu field harus dikirim untuk update.",

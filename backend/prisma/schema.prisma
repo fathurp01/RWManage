@@ -142,6 +142,7 @@ model KasRW {
   keterangan      String         @db.Text
   nominal         Decimal        @db.Decimal(10, 2)
   bukti_url       String?
+  bukti_foto_url  String?
   kode_unik       String         @unique
   
   wilayah_rw      WilayahRW      @relation(fields: [wilayah_rw_id], references: [id])

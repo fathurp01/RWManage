@@ -42,6 +42,7 @@ interface KasItem {
   keterangan: string;
   nominal: number | string;
   bukti_url: string | null;
+  bukti_foto_url: string | null;
   kode_unik: string;
 }
 
@@ -145,6 +146,8 @@ export default function KasRwDashboardPage() {
     [wilayahRwId]
   );
 
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(/\/api\/?$/, "");
+
   useEffect(() => {
     if (!wilayahRwId) {
       return;
@@ -187,13 +190,28 @@ export default function KasRwDashboardPage() {
       }
 
       try {
-        await api.post("/rw/kas", {
-          wilayah_rw_id: wilayahRwId,
-          jenis_transaksi: jenisTransaksi,
-          tanggal: tanggal ? new Date(`${tanggal}T00:00:00.000Z`).toISOString() : undefined,
-          keterangan,
-          nominal: Number(nominal),
-          ...(buktiUrl ? { bukti_url: buktiUrl } : {}),
+        const payload = new FormData();
+        payload.append("wilayah_rw_id", wilayahRwId);
+        payload.append("jenis_transaksi", jenisTransaksi);
+        if (tanggal) {
+          payload.append("tanggal", new Date(`${tanggal}T00:00:00.000Z`).toISOString());
+        }
+        payload.append("keterangan", keterangan);
+        payload.append("nominal", nominal);
+        
+        if (buktiUrl) {
+          payload.append("bukti_url", buktiUrl);
+        }
+
+        const buktiFoto = formData.get("bukti_foto") as File;
+        if (buktiFoto && buktiFoto.size > 0) {
+          payload.append("bukti_foto", buktiFoto);
+        }
+
+        await api.post("/rw/kas", payload, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         });
 
         toast.success("Transaksi kas berhasil ditambahkan.");
@@ -364,7 +382,7 @@ export default function KasRwDashboardPage() {
                 id="nominal"
                 name="nominal"
                 type="number"
-                min={1}
+                min={0}
                 step={1000}
                 aria-invalid={Boolean(createState.fieldErrors.nominal)}
                 disabled={disabled}
@@ -383,6 +401,21 @@ export default function KasRwDashboardPage() {
                 placeholder="https://..."
                 disabled={disabled}
               />
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="bukti_foto" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Upload Foto Bukti (opsional)</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  id="bukti_foto"
+                  name="bukti_foto"
+                  type="file"
+                  accept="image/*"
+                  disabled={disabled}
+                  className="cursor-pointer file:cursor-pointer"
+                />
+              </div>
+              <p className="text-[10px] text-slate-400">Pilih salah satu: Link atau Foto. Foto akan diprioritaskan.</p>
             </div>
 
             {createState.message ? (
@@ -457,14 +490,25 @@ export default function KasRwDashboardPage() {
                       </TableCell>
                       <TableCell>
                         <p className="font-semibold text-slate-900 dark:text-foreground text-sm">{item.keterangan}</p>
-                        {item.bukti_url ? (
+                        {item.bukti_foto_url ? (
+                          <a
+                            href={`${baseUrl}${item.bukti_foto_url}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline underline-offset-4"
+                          >
+                            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Lihat Foto Bukti →
+                          </a>
+                        ) : item.bukti_url ? (
                           <a
                             href={item.bukti_url}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline underline-offset-4"
+                            className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline underline-offset-4"
                           >
-                            Lihat Bukti →
+                            <span className="size-1.5 rounded-full bg-indigo-500" />
+                            Lihat Link Bukti →
                           </a>
                         ) : (
                           <p className="text-xs text-slate-400 dark:text-muted-foreground">Tanpa bukti</p>
@@ -526,12 +570,27 @@ function EditKasDialog({
       }
 
       try {
-        await api.patch(`/rw/kas/${itemId}`, {
-          jenis_transaksi: jenisTransaksi,
-          tanggal: tanggal ? new Date(`${tanggal}T00:00:00.000Z`).toISOString() : undefined,
-          keterangan,
-          nominal: Number(nominal),
-          ...(buktiUrl ? { bukti_url: buktiUrl } : {}),
+        const payload = new FormData();
+        payload.append("jenis_transaksi", jenisTransaksi);
+        if (tanggal) {
+          payload.append("tanggal", new Date(`${tanggal}T00:00:00.000Z`).toISOString());
+        }
+        payload.append("keterangan", keterangan);
+        payload.append("nominal", nominal);
+        
+        if (buktiUrl) {
+          payload.append("bukti_url", buktiUrl);
+        }
+
+        const buktiFoto = formData.get("bukti_foto") as File;
+        if (buktiFoto && buktiFoto.size > 0) {
+          payload.append("bukti_foto", buktiFoto);
+        }
+
+        await api.patch(`/rw/kas/${itemId}`, payload, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         });
 
         toast.success("Transaksi kas berhasil diperbarui.");
@@ -597,7 +656,7 @@ function EditKasDialog({
               id={`nominal-${item.id}`}
               name="nominal"
               type="number"
-              min={1}
+              min={0}
               step={1000}
               defaultValue={String(Number(item.nominal))}
               aria-invalid={Boolean(editState.fieldErrors.nominal)}
@@ -609,6 +668,20 @@ function EditKasDialog({
           <div className="space-y-1.5">
             <Label htmlFor={`bukti-${item.id}`}>Link Bukti</Label>
             <Input id={`bukti-${item.id}`} name="bukti_url" type="url" defaultValue={item.bukti_url ?? ""} placeholder="https://..." disabled={isEditing} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor={`foto-${item.id}`}>Ganti Foto Bukti (opsional)</Label>
+            <Input
+              id={`foto-${item.id}`}
+              name="bukti_foto"
+              type="file"
+              accept="image/*"
+              disabled={isEditing}
+            />
+            {item.bukti_foto_url && (
+              <p className="text-[10px] text-emerald-600 font-medium">Sudah ada foto terunggah.</p>
+            )}
           </div>
 
           {editState.message ? <p className="text-sm text-destructive">{editState.message}</p> : null}

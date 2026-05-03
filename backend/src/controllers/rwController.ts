@@ -41,6 +41,7 @@ interface CreateKasRWBody {
   keterangan?: string;
   nominal?: number | string;
   bukti_url?: string;
+  bukti_foto_url?: string;
 }
 
 interface GetKasRWQuery {
@@ -59,6 +60,7 @@ interface UpdateKasRWBody {
   keterangan?: string;
   nominal?: number | string;
   bukti_url?: string;
+  bukti_foto_url?: string;
 }
 
 const createKodeUnikCandidate = (prefix: "IUR" | "KAS", date: Date): string => {
@@ -1004,6 +1006,8 @@ export const createKasRW = async (req: Request, res: Response): Promise<void> =>
       tanggalParsed = testDate;
     }
 
+    const bukti_foto_url = req.file ? `/uploads/${req.file.filename}` : undefined;
+
     const kas = await prisma.kasRW.create({
       data: {
         wilayah_rw_id,
@@ -1012,6 +1016,7 @@ export const createKasRW = async (req: Request, res: Response): Promise<void> =>
         keterangan,
         nominal: new Prisma.Decimal(nominalKas),
         bukti_url,
+        bukti_foto_url,
         kode_unik: await generateKodeUnik(prisma, "KAS"),
       },
       select: {
@@ -1022,6 +1027,7 @@ export const createKasRW = async (req: Request, res: Response): Promise<void> =>
         keterangan: true,
         nominal: true,
         bukti_url: true,
+        bukti_foto_url: true,
         kode_unik: true,
       },
     });
@@ -1117,6 +1123,7 @@ export const getKasRW = async (req: Request, res: Response): Promise<void> => {
         keterangan: true,
         nominal: true,
         bukti_url: true,
+        bukti_foto_url: true,
         kode_unik: true,
       },
       orderBy: [{ tanggal: "desc" }, { id: "desc" }],
@@ -1230,6 +1237,7 @@ export const updateKasRW = async (req: Request, res: Response): Promise<void> =>
       keterangan?: string;
       nominal?: Prisma.Decimal;
       bukti_url?: string | null;
+      bukti_foto_url?: string | null;
     } = {};
 
     if (jenis_transaksi !== undefined) {
@@ -1274,8 +1282,15 @@ export const updateKasRW = async (req: Request, res: Response): Promise<void> =>
       dataToUpdate.nominal = new Prisma.Decimal(parsedNominal);
     }
 
-    if (bukti_url !== undefined) {
-      dataToUpdate.bukti_url = bukti_url.trim() ? bukti_url : null;
+    // Evidence logic: photo overrides link
+    if (req.file) {
+      dataToUpdate.bukti_foto_url = `/uploads/${req.file.filename}`;
+      dataToUpdate.bukti_url = null; // Clear link if photo is uploaded
+    } else if (bukti_url !== undefined) {
+      dataToUpdate.bukti_url = bukti_url.trim() || null;
+      if (dataToUpdate.bukti_url) {
+        dataToUpdate.bukti_foto_url = null; // Clear photo path if link is provided
+      }
     }
 
     const updatedKas = await prisma.kasRW.update({
@@ -1289,6 +1304,7 @@ export const updateKasRW = async (req: Request, res: Response): Promise<void> =>
         keterangan: true,
         nominal: true,
         bukti_url: true,
+        bukti_foto_url: true,
         kode_unik: true,
       },
     });
