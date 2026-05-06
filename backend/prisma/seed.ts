@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import bcrypt from 'bcrypt';
+import * as bcrypt from 'bcrypt';
 import { prisma } from '../src/lib/prisma';
 
 async function main() {
@@ -232,21 +232,18 @@ async function main() {
       data: {
         blok_wilayah_id: blokA.id,
         nama_kk: 'Budi Santoso',
-        tarif_iuran_bulanan: 50000,
       },
     }),
     prisma.warga.create({
       data: {
         blok_wilayah_id: blokB.id,
         nama_kk: 'Siti Aminah',
-        tarif_iuran_bulanan: 50000,
       },
     }),
     prisma.warga.create({
       data: {
         blok_wilayah_id: blokC.id,
         nama_kk: 'Deni Kurniawan',
-        tarif_iuran_bulanan: 60000,
       },
     }),
   ]);
@@ -261,7 +258,7 @@ async function main() {
     data: wargaSeeds.flatMap(({ warga, nominal, prefix, paidMonths }) => {
       return Array.from({ length: 12 }, (_, index) => {
         const month = index + 1;
-        const isPaid = paidMonths.includes(month);
+        const isPaid = paidMonths.includes(month as any);
         const paidDate = new Date(currentYear, month - 1, 5, 9, 0, 0);
 
         return {

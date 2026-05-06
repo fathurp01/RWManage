@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import {
   approvePengurus,
   listPendingPengurus,
@@ -20,6 +20,7 @@ import {
   getWargaList,
   updateWarga,
   updateKasRW,
+  getDataPenduduk,
 } from "../controllers/rwController";
 import {
   createRwMasjid,
@@ -347,6 +348,16 @@ router.delete(
   checkApproval,
   validateParams(wargaParamsSchema),
   deleteWarga
+);
+
+// ==================== DATA PENDUDUK ROUTES (RW READ-ONLY) ====================
+router.get(
+  "/rw/data-penduduk",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getDataPenduduk
 );
 
 // ==================== ANGGOTA KELUARGA ROUTES ====================
@@ -684,6 +695,89 @@ router.post(
   checkApproval,
   validateBody(createRtWargaSchema),
   createWargaForRt
+);
+router.get(
+  "/rt/anggota-keluarga",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  getAnggotaKeluargaList
+);
+router.post(
+  "/rt/anggota-keluarga",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateBody(createAnggotaKeluargaSchema),
+  createAnggotaKeluarga
+);
+router.patch(
+  "/rt/anggota-keluarga/:anggota_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateParams(anggotaKeluargaParamsSchema),
+  validateBody(updateAnggotaKeluargaSchema),
+  updateAnggotaKeluarga
+);
+router.delete(
+  "/rt/anggota-keluarga/:anggota_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateParams(anggotaKeluargaParamsSchema),
+  deleteAnggotaKeluarga
+);
+router.get(
+  "/rt/identitas-warga",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  getIdentitasWargaList
+);
+router.post(
+  "/rt/identitas-warga",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  upload.single("dokumen"),
+  validateBody(createIdentitasWargaSchema),
+  createIdentitasWarga
+);
+router.patch(
+  "/rt/identitas-warga/:identitas_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  upload.single("dokumen"),
+  validateParams(identitasWargaParamsSchema),
+  validateBody(updateIdentitasWargaSchema),
+  updateIdentitasWarga
+);
+router.patch(
+  "/rt/identitas-warga/:identitas_id/verify",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateParams(identitasWargaParamsSchema),
+  verifyIdentitasWarga
+);
+router.delete(
+  "/rt/identitas-warga/:identitas_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateParams(identitasWargaParamsSchema),
+  deleteIdentitasWarga
 );
 router.get(
   "/rt/performa-ronda",
@@ -1387,3 +1481,4 @@ router.get(
 );
 
 export default router;
+

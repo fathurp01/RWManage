@@ -38,6 +38,21 @@ const readTokenFromStorage = (): string | null => {
   }
 };
 
+const clearAuthToken = (): void => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+};
+
+const redirectToLogin = (): void => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  // Use window.location for reliable redirect that works across all contexts
+  window.location.href = "/auth/login?session-expired=true";
+};
+
 const buildAuthHeaders = (): Record<string, string> => {
   const headers: Record<string, string> = {};
   const token = readTokenFromStorage();
@@ -110,7 +125,17 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error: unknown) => Promise.reject(normalizeApiError(error))
+  (error: unknown) => {
+    const normalizedError = normalizeApiError(error);
+
+    // Handle 401 Unauthorized - token expired or invalid
+    if (normalizedError.status === 401) {
+      clearAuthToken();
+      redirectToLogin();
+    }
+
+    return Promise.reject(normalizedError);
+  }
 );
 
 export const getApiError = (error: unknown): ApiClientError => {

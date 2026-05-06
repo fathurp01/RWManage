@@ -44,16 +44,10 @@ const rwItems: SidebarItem[] = [
     icon: LayoutDashboard,
   },
   {
-    href: "/dashboard/rw/anggota-keluarga",
-    label: "Manajemen Anggota Keluarga",
-    description: "Kelola data anggota keluarga per KK",
+    href: "/dashboard/rw/data-penduduk",
+    label: "Data Penduduk",
+    description: "Lihat data seluruh penduduk di RW",
     icon: Users,
-  },
-  {
-    href: "/dashboard/rw/identitas",
-    label: "Data KTP / Identitas",
-    description: "Simpan NIK dan data identitas warga",
-    icon: SquarePen,
   },
   {
     href: "/dashboard/rw/approval",

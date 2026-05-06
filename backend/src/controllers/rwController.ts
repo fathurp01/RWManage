@@ -1486,3 +1486,122 @@ export const getBlokWilayah = async (req: Request, res: Response): Promise<void>
     });
   }
 };
+
+// ==================== DATA PENDUDUK (READ-ONLY for RW) ====================
+export const getDataPenduduk = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({
+        success: false,
+        message: "User belum terautentikasi.",
+      });
+      return;
+    }
+
+    // Get RW wilayah for current user
+    const rwWilayah = await prisma.wilayahRW.findUnique({
+      where: { user_id: req.user.id },
+      select: {
+        id: true,
+        nama_kompleks: true,
+        no_rw: true,
+      },
+    });
+
+    if (!rwWilayah) {
+      res.status(403).json({
+        success: false,
+        message: "Wilayah RW untuk user login tidak ditemukan.",
+      });
+      return;
+    }
+
+    // Get all blok wilayah for this RW
+    const blokList = await prisma.blokWilayah.findMany({
+      where: { wilayah_rw_id: rwWilayah.id },
+      select: {
+        id: true,
+        nama_blok: true,
+        no_rt: true,
+      },
+      orderBy: { nama_blok: "asc" },
+    });
+
+    // Get all warga with anggota keluarga and identitas for each blok
+    const dataPenduduk = await Promise.all(
+      blokList.map(async (blok) => {
+        const wargaList = await prisma.warga.findMany({
+          where: {
+            blok_wilayah_id: blok.id,
+            deleted_at: null,
+          },
+          select: {
+            id: true,
+            nama_kk: true,
+            anggota_keluarga: {
+              where: { deleted_at: null },
+              select: {
+                id: true,
+                nama: true,
+                hubungan: true,
+                nik: true,
+                tanggal_lahir: true,
+                pendidikan: true,
+                pekerjaan: true,
+              },
+              orderBy: { nama: "asc" },
+            },
+            identitas: {
+              where: { deleted_at: null },
+              select: {
+                id: true,
+                tipe_dokumen: true,
+                nomor_dokumen: true,
+                tanggal_terbit: true,
+                tanggal_berlaku: true,
+                verified_at: true,
+              },
+              orderBy: { created_at: "desc" },
+            },
+          },
+          orderBy: { nama_kk: "asc" },
+        });
+
+        return {
+          blok_id: blok.id,
+          nama_blok: blok.nama_blok,
+          no_rt: blok.no_rt,
+          total_kk: wargaList.length,
+          total_anggota: wargaList.reduce((acc, w) => acc + w.anggota_keluarga.length, 0),
+          warga: wargaList,
+        };
+      })
+    );
+
+    // Calculate summary
+    const totalKK = dataPenduduk.reduce((acc, b) => acc + b.total_kk, 0);
+    const totalAnggota = dataPenduduk.reduce((acc, b) => acc + b.total_anggota, 0);
+    const totalPenduduk = totalKK + totalAnggota;
+
+    res.status(200).json({
+      success: true,
+      message: "Data penduduk RW berhasil diambil.",
+      data: {
+        wilayah_rw: rwWilayah,
+        summary: {
+          total_rt: blokList.length,
+          total_kk: totalKK,
+          total_anggota: totalAnggota,
+          total_penduduk: totalPenduduk,
+        },
+        blok_data: dataPenduduk,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getDataPenduduk:", error);
+    res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan saat mengambil data penduduk.",
+    });
+  }
+};

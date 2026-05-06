@@ -138,6 +138,16 @@ export default function LoginPage() {
 
   // Show redirect reasons
   useEffect(() => {
+    if (!hydrated) return;
+    const params = new URLSearchParams(window.location.search);
+    const sessionExpired = params.get("session-expired");
+    
+    if (sessionExpired === "true" && !hasShownReasonRef.current) {
+      hasShownReasonRef.current = true;
+      toast.error("Sesi login Anda sudah habis. Silakan login kembali.");
+      return;
+    }
+    
     if (!reason || hasShownReasonRef.current) return;
     hasShownReasonRef.current = true;
     if (reason === "approval_required") {
@@ -147,7 +157,7 @@ export default function LoginPage() {
     if (reason === "unauthorized") {
       toast.error("Silakan login untuk mengakses dashboard.");
     }
-  }, [reason]);
+  }, [reason, hydrated]);
 
   // Redirect if already logged in
   useEffect(() => {

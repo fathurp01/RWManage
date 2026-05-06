@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { TipeDokumen } from "@prisma/client";
+import { Role, TipeDokumen } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 
 interface CreateIdentitasBody {
@@ -16,6 +16,40 @@ interface UpdateIdentitasBody {
   tanggal_terbit?: string;
   tanggal_berlaku?: string;
 }
+
+const canAccessWarga = async (req: Request, warga_id: string) => {
+  const warga = await prisma.warga.findUnique({
+    where: { id: warga_id },
+    select: {
+      blok_wilayah_id: true,
+      blok_wilayah: {
+        select: {
+          wilayah_rw: {
+            select: { user_id: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!warga) {
+    return { ok: false as const, status: 404, message: "Warga tidak ditemukan." };
+  }
+
+  if (req.user?.role === Role.RW) {
+    if (warga.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
+      return { ok: false as const, status: 403, message: "Akses ditolak." };
+    }
+  } else if (req.user?.role === Role.RT) {
+    if (warga.blok_wilayah_id !== req.user.blok_wilayah_id) {
+      return { ok: false as const, status: 403, message: "Akses ditolak." };
+    }
+  } else {
+    return { ok: false as const, status: 403, message: "Akses ditolak." };
+  }
+
+  return { ok: true as const, warga };
+};
 
 export const createIdentitasWarga = async (
   req: Request,
@@ -47,27 +81,11 @@ export const createIdentitasWarga = async (
     }
 
     // Validasi ownership
-    const warga = await prisma.warga.findUnique({
-      where: { id: warga_id },
-      select: {
-        blok_wilayah: {
-          select: { wilayah_rw: { select: { user_id: true } } },
-        },
-      },
-    });
-
-    if (!warga) {
-      res.status(404).json({
+    const access = await canAccessWarga(req, warga_id);
+    if (!access.ok) {
+      res.status(access.status).json({
         success: false,
-        message: "Warga tidak ditemukan.",
-      });
-      return;
-    }
-
-    if (warga.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
-      res.status(403).json({
-        success: false,
-        message: "Akses ditolak.",
+        message: access.message,
       });
       return;
     }
@@ -126,27 +144,11 @@ export const getIdentitasWargaList = async (
     }
 
     // Validasi ownership
-    const warga = await prisma.warga.findUnique({
-      where: { id: warga_id },
-      select: {
-        blok_wilayah: {
-          select: { wilayah_rw: { select: { user_id: true } } },
-        },
-      },
-    });
-
-    if (!warga) {
-      res.status(404).json({
+    const access = await canAccessWarga(req, warga_id);
+    if (!access.ok) {
+      res.status(access.status).json({
         success: false,
-        message: "Warga tidak ditemukan.",
-      });
-      return;
-    }
-
-    if (warga.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
-      res.status(403).json({
-        success: false,
-        message: "Akses ditolak.",
+        message: access.message,
       });
       return;
     }
@@ -208,6 +210,7 @@ export const updateIdentitasWarga = async (
       select: {
         warga: {
           select: {
+            blok_wilayah_id: true,
             blok_wilayah: {
               select: { wilayah_rw: { select: { user_id: true } } },
             },
@@ -224,7 +227,10 @@ export const updateIdentitasWarga = async (
       return;
     }
 
-    if (identitas.warga.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
+    if (
+      (req.user.role === Role.RW && identitas.warga.blok_wilayah.wilayah_rw.user_id !== req.user.id) ||
+      (req.user.role === Role.RT && identitas.warga.blok_wilayah_id !== req.user.blok_wilayah_id)
+    ) {
       res.status(403).json({
         success: false,
         message: "Akses ditolak.",
@@ -290,6 +296,7 @@ export const verifyIdentitasWarga = async (
       select: {
         warga: {
           select: {
+            blok_wilayah_id: true,
             blok_wilayah: {
               select: { wilayah_rw: { select: { user_id: true } } },
             },
@@ -306,7 +313,10 @@ export const verifyIdentitasWarga = async (
       return;
     }
 
-    if (identitas.warga.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
+    if (
+      (req.user.role === Role.RW && identitas.warga.blok_wilayah.wilayah_rw.user_id !== req.user.id) ||
+      (req.user.role === Role.RT && identitas.warga.blok_wilayah_id !== req.user.blok_wilayah_id)
+    ) {
       res.status(403).json({
         success: false,
         message: "Akses ditolak.",
@@ -365,6 +375,7 @@ export const deleteIdentitasWarga = async (
       select: {
         warga: {
           select: {
+            blok_wilayah_id: true,
             blok_wilayah: {
               select: { wilayah_rw: { select: { user_id: true } } },
             },
@@ -381,7 +392,10 @@ export const deleteIdentitasWarga = async (
       return;
     }
 
-    if (identitas.warga.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
+    if (
+      (req.user.role === Role.RW && identitas.warga.blok_wilayah.wilayah_rw.user_id !== req.user.id) ||
+      (req.user.role === Role.RT && identitas.warga.blok_wilayah_id !== req.user.blok_wilayah_id)
+    ) {
       res.status(403).json({
         success: false,
         message: "Akses ditolak.",

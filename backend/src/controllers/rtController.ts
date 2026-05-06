@@ -53,6 +53,21 @@ export const getIuranForRt = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
+    // Get blok wilayah info
+    const blok = await prisma.blokWilayah.findUnique({
+      where: { id: blokId },
+      select: {
+        id: true,
+        nama_blok: true,
+        no_rt: true,
+      },
+    });
+
+    if (!blok) {
+      res.status(403).json({ success: false, message: "Data blok wilayah RT tidak ditemukan." });
+      return;
+    }
+
     const wargaList = await prisma.warga.findMany({
       where: {
         blok_wilayah_id: blokId,
@@ -134,15 +149,29 @@ export const getIuranForRt = async (req: Request, res: Response): Promise<void> 
       };
     }).filter((item) => item.iuran.length > 0 || status !== StatusIuran.LUNAS);
 
+    // Calculate summary
+    const allIuran = wargaList.flatMap((w) => w.iuran_warga);
+    const totalIuranTerjadwal = allIuran.length * 12; // Assume 12 months per warga
+    const totalIuranTerbayar = allIuran.filter((i) => i.status === StatusIuran.LUNAS).length;
+    const persentaseBayar = totalIuranTerjadwal > 0 ? (totalIuranTerbayar / totalIuranTerjadwal) * 100 : 0;
+
     res.status(200).json({
       success: true,
       message: "Data iuran RT berhasil diambil.",
       data: {
         blok_wilayah_id: blokId,
+        no_rt: blok.no_rt,
+        nama_blok: blok.nama_blok,
         tahun: tahunInt,
         bulan: bulanInt ?? null,
         status: status ?? null,
         warga: data,
+        summary: {
+          total_warga: wargaList.length,
+          total_iuran_terjadwal: totalIuranTerjadwal,
+          total_iuran_terbayar: totalIuranTerbayar,
+          persentase_bayar: Math.round(persentaseBayar),
+        },
       },
     });
   } catch {

@@ -6,8 +6,29 @@ export type RtStatusInsiden = "LAPORAN" | "PROSES" | "SELESAI" | "DITUTUP";
 export interface RtWargaRecord {
   id: string;
   nama_kk: string;
-  tarif_iuran_bulanan: string | number;
   blok_wilayah_id?: string;
+}
+
+export interface RtAnggotaKeluargaRecord {
+  id: string;
+  warga_id: string;
+  nama: string;
+  hubungan: string;
+  nik?: string | null;
+  tanggal_lahir?: string | null;
+  pendidikan?: string | null;
+  pekerjaan?: string | null;
+}
+
+export interface RtIdentitasWargaRecord {
+  id: string;
+  warga_id: string;
+  tipe_dokumen: string;
+  nomor_dokumen?: string | null;
+  tanggal_terbit?: string | null;
+  tanggal_berlaku?: string | null;
+  dokumen_url?: string | null;
+  verified_at?: string | null;
 }
 
 export interface RtPerformaRecord {
@@ -102,5 +123,44 @@ export const rtClient = {
 
   async removeInsiden(laporan_id: string): Promise<void> {
     await api.delete(`/rt/laporan-insiden/${laporan_id}`);
+  },
+
+  async deleteWarga(warga_id: string): Promise<void> {
+    await api.delete(`/rt/warga/${warga_id}`);
+  },
+
+  async listAnggota(warga_id: string): Promise<RtAnggotaKeluargaRecord[]> {
+    const res = await api.get<{ data: RtAnggotaKeluargaRecord[] }>("/rt/anggota-keluarga", {
+      params: { warga_id },
+    });
+    return res.data.data ?? [];
+  },
+
+  async createAnggota(payload: {
+    warga_id: string;
+    nama: string;
+    hubungan: string;
+    nik?: string;
+    tanggal_lahir?: string;
+    pendidikan?: string;
+    pekerjaan?: string;
+  }): Promise<RtAnggotaKeluargaRecord> {
+    const res = await api.post<{ data: RtAnggotaKeluargaRecord }>("/rt/anggota-keluarga", payload);
+    return res.data.data;
+  },
+
+  async removeAnggota(anggota_id: string): Promise<void> {
+    await api.delete(`/rt/anggota-keluarga/${anggota_id}`);
+  },
+
+  async listIdentitas(warga_id: string): Promise<RtIdentitasWargaRecord[]> {
+    const res = await api.get<{ data: RtIdentitasWargaRecord[] }>("/rt/identitas-warga", {
+      params: { warga_id },
+    });
+    return res.data.data ?? [];
+  },
+
+  async removeIdentitas(identitas_id: string): Promise<void> {
+    await api.delete(`/rt/identitas-warga/${identitas_id}`);
   },
 };
