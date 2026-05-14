@@ -7,48 +7,144 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { rtClient, type RtPerformaRecord } from "@/lib/api/rt";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { rtClient, type RtJadwalRonda, type RtRondaPetugas, type RtStatusKehadiran, type RtPresensiRonda } from "@/lib/api/rt";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Trash2, Plus, Users, CalendarCheck, PencilLine } from "lucide-react";
 
-export default function RtRondaPage() {
+const HARI_MINGGU = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+export default function ManajemenRondaPage() {
   const [loading, setLoading] = useState(true);
-  const [list, setList] = useState<RtPerformaRecord[]>([]);
-  const [tanggal, setTanggal] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [petugas, setPetugas] = useState<string>("");
-  const [statusKehadiran, setStatusKehadiran] = useState<"HADIR" | "LIBUR" | "IZIN" | "ALFA">("HADIR");
-  const [catatan, setCatatan] = useState<string>("");
-  const [filterMonth, setFilterMonth] = useState<string>(String(new Date().getMonth() + 1));
+  const [jadwalList, setJadwalList] = useState<RtJadwalRonda[]>([]);
+  
+  // State for Presensi
+  const [presensiDate, setPresensiDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [presensiData, setPresensiData] = useState<RtPresensiRonda[]>([]);
+  const [activeJadwalId, setActiveJadwalId] = useState<string>("");
 
-  const load = useCallback(async () => {
+  // Modals state
+  const [jadwalModalOpen, setJadwalModalOpen] = useState(false);
+  const [editingJadwal, setEditingJadwal] = useState<Partial<RtJadwalRonda>>({});
+  
+  const [petugasModalOpen, setPetugasModalOpen] = useState(false);
+  const [selectedJadwalId, setSelectedJadwalId] = useState("");
+  const [newPetugas, setNewPetugas] = useState({ nama_petugas: "", no_hp: "", catatan: "" });
+
+  const loadJadwal = useCallback(async () => {
     try {
       setLoading(true);
-      const tahun = new Date().getFullYear();
-      const bulan = Number(filterMonth);
-      const start = new Date(Date.UTC(tahun, bulan - 1, 1)).toISOString();
-      const end = new Date(Date.UTC(tahun, bulan, 0, 23, 59, 59)).toISOString();
-      setList(await rtClient.listPerforma({ tanggal_mulai: start, tanggal_akhir: end }));
+      const data = await rtClient.listJadwalRonda();
+      setJadwalList(data);
     } catch (err) {
       toast.error(getApiError(err).message);
     } finally {
       setLoading(false);
     }
-  }, [filterMonth]);
+  }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    loadJadwal();
+  }, [loadJadwal]);
 
-  const create = async () => {
+  // Presensi logic
+  const selectedDayOfWeek = new Date(presensiDate).getDay();
+  const jadwalForSelectedDay = jadwalList.filter(j => j.hari_minggu === selectedDayOfWeek);
+
+  useEffect(() => {
+    if (jadwalForSelectedDay.length > 0) {
+      if (!jadwalForSelectedDay.some(j => j.id === activeJadwalId)) {
+        setActiveJadwalId(jadwalForSelectedDay[0].id);
+      }
+    } else {
+      setActiveJadwalId("");
+    }
+  }, [selectedDayOfWeek, jadwalForSelectedDay, activeJadwalId]);
+
+  const loadPresensi = useCallback(async () => {
+    if (!activeJadwalId || !presensiDate) {
+      setPresensiData([]);
+      return;
+    }
     try {
-      await rtClient.createPerforma({
-        tanggal,
-        nama_petugas: petugas,
-        status_kehadiran: statusKehadiran,
-        catatan: catatan || undefined,
+      const data = await rtClient.listPresensi(activeJadwalId, {
+        tanggal_mulai: presensiDate,
+        tanggal_akhir: presensiDate,
       });
-      toast.success("Performa ronda dicatat");
-      setPetugas("");
-      setCatatan("");
-      load();
+      setPresensiData(data);
+    } catch (err) {
+      toast.error(getApiError(err).message);
+    }
+  }, [activeJadwalId, presensiDate]);
+
+  useEffect(() => {
+    loadPresensi();
+  }, [loadPresensi]);
+
+  const handleSaveJadwal = async () => {
+    try {
+      if (editingJadwal.id) {
+        await rtClient.updateJadwalRonda(editingJadwal.id, editingJadwal);
+        toast.success("Jadwal diupdate");
+      } else {
+        await rtClient.createJadwalRonda(editingJadwal);
+        toast.success("Jadwal dibuat");
+      }
+      setJadwalModalOpen(false);
+      loadJadwal();
+    } catch (err) {
+      toast.error(getApiError(err).message);
+    }
+  };
+
+  const handleDeleteJadwal = async (id: string) => {
+    if (!confirm("Hapus jadwal ini?")) return;
+    try {
+      await rtClient.deleteJadwalRonda(id);
+      toast.success("Jadwal dihapus");
+      loadJadwal();
+    } catch (err) {
+      toast.error(getApiError(err).message);
+    }
+  };
+
+  const handleAddPetugas = async () => {
+    if (!newPetugas.nama_petugas) return;
+    try {
+      await rtClient.addPetugas(selectedJadwalId, newPetugas);
+      toast.success("Petugas ditambahkan");
+      setNewPetugas({ nama_petugas: "", no_hp: "", catatan: "" });
+      setPetugasModalOpen(false);
+      loadJadwal();
+    } catch (err) {
+      toast.error(getApiError(err).message);
+    }
+  };
+
+  const handleRemovePetugas = async (id: string) => {
+    try {
+      await rtClient.removePetugas(id);
+      toast.success("Petugas dihapus");
+      loadJadwal();
+    } catch (err) {
+      toast.error(getApiError(err).message);
+    }
+  };
+
+  const handleMarkPresence = async (nama_petugas: string, status: RtStatusKehadiran, catatan?: string) => {
+    if (!activeJadwalId) return;
+    try {
+      await rtClient.markPresensi(activeJadwalId, {
+        tanggal: presensiDate,
+        nama_petugas,
+        status_hadir: status,
+        catatan,
+      });
+      toast.success(`Presensi ${nama_petugas} disimpan`);
+      loadPresensi();
     } catch (err) {
       toast.error(getApiError(err).message);
     }
@@ -59,82 +155,261 @@ export default function RtRondaPage() {
       <header className="space-y-2">
         <div className="flex items-center gap-2">
           <Badge variant="outline">RT</Badge>
-          <span className="text-sm text-slate-500 dark:text-muted-foreground">Operasional ronda</span>
+          <span className="text-sm text-slate-500 dark:text-muted-foreground">Operasional keamanan</span>
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">Performa Ronda</h1>
-        <p className="text-base text-slate-500 dark:text-muted-foreground">Catat dan pantau kehadiran ronda bulanan.</p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">Manajemen Ronda</h1>
+        <p className="text-base text-slate-500 dark:text-muted-foreground">Kelola jadwal ronda, tugaskan warga, dan catat presensi keamanan harian.</p>
       </header>
 
-      <Card>
-        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle>Tambah Performa</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-5 space-y-3">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <Input type="date" value={tanggal} onChange={(e) => setTanggal(e.target.value)} />
-            <Input placeholder="Nama Petugas" value={petugas} onChange={(e) => setPetugas(e.target.value)} />
-            <select
-              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={statusKehadiran}
-              onChange={(e) => setStatusKehadiran(e.target.value as typeof statusKehadiran)}
-            >
-              <option value="HADIR">Hadir</option>
-              <option value="LIBUR">Libur</option>
-              <option value="IZIN">Izin</option>
-              <option value="ALFA">Alfa</option>
-            </select>
-            <Input placeholder="Catatan" value={catatan} onChange={(e) => setCatatan(e.target.value)} />
-            <Button onClick={create}>Simpan</Button>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="presensi" className="space-y-6">
+        <TabsList className="bg-slate-100 dark:bg-slate-800">
+          <TabsTrigger value="presensi" className="gap-2">
+            <CalendarCheck className="size-4" />
+            Presensi Harian
+          </TabsTrigger>
+          <TabsTrigger value="jadwal" className="gap-2">
+            <Users className="size-4" />
+            Jadwal & Petugas
+          </TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle>Filter Bulan</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <select
-              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={filterMonth}
-              onChange={(e) => setFilterMonth(e.target.value)}
-            >
-              {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                <option key={month} value={String(month)}>
-                  Bulan {month}
-                </option>
-              ))}
-            </select>
-            <Button variant="outline" onClick={load}>Terapkan</Button>
-          </div>
-        </CardContent>
-      </Card>
+        <TabsContent value="presensi" className="space-y-4">
+          <Card>
+            <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle>Presensi Tanggal</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Input type="date" value={presensiDate} onChange={(e) => setPresensiDate(e.target.value)} className="w-auto" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-5">
+              {jadwalForSelectedDay.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">
+                  <p>Tidak ada jadwal ronda untuk hari {HARI_MINGGU[selectedDayOfWeek]}.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {jadwalForSelectedDay.length > 1 && (
+                    <div className="flex gap-2">
+                      {jadwalForSelectedDay.map(j => (
+                        <Button
+                          key={j.id}
+                          variant={activeJadwalId === j.id ? "default" : "outline"}
+                          onClick={() => setActiveJadwalId(j.id)}
+                        >
+                          {j.nama_jadwal} ({j.jam_mulai} - {j.jam_selesai})
+                        </Button>
+                      ))}
+                    </div>
+                  )}
 
-      <Card>
-        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle>Riwayat Performa</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-5">
-          {loading ? (
-            <div className="text-sm text-slate-500">Memuat...</div>
-          ) : list.length === 0 ? (
-            <div className="text-sm text-slate-500">Belum ada catatan</div>
-          ) : (
-            <ul className="space-y-2">
-              {list.map((p) => (
-                <li key={p.id} className="flex items-center justify-between rounded-md border px-3 py-2">
-                  <div>
-                    <div className="font-medium">{new Date(p.tanggal).toLocaleDateString()}</div>
-                    <div className="text-sm text-slate-500">Petugas: {p.nama_petugas ?? "-"}</div>
+                  <div className="rounded-xl border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50 dark:bg-slate-900">
+                          <TableHead>Nama Petugas</TableHead>
+                          <TableHead>Status Saat Ini</TableHead>
+                          <TableHead>Tandai Kehadiran</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {jadwalForSelectedDay.find(j => j.id === activeJadwalId)?.petugas?.map(petugas => {
+                          const pData = presensiData.find(p => p.nama_petugas === petugas.nama_petugas);
+                          const currentStatus = pData?.status_hadir || "BELUM_DICATAT";
+                          return (
+                            <TableRow key={petugas.id}>
+                              <TableCell className="font-medium">{petugas.nama_petugas}</TableCell>
+                              <TableCell>
+                                <Badge variant={
+                                  currentStatus === "HADIR" ? "success" : 
+                                  currentStatus === "ALFA" ? "destructive" : 
+                                  currentStatus === "BELUM_DICATAT" ? "outline" : "secondary"
+                                }>
+                                  {currentStatus}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Button size="sm" variant="outline" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200" onClick={() => handleMarkPresence(petugas.nama_petugas, "HADIR")}>
+                                    Hadir
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200" onClick={() => handleMarkPresence(petugas.nama_petugas, "IZIN")}>
+                                    Izin
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200" onClick={() => handleMarkPresence(petugas.nama_petugas, "ALFA")}>
+                                    Tidak Hadir
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {jadwalForSelectedDay.find(j => j.id === activeJadwalId)?.petugas?.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center py-4 text-slate-500">Belum ada petugas yang ditugaskan pada jadwal ini.</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
-                  <div className="text-sm text-slate-700 dark:text-slate-300">Status: {p.status_kehadiran}</div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="jadwal" className="space-y-4">
+          <div className="flex justify-end">
+            <Button className="gap-2" onClick={() => {
+              setEditingJadwal({ minggu_mulai: new Date().toISOString().slice(0, 10), hari_minggu: 0 });
+              setJadwalModalOpen(true);
+            }}>
+              <Plus className="size-4" />
+              Buat Jadwal Baru
+            </Button>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {jadwalList.map(jadwal => (
+              <Card key={jadwal.id} className="overflow-hidden">
+                <CardHeader className="bg-slate-50 dark:bg-slate-900 border-b pb-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-lg">{jadwal.nama_jadwal}</CardTitle>
+                      <p className="text-sm text-slate-500 flex items-center gap-2 mt-1">
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">{HARI_MINGGU[jadwal.hari_minggu]}</span>
+                        • {jadwal.jam_mulai} - {jadwal.jam_selesai}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="icon" variant="ghost" onClick={() => {
+                        setEditingJadwal({ ...jadwal, minggu_mulai: jadwal.minggu_mulai.slice(0, 10), minggu_selesai: jadwal.minggu_selesai?.slice(0, 10) });
+                        setJadwalModalOpen(true);
+                      }}>
+                        <PencilLine className="size-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="text-rose-500" onClick={() => handleDeleteJadwal(jadwal.id)}>
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold">Petugas ({jadwal.petugas?.length || 0})</h4>
+                    <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => {
+                      setSelectedJadwalId(jadwal.id);
+                      setPetugasModalOpen(true);
+                    }}>
+                      <Plus className="size-3" /> Tambah
+                    </Button>
+                  </div>
+                  <ul className="space-y-2">
+                    {jadwal.petugas?.map(petugas => (
+                      <li key={petugas.id} className="flex flex-wrap items-center justify-between text-sm rounded-md bg-slate-50 dark:bg-slate-800/50 px-3 py-2">
+                        <span>{petugas.nama_petugas} {petugas.no_hp && <span className="text-slate-400 text-xs ml-1">({petugas.no_hp})</span>}</span>
+                        <Button size="icon" variant="ghost" className="size-6 text-rose-500 hover:bg-rose-100" onClick={() => handleRemovePetugas(petugas.id)}>
+                          <Trash2 className="size-3" />
+                        </Button>
+                      </li>
+                    ))}
+                    {jadwal.petugas?.length === 0 && (
+                      <li className="text-xs text-slate-500 text-center py-2">Belum ada petugas ditambahkan.</li>
+                    )}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
+            {jadwalList.length === 0 && !loading && (
+              <div className="col-span-full text-center py-12 text-slate-500 bg-slate-50 rounded-xl border border-dashed">
+                Belum ada jadwal ronda. Buat jadwal pertama Anda.
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Modal Jadwal */}
+      <Dialog open={jadwalModalOpen} onOpenChange={setJadwalModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingJadwal.id ? "Edit Jadwal" : "Buat Jadwal Baru"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Nama Jadwal</Label>
+              <Input placeholder="Contoh: Regu Alpha / Pos Ronda 1" value={editingJadwal.nama_jadwal || ""} onChange={(e) => setEditingJadwal({...editingJadwal, nama_jadwal: e.target.value})} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Hari</Label>
+                <Select value={String(editingJadwal.hari_minggu || 0)} onValueChange={(val) => setEditingJadwal({...editingJadwal, hari_minggu: Number(val)})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HARI_MINGGU.map((hari, idx) => (
+                      <SelectItem key={idx} value={String(idx)}>{hari}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Catatan</Label>
+                <Input placeholder="Opsional" value={editingJadwal.catatan || ""} onChange={(e) => setEditingJadwal({...editingJadwal, catatan: e.target.value})} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Jam Mulai</Label>
+                <Input type="time" value={editingJadwal.jam_mulai || ""} onChange={(e) => setEditingJadwal({...editingJadwal, jam_mulai: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Jam Selesai</Label>
+                <Input type="time" value={editingJadwal.jam_selesai || ""} onChange={(e) => setEditingJadwal({...editingJadwal, jam_selesai: e.target.value})} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tanggal Mulai Berlaku</Label>
+                <Input type="date" value={editingJadwal.minggu_mulai || ""} onChange={(e) => setEditingJadwal({...editingJadwal, minggu_mulai: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Berakhir Pada (Opsional)</Label>
+                <Input type="date" value={editingJadwal.minggu_selesai || ""} onChange={(e) => setEditingJadwal({...editingJadwal, minggu_selesai: e.target.value})} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setJadwalModalOpen(false)}>Batal</Button>
+            <Button onClick={handleSaveJadwal}>Simpan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Tambah Petugas */}
+      <Dialog open={petugasModalOpen} onOpenChange={setPetugasModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tambah Petugas Ronda</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Nama Warga / Petugas</Label>
+              <Input placeholder="Nama Lengkap" value={newPetugas.nama_petugas} onChange={(e) => setNewPetugas({...newPetugas, nama_petugas: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label>No HP (Opsional)</Label>
+              <Input placeholder="08..." value={newPetugas.no_hp} onChange={(e) => setNewPetugas({...newPetugas, no_hp: e.target.value})} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPetugasModalOpen(false)}>Batal</Button>
+            <Button onClick={handleAddPetugas}>Tambahkan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

@@ -427,7 +427,18 @@ export const cekKodeUnikQuerySchema = z.object({
     jumlah_bulan: z.coerce.number().int().positive(),
     bulan_mulai: z.coerce.number().int().min(1).max(12),
     tahun_mulai: z.coerce.number().int().min(2000).max(3000),
+    tambahan_nominal: z.coerce.number().min(0).optional(),
   });
+
+  export const updateCicilanIuranSchema = z
+    .object({
+      jumlah_bulan: z.coerce.number().int().positive().optional(),
+      bulan_mulai: z.coerce.number().int().min(1).max(12).optional(),
+      tahun_mulai: z.coerce.number().int().min(2000).max(3000).optional(),
+    })
+    .refine((value) => Object.keys(value).length > 0, {
+      message: "Minimal satu field harus dikirim untuk update cicilan.",
+    });
 
   export const getCicilanIuranQuerySchema = z.object({
     warga_id: uuidSchema.optional(),

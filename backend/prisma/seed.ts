@@ -1,9 +1,18 @@
 import 'dotenv/config';
 import * as bcrypt from 'bcrypt';
 import { prisma } from '../src/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 async function main() {
   console.log('Seeding data...');
+
+  await prisma.presensiRonda.deleteMany();
+  await prisma.rondaPetugas.deleteMany();
+  await prisma.jadwalRonda.deleteMany();
+  await prisma.kasRT.deleteMany();
+  await prisma.setoranIuranRT.deleteMany();
+  await prisma.pengaturanIuranRW.deleteMany();
+  await prisma.userPreference.deleteMany();
 
   await prisma.shareLink.deleteMany();
   await prisma.auditLog.deleteMany();
@@ -194,7 +203,7 @@ async function main() {
   ]);
 
   // SUPERADMIN User
-  await prisma.user.create({
+  const superadmin = await prisma.user.create({
     data: {
       nama: 'Superadmin System',
       email: 'superadmin@rwmanage.com',
@@ -204,6 +213,115 @@ async function main() {
       status_akun: 'APPROVED',
       blok_wilayah_id: blokA.id,
     },
+  });
+
+  // 1. User preferences (default UI settings)
+  await prisma.userPreference.createMany({
+    data: [
+      { user_id: rwUser.id, dark_mode: false, tema_warna: 'indigo', bahasa: 'id' },
+      { user_id: rtUserA.id, dark_mode: false, tema_warna: 'indigo', bahasa: 'id' },
+      { user_id: rtUserB.id, dark_mode: false, tema_warna: 'indigo', bahasa: 'id' },
+      { user_id: rtUserC.id, dark_mode: false, tema_warna: 'indigo', bahasa: 'id' },
+      { user_id: superadmin.id, dark_mode: false, tema_warna: 'indigo', bahasa: 'id' },
+    ],
+  });
+
+  // 2. Pengaturan Iuran RW (default configuration)
+  await prisma.pengaturanIuranRW.create({
+    data: {
+      wilayah_rw_id: wilayahRwId,
+      nominal_iuran: new Prisma.Decimal(50000),
+      persen_rt: 70.0,
+      persen_rw: 30.0,
+    },
+  });
+
+  const [jadwalA, jadwalB, jadwalC] = await Promise.all([
+    prisma.jadwalRonda.create({
+      data: {
+        blok_wilayah_id: blokA.id,
+        nama_jadwal: 'Patrol Malam A',
+        hari_minggu: 0, // Minggu
+        jam_mulai: '21:00',
+        jam_selesai: '23:00',
+        minggu_mulai: new Date(),
+      },
+    }),
+    prisma.jadwalRonda.create({
+      data: {
+        blok_wilayah_id: blokB.id,
+        nama_jadwal: 'Patrol Malam B',
+        hari_minggu: 2, // Selasa
+        jam_mulai: '22:00',
+        jam_selesai: '23:30',
+        minggu_mulai: new Date(),
+      },
+    }),
+    prisma.jadwalRonda.create({
+      data: {
+        blok_wilayah_id: blokC.id,
+        nama_jadwal: 'Patrol Pagi C',
+        hari_minggu: 5, // Jumat
+        jam_mulai: '05:00',
+        jam_selesai: '06:00',
+        minggu_mulai: new Date(),
+      },
+    }),
+  ]);
+
+  // 4. Assign petugas ke masing‑masing jadwal
+  await prisma.rondaPetugas.createMany({
+    data: [
+      { jadwal_ronda_id: jadwalA.id, nama_petugas: 'Joko', no_hp: '081111111111' },
+      { jadwal_ronda_id: jadwalA.id, nama_petugas: 'Budi', no_hp: '081222222222' },
+      { jadwal_ronda_id: jadwalB.id, nama_petugas: 'Rudi', no_hp: '081333333333' },
+      { jadwal_ronda_id: jadwalC.id, nama_petugas: 'Siti', no_hp: '081444444444' },
+    ],
+  });
+
+  // 5. Simulasi presensi ronda (Hadir / Izin / Tidak Hadir)
+  await prisma.presensiRonda.createMany({
+    data: [
+      {
+        jadwal_ronda_id: jadwalA.id,
+        tanggal: new Date(),
+        nama_petugas: 'Joko',
+        status_hadir: 'HADIR',
+      },
+      {
+        jadwal_ronda_id: jadwalA.id,
+        tanggal: new Date(),
+        nama_petugas: 'Budi',
+        status_hadir: 'IZIN',
+      },
+      {
+        jadwal_ronda_id: jadwalB.id,
+        tanggal: new Date(),
+        nama_petugas: 'Rudi',
+        status_hadir: 'ALFA',
+      },
+    ],
+  });
+
+  await prisma.kasRT.createMany({
+    data: [
+      {
+        blok_wilayah_id: blokA.id,
+        jenis_transaksi: 'MASUK',
+        tanggal: new Date(currentYear, 0, 5, 10, 30, 0),
+        keterangan: 'Pembayaran iuran awal tahun warga Blok A',
+        nominal: 150000,
+        kode_unik: `KASRT-${currentYear}-A-01`,
+      },
+      {
+        blok_wilayah_id: blokB.id,
+        jenis_transaksi: 'MASUK',
+        tanggal: new Date(currentYear, 1, 7, 11, 0, 0),
+        keterangan: 'Pembayaran iuran warga Blok B',
+        nominal: 100000,
+        kode_unik: `KASRT-${currentYear}-B-01`,
+      },
+    ],
   });
 
   await prisma.pengaturanZis.createMany({

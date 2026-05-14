@@ -129,7 +129,10 @@ api.interceptors.response.use(
     const normalizedError = normalizeApiError(error);
 
     // Handle 401 Unauthorized - token expired or invalid
-    if (normalizedError.status === 401) {
+    // Do NOT redirect if the request was specifically for login
+    const isLoginRequest = axios.isAxiosError(error) && error.config?.url?.includes("/auth/login");
+    
+    if (normalizedError.status === 401 && !isLoginRequest) {
       clearAuthToken();
       redirectToLogin();
     }

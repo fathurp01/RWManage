@@ -7,6 +7,13 @@ interface CreateCicilanBody {
   jumlah_bulan?: number | string;
   bulan_mulai?: number | string;
   tahun_mulai?: number | string;
+  tambahan_nominal?: number | string;
+}
+
+interface UpdateCicilanBody {
+  jumlah_bulan?: number | string;
+  bulan_mulai?: number | string;
+  tahun_mulai?: number | string;
 }
 
 const hasCicilanAccess = (
@@ -31,7 +38,7 @@ export const createCicilanIuran = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { iuran_id, jumlah_bulan, bulan_mulai, tahun_mulai } =
+    const { iuran_id, jumlah_bulan, bulan_mulai, tahun_mulai, tambahan_nominal } =
       req.body as CreateCicilanBody;
 
     if (!iuran_id || !jumlah_bulan || !bulan_mulai || !tahun_mulai) {
@@ -54,6 +61,7 @@ export const createCicilanIuran = async (
     const jmlBulan = Number(jumlah_bulan);
     const blnMulai = Number(bulan_mulai);
     const thnMulai = Number(tahun_mulai);
+    const tambahanNominal = tambahan_nominal !== undefined ? Number(tambahan_nominal) : 0;
 
     if (
       !Number.isInteger(jmlBulan) ||
@@ -115,18 +123,30 @@ export const createCicilanIuran = async (
       return;
     }
 
-    const nominalPerBulan = iuran.nominal.dividedBy(jmlBulan);
+    const cicilan = await prisma.$transaction(async (tx) => {
+      let currentNominal = new Prisma.Decimal(iuran.nominal);
 
-    const cicilan = await prisma.cicilanIuran.create({
-      data: {
-        warga_id: iuran.warga.id,
-        iuran_id,
-        total_cicilan: iuran.nominal,
-        nominal_per_bulan: nominalPerBulan,
-        jumlah_bulan: jmlBulan,
-        bulan_mulai: blnMulai,
-        tahun_mulai: thnMulai,
-      },
+      if (tambahanNominal > 0) {
+        currentNominal = currentNominal.add(tambahanNominal);
+        await tx.iuranWarga.update({
+          where: { id: iuran_id },
+          data: { nominal: currentNominal },
+        });
+      }
+
+      const nominalPerBulan = currentNominal.dividedBy(jmlBulan);
+
+      return tx.cicilanIuran.create({
+        data: {
+          warga_id: iuran.warga.id,
+          iuran_id,
+          total_cicilan: currentNominal,
+          nominal_per_bulan: nominalPerBulan,
+          jumlah_bulan: jmlBulan,
+          bulan_mulai: blnMulai,
+          tahun_mulai: thnMulai,
+        },
+      });
     });
 
     res.status(201).json({
@@ -140,6 +160,81 @@ export const createCicilanIuran = async (
       success: false,
       message: "Terjadi kesalahan saat membuat cicilan iuran.",
     });
+  }
+};
+
+export const updateCicilanIuran = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const raw = (req.params as Record<string, unknown>)?.cicilan_id;
+    const cicilan_id = Array.isArray(raw) ? raw[0] : (raw as string | undefined);
+
+    if (!cicilan_id) {
+      res.status(400).json({ success: false, message: "cicilan_id harus diisi." });
+      return;
+    }
+
+    if (!req.user?.id) {
+      res.status(401).json({ success: false, message: "User belum terautentikasi." });
+      return;
+    }
+
+    const existing = await prisma.cicilanIuran.findUnique({
+      where: { id: cicilan_id },
+      select: {
+        warga: {
+          select: {
+            blok_wilayah_id: true,
+            blok_wilayah: { select: { wilayah_rw: { select: { user_id: true } } } },
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      res.status(404).json({ success: false, message: "Cicilan tidak ditemukan." });
+      return;
+    }
+
+    if (
+      !hasCicilanAccess(
+        req.user.role,
+        { rwUserId: existing.warga.blok_wilayah.wilayah_rw.user_id, blokWilayahId: existing.warga.blok_wilayah_id },
+        req.user.id,
+        req.user.blok_wilayah_id
+      )
+    ) {
+      res.status(403).json({ success: false, message: "Akses ditolak." });
+      return;
+    }
+
+    const { jumlah_bulan, bulan_mulai, tahun_mulai } = req.body as UpdateCicilanBody;
+    const updateData: {
+      jumlah_bulan?: number;
+      bulan_mulai?: number;
+      tahun_mulai?: number;
+    } = {};
+
+    if (jumlah_bulan !== undefined) updateData.jumlah_bulan = Number(jumlah_bulan);
+    if (bulan_mulai !== undefined) updateData.bulan_mulai = Number(bulan_mulai);
+    if (tahun_mulai !== undefined) updateData.tahun_mulai = Number(tahun_mulai);
+
+    if (Object.keys(updateData).length === 0) {
+      res.status(400).json({ success: false, message: "Minimal satu field harus diupdate." });
+      return;
+    }
+
+    const updated = await prisma.cicilanIuran.update({
+      where: { id: cicilan_id },
+      data: updateData,
+    });
+
+    res.status(200).json({ success: true, message: "Cicilan berhasil diperbarui.", data: updated });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat memperbarui cicilan." });
   }
 };
 

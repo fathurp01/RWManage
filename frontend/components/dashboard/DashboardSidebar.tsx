@@ -158,9 +158,9 @@ const masjidItems: SidebarItem[] = [
 
 const rtItems: SidebarItem[] = [
   {
-    href: "/dashboard/rt",
-    label: "Dashboard RT",
-    description: "Pantau iuran warga di blok RT",
+    href: "/dashboard/rt/overview",
+    label: "Overview RT",
+    description: "Ringkasan warga, iuran, kas, dan setoran",
     icon: LayoutDashboard,
   },
   {
@@ -170,15 +170,15 @@ const rtItems: SidebarItem[] = [
     icon: Users,
   },
   {
-    href: "/dashboard/rt/cicilan",
-    label: "Cicilan Iuran",
-    description: "Atur cicilan tagihan warga",
+    href: "/dashboard/rt/manajemen-iuran",
+    label: "Manajemen Iuran",
+    description: "Kelola tagihan, cicilan, dan histori pembayaran",
     icon: HandCoins,
   },
   {
     href: "/dashboard/rt/ronda",
-    label: "Performa Ronda",
-    description: "Track kehadiran petugas ronda",
+    label: "Manajemen Ronda",
+    description: "Kelola jadwal dan presensi ronda",
     icon: Users,
   },
   {

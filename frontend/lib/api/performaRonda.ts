@@ -20,9 +20,36 @@ export interface CreatePerformaPayload {
   catatan?: string;
 }
 
+export interface RwMonitoringRondaSummary {
+  total_jadwal: number;
+  presensi: {
+    HADIR: number;
+    IZIN: number;
+    LIBUR: number;
+    ALFA: number;
+  };
+}
+
+export interface RwMonitoringRondaBlok {
+  blok_id: string;
+  nama_blok: string;
+  no_rt: string;
+  jadwal: any[];
+}
+
+export interface RwMonitoringRondaData {
+  summary: RwMonitoringRondaSummary;
+  blok_data: RwMonitoringRondaBlok[];
+}
+
 export const performaRondaClient = {
-  async list(params: { blok_wilayah_id: string; tanggal_mulai?: string; tanggal_akhir?: string }): Promise<PerformaRondaRecord[]> {
-    const res = await api.get<{ data: PerformaRondaRecord[] }>("/rw/performa-ronda", { params });
+  async getMonitoringRw(params?: { tanggal_mulai?: string; tanggal_akhir?: string }): Promise<RwMonitoringRondaData> {
+    const res = await api.get<{ data: RwMonitoringRondaData }>("/rw/monitoring-ronda", { params });
+    return res.data.data;
+  },
+
+  async list(params?: { blok_wilayah_id?: string; tanggal_mulai?: string; tanggal_akhir?: string }): Promise<any[]> {
+    const res = await api.get<{ data: any[] }>("/rw/performa-ronda", { params });
     return res.data.data ?? [];
   },
 

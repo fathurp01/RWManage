@@ -52,6 +52,35 @@ export interface RtInsidenRecord {
   created_at: string;
 }
 
+export interface RtRondaPetugas {
+  id: string;
+  jadwal_ronda_id: string;
+  nama_petugas: string;
+  no_hp: string | null;
+  catatan: string | null;
+}
+
+export interface RtJadwalRonda {
+  id: string;
+  nama_jadwal: string;
+  hari_minggu: number;
+  jam_mulai: string;
+  jam_selesai: string;
+  minggu_mulai: string;
+  minggu_selesai: string | null;
+  catatan: string | null;
+  petugas?: RtRondaPetugas[];
+}
+
+export interface RtPresensiRonda {
+  id: string;
+  jadwal_ronda_id: string;
+  tanggal: string;
+  nama_petugas: string;
+  status_hadir: RtStatusKehadiran;
+  catatan: string | null;
+}
+
 export const rtClient = {
   async listWarga(): Promise<RtWargaRecord[]> {
     const res = await api.get<{ data: RtWargaRecord[] }>("/rt/warga");
@@ -121,6 +150,11 @@ export const rtClient = {
     return res.data.data;
   },
 
+  async updateInsiden(laporan_id: string, payload: Partial<RtInsidenRecord>): Promise<RtInsidenRecord> {
+    const res = await api.patch<{ data: RtInsidenRecord }>(`/rt/laporan-insiden/${laporan_id}`, payload);
+    return res.data.data;
+  },
+
   async removeInsiden(laporan_id: string): Promise<void> {
     await api.delete(`/rt/laporan-insiden/${laporan_id}`);
   },
@@ -162,5 +196,43 @@ export const rtClient = {
 
   async removeIdentitas(identitas_id: string): Promise<void> {
     await api.delete(`/rt/identitas-warga/${identitas_id}`);
+  },
+
+  async listJadwalRonda(): Promise<RtJadwalRonda[]> {
+    const res = await api.get<{ data: RtJadwalRonda[] }>("/rt/jadwal-ronda");
+    return res.data.data ?? [];
+  },
+
+  async createJadwalRonda(payload: Partial<RtJadwalRonda>): Promise<RtJadwalRonda> {
+    const res = await api.post<{ data: RtJadwalRonda }>("/rt/jadwal-ronda", payload);
+    return res.data.data;
+  },
+
+  async updateJadwalRonda(jadwal_id: string, payload: Partial<RtJadwalRonda>): Promise<RtJadwalRonda> {
+    const res = await api.patch<{ data: RtJadwalRonda }>(`/rt/jadwal-ronda/${jadwal_id}`, payload);
+    return res.data.data;
+  },
+
+  async deleteJadwalRonda(jadwal_id: string): Promise<void> {
+    await api.delete(`/rt/jadwal-ronda/${jadwal_id}`);
+  },
+
+  async addPetugas(jadwal_id: string, payload: { nama_petugas: string; no_hp?: string; catatan?: string }): Promise<RtRondaPetugas> {
+    const res = await api.post<{ data: RtRondaPetugas }>(`/rt/jadwal-ronda/${jadwal_id}/petugas`, payload);
+    return res.data.data;
+  },
+
+  async removePetugas(petugas_id: string): Promise<void> {
+    await api.delete(`/rt/ronda-petugas/${petugas_id}`);
+  },
+
+  async listPresensi(jadwal_id: string, params?: { tanggal_mulai?: string; tanggal_akhir?: string }): Promise<RtPresensiRonda[]> {
+    const res = await api.get<{ data: RtPresensiRonda[] }>(`/rt/jadwal-ronda/${jadwal_id}/presensi`, { params });
+    return res.data.data ?? [];
+  },
+
+  async markPresensi(jadwal_id: string, payload: { tanggal: string; nama_petugas: string; status_hadir: RtStatusKehadiran; catatan?: string }): Promise<RtPresensiRonda> {
+    const res = await api.post<{ data: RtPresensiRonda }>(`/rt/jadwal-ronda/${jadwal_id}/presensi`, payload);
+    return res.data.data;
   },
 };

@@ -82,3 +82,45 @@ export const validateParams = (schema: ZodTypeAny) => {
     next();
   };
 };
+
+export const validateNominalPositive = () => {
+  return (req: any, res: any, next: any) => {
+    const contentType = (req.headers && req.headers['content-type']) || '';
+    // If the request is multipart (file upload), skip here and let multer parse body first.
+    if (typeof contentType === 'string' && contentType.startsWith('multipart/form-data')) {
+      next();
+      return;
+    }
+
+    const nominal = req.body?.nominal;
+    const parsed = Number(nominal);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      res.status(400).json({ success: false, message: 'nominal harus berupa angka > 0.' });
+      return;
+    }
+
+    next();
+  };
+};
+
+export const validateNumericFields = (fields: string[]) => {
+  return (req: any, res: any, next: any) => {
+    const contentType = (req.headers && req.headers['content-type']) || '';
+    if (typeof contentType === 'string' && contentType.startsWith('multipart/form-data')) {
+      next();
+      return;
+    }
+
+    for (const field of fields) {
+      if (req.body?.[field] !== undefined) {
+        const parsed = Number(req.body[field]);
+        if (!Number.isFinite(parsed)) {
+          res.status(400).json({ success: false, message: `Field ${field} harus berupa angka.` });
+          return;
+        }
+      }
+    }
+
+    next();
+  };
+};

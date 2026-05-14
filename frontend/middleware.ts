@@ -10,6 +10,7 @@ import {
 const LOGIN_PATH = "/auth/login";
 const STATUS_PATH = "/auth/status";
 const RW_DASHBOARD_PATH = "/dashboard/rw";
+const RW_DATA_PENDUDUK_PATH = "/dashboard/rw/data-penduduk";
 const RT_DASHBOARD_PATH = "/dashboard/rt";
 const MASJID_DASHBOARD_PATH = "/dashboard/masjid";
 const SUPERADMIN_DASHBOARD_PATH = "/dashboard/superadmin";
@@ -44,7 +45,7 @@ export function middleware(request: NextRequest) {
 
   if (pathname === "/dashboard") {
     if (role === "RW") {
-      return NextResponse.redirect(new URL(RW_DASHBOARD_PATH, request.url));
+      return NextResponse.redirect(new URL(RW_DATA_PENDUDUK_PATH, request.url));
     } else if (role === "RT") {
       return NextResponse.redirect(new URL(RT_DASHBOARD_PATH, request.url));
     } else if (role === "SUPERADMIN") {
@@ -62,6 +63,13 @@ export function middleware(request: NextRequest) {
   if (pathname.startsWith("/dashboard/rw") && role !== "RW" && role !== "SUPERADMIN") {
     const destination = role === "RT" ? RT_DASHBOARD_PATH : MASJID_DASHBOARD_PATH;
     return NextResponse.redirect(new URL(destination, request.url));
+  }
+
+  if (
+    role === "RW" &&
+    (pathname === "/dashboard/rw/warga" || pathname.startsWith("/dashboard/rw/warga/"))
+  ) {
+    return NextResponse.redirect(new URL(RW_DATA_PENDUDUK_PATH, request.url));
   }
 
   if (pathname.startsWith("/dashboard/rt") && role !== "RT") {

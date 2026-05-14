@@ -121,6 +121,8 @@ model BlokWilayah {
   users         User[]
   warga         Warga[]
   performa_ronda PerformaRonda[]
+  jadwal_ronda  JadwalRonda[]
+  laporan_insiden LaporanInsiden[]
   kas_rt        KasRT[]
   setoran_iuran SetoranIuranRT[]
 
@@ -321,6 +323,7 @@ model PerformaRonda {
 
 model LaporanInsiden {
   id                      String        @id @default(uuid())
+  blok_wilayah_id         String?
   wilayah_rw_id           String
   tipe_insiden            String
   tanggal_insiden         DateTime
@@ -332,9 +335,11 @@ model LaporanInsiden {
   foto_bukti_url          String?
   ditindaklanjuti_tanggal DateTime?
   tindakan_diambil        String?       @db.Text
+  deleted_at              DateTime?
   created_at              DateTime      @default(now())
   updated_at              DateTime      @updatedAt
   
+  blok_wilayah            BlokWilayah?  @relation(fields: [blok_wilayah_id], references: [id])
   wilayah_rw              WilayahRW     @relation(fields: [wilayah_rw_id], references: [id])
 
   @@map("laporan_insiden")
@@ -433,3 +438,54 @@ model SetoranIuranRT {
   @@map("setoran_iuran_rt")
 }
 
+model JadwalRonda {
+  id               String          @id @default(uuid())
+  blok_wilayah_id  String
+  nama_jadwal      String
+  hari_minggu      Int             // 0-6 (Sunday=0 to Saturday=6)
+  jam_mulai        String          // format HH:MM
+  jam_selesai      String          // format HH:MM
+  minggu_mulai     DateTime
+  minggu_selesai   DateTime?
+  catatan          String?
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
+  deleted_at       DateTime?
+  
+  blok_wilayah     BlokWilayah     @relation(fields: [blok_wilayah_id], references: [id])
+  petugas          RondaPetugas[]
+  presensi         PresensiRonda[]
+
+  @@map("jadwal_ronda")
+}
+
+model RondaPetugas {
+  id              String          @id @default(uuid())
+  jadwal_ronda_id String
+  nama_petugas    String
+  no_hp           String?
+  catatan         String?
+  created_at      DateTime        @default(now())
+  deleted_at      DateTime?
+  
+  jadwal_ronda    JadwalRonda     @relation(fields: [jadwal_ronda_id], references: [id], onDelete: Cascade)
+  
+  @@unique([jadwal_ronda_id, nama_petugas])
+  @@map("ronda_petugas")
+}
+
+model PresensiRonda {
+  id              String          @id @default(uuid())
+  jadwal_ronda_id String
+  tanggal         DateTime
+  nama_petugas    String
+  status_hadir    StatusKehadiran
+  catatan         String?
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+  
+  jadwal_ronda    JadwalRonda     @relation(fields: [jadwal_ronda_id], references: [id], onDelete: Cascade)
+  
+  @@unique([jadwal_ronda_id, tanggal, nama_petugas])
+  @@map("presensi_ronda")
+}

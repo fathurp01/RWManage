@@ -15,6 +15,7 @@ export interface LaporanInsidenRecord {
   status: StatusInsiden;
   tindakan_diambil: string | null;
   created_at: string;
+  blok_wilayah?: { nama_blok: string };
 }
 
 export interface CreateLaporanPayload {
@@ -64,4 +65,11 @@ export const laporanInsidenClient = {
   async remove(laporan_id: string): Promise<void> {
     await api.delete(`/rw/laporan-insiden/${laporan_id}`);
   },
+
+  async exportPdf(laporan_id: string): Promise<Blob> {
+    const res = await api.get(`/rw/laporan-insiden/${laporan_id}/export-pdf`, {
+      responseType: 'blob'
+    });
+    return res.data;
+  }
 };

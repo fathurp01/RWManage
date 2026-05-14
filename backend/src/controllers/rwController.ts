@@ -983,6 +983,17 @@ export const createKasRW = async (req: Request, res: Response): Promise<void> =>
     const { wilayah_rw_id, jenis_transaksi, tanggal, keterangan, nominal, bukti_url } =
       req.body as CreateKasRWBody;
 
+    // Validate nominal immediately to avoid unnecessary DB lookups
+    const parsedNominal = Number(nominal);
+    // eslint-disable-next-line no-console
+    console.log("createKasRW body:", { wilayah_rw_id, jenis_transaksi, tanggal, keterangan, nominal, bukti_url });
+    // eslint-disable-next-line no-console
+    console.log("parsedNominal:", parsedNominal);
+    if (!Number.isFinite(parsedNominal) || parsedNominal <= 0) {
+      res.status(400).json({ success: false, message: "nominal harus berupa angka > 0." });
+      return;
+    }
+
     const nominalKas = parsePositiveNumber(nominal);
 
     if (!wilayah_rw_id || !jenis_transaksi || !keterangan || nominalKas === null) {
@@ -1083,6 +1094,147 @@ export const createKasRW = async (req: Request, res: Response): Promise<void> =>
       success: false,
       message: "Terjadi kesalahan saat menambahkan kas RW.",
     });
+  }
+};
+
+// ===== RW RONDA MONITORING =====
+
+export const getMonitoringRonda = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({ success: false, message: "User belum terautentikasi." });
+      return;
+    }
+
+    const rwWilayah = await getRwWilayahByUserId(req.user.id);
+    if (!rwWilayah) {
+      res.status(403).json({ success: false, message: "Wilayah RW untuk user login tidak ditemukan." });
+      return;
+    }
+
+    const { tanggal_mulai, tanggal_akhir } = req.query as { tanggal_mulai?: string; tanggal_akhir?: string };
+
+    // Get all jadwal for blocks in this RW
+    const jadwals = await prisma.jadwalRonda.findMany({
+      where: {
+        blok_wilayah: { wilayah_rw_id: rwWilayah.id },
+        deleted_at: null,
+      },
+      include: {
+        blok_wilayah: { select: { id: true, nama_blok: true, no_rt: true } },
+        petugas: true,
+        _count: { select: { presensi: true } },
+      },
+      orderBy: { hari_minggu: 'asc' },
+    });
+
+    // Optionally aggregate presensi counts in date range
+    const presensiWhere: any = {
+      jadwal_ronda: { blok_wilayah: { wilayah_rw_id: rwWilayah.id } },
+    };
+    if (tanggal_mulai && tanggal_akhir) {
+      presensiWhere.tanggal = { gte: new Date(tanggal_mulai), lte: new Date(tanggal_akhir) };
+    }
+
+    const presensis = await prisma.presensiRonda.findMany({ where: presensiWhere, select: { status_hadir: true } });
+    const statusCounts: Record<string, number> = { HADIR: 0, IZIN: 0, LIBUR: 0, ALFA: 0 };
+    presensis.forEach((p) => { statusCounts[p.status_hadir] = (statusCounts[p.status_hadir] || 0) + 1; });
+
+    // Group jadwals by blok
+    const grouped: Record<string, any> = {};
+    jadwals.forEach((j) => {
+      const b = j.blok_wilayah;
+      const key = b.id;
+      if (!grouped[key]) grouped[key] = { blok_id: b.id, nama_blok: b.nama_blok, no_rt: b.no_rt, jadwal: [] };
+      grouped[key].jadwal.push(j);
+    });
+
+    res.status(200).json({ success: true, message: 'Monitoring ronda RW berhasil diambil.', data: { summary: { total_jadwal: jadwals.length, presensi: statusCounts }, blok_data: Object.values(grouped) } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Terjadi kesalahan saat mengambil monitoring ronda RW.' });
+  }
+};
+
+export const getDetailRondaBlok = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { blok_id } = req.params as { blok_id?: string };
+    if (!blok_id) {
+      res.status(400).json({ success: false, message: 'blok_id wajib diisi.' });
+      return;
+    }
+
+    if (!req.user?.id) {
+      res.status(401).json({ success: false, message: 'User belum terautentikasi.' });
+      return;
+    }
+
+    const rwWilayah = await getRwWilayahByUserId(req.user.id);
+    if (!rwWilayah) {
+      res.status(403).json({ success: false, message: 'Wilayah RW untuk user login tidak ditemukan.' });
+      return;
+    }
+
+    const blok = await prisma.blokWilayah.findUnique({ where: { id: blok_id }, select: { wilayah_rw_id: true } });
+    if (!blok || blok.wilayah_rw_id !== rwWilayah.id) {
+      res.status(403).json({ success: false, message: 'Akses ditolak. Blok tidak berada di RW Anda.' });
+      return;
+    }
+
+    const jadwals = await prisma.jadwalRonda.findMany({
+      where: { blok_wilayah_id: blok_id, deleted_at: null },
+      include: { petugas: true },
+      orderBy: { hari_minggu: 'asc' },
+    });
+
+    // get presensi for this blok in recent range (last 30 days)
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+    const presensi = await prisma.presensiRonda.findMany({
+      where: { jadwal_ronda: { blok_wilayah_id: blok_id }, tanggal: { gte: since } },
+      orderBy: { tanggal: 'desc' },
+    });
+
+    res.status(200).json({ success: true, message: 'Detail ronda blok berhasil diambil.', data: { jadwals, presensi } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Terjadi kesalahan saat mengambil detail ronda blok.' });
+  }
+};
+
+export const getPresensiSummaryBlok = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({ success: false, message: 'User belum terautentikasi.' });
+      return;
+    }
+
+    const rwWilayah = await getRwWilayahByUserId(req.user.id);
+    if (!rwWilayah) {
+      res.status(403).json({ success: false, message: 'Wilayah RW untuk user login tidak ditemukan.' });
+      return;
+    }
+
+    const { tanggal_mulai, tanggal_akhir } = req.query as { tanggal_mulai?: string; tanggal_akhir?: string };
+    const presensiWhere: any = { jadwal_ronda: { blok_wilayah: { wilayah_rw_id: rwWilayah.id } } };
+    if (tanggal_mulai && tanggal_akhir) presensiWhere.tanggal = { gte: new Date(tanggal_mulai), lte: new Date(tanggal_akhir) };
+
+    const presensis = await prisma.presensiRonda.findMany({
+      where: presensiWhere,
+      include: { jadwal_ronda: { select: { blok_wilayah_id: true } } },
+    });
+
+    const grouped: Record<string, Record<string, number>> = {};
+    presensis.forEach((p) => {
+      const blokId = p.jadwal_ronda.blok_wilayah_id || 'UNKNOWN';
+      if (!grouped[blokId]) grouped[blokId] = { HADIR: 0, IZIN: 0, LIBUR: 0, ALFA: 0 };
+      grouped[blokId][p.status_hadir] = (grouped[blokId][p.status_hadir] || 0) + 1;
+    });
+
+    res.status(200).json({ success: true, message: 'Ringkasan presensi per blok berhasil diambil.', data: grouped });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Terjadi kesalahan saat mengambil ringkasan presensi.' });
   }
 };
 

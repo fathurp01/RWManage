@@ -7,19 +7,71 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Link from "next/link";
-import { Settings, Save, AlertCircle, Calculator } from "lucide-react";
+import { Settings, Save, AlertCircle, Calculator, Download, History, ArrowRightLeft } from "lucide-react";
 import { api, getApiError } from "@/lib/axios";
+
+type PengaturanIuranHistoryRecord = {
+  id: string;
+  created_at: string;
+  keterangan: string | null;
+  data_lama: {
+    nominal_iuran: number | string;
+    persen_rt: number;
+    persen_rw: number;
+  } | null;
+  data_baru: {
+    nominal_iuran: number | string;
+    persen_rt: number;
+    persen_rw: number;
+  } | null;
+  perubahan: Array<{
+    field: "nominal_iuran" | "persen_rt" | "persen_rw";
+    label: string;
+    lama: number | string | null;
+    baru: number | string | null;
+  }>;
+  user: {
+    id: string;
+    nama: string;
+    email: string;
+    role: string;
+  } | null;
+};
+
+const formatCurrency = (value: number | string | null | undefined) => {
+  if (value === null || value === undefined) return "-";
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return "-";
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(numericValue);
+};
+
+const formatPercent = (value: number | string | null | undefined) => {
+  if (value === null || value === undefined) return "-";
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return "-";
+  return `${numericValue}%`;
+};
+
+const formatDateTime = (value: string) => new Date(value).toLocaleString("id-ID");
 
 export default function PengaturanIuranPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [nominal, setNominal] = useState("");
   const [persenRT, setPersenRT] = useState(70);
   const [persenRW, setPersenRW] = useState(30);
+  const [history, setHistory] = useState<PengaturanIuranHistoryRecord[]>([]);
 
   useEffect(() => {
     loadSettings();
+    loadHistory();
   }, []);
 
   const loadSettings = async () => {
@@ -39,6 +91,74 @@ export default function PengaturanIuranPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadHistory = async () => {
+    try {
+      setHistoryLoading(true);
+      const res = await api.get<{ success: boolean; data: PengaturanIuranHistoryRecord[] }>("/rw/pengaturan-iuran/history");
+      if (res.data.success) {
+        setHistory(res.data.data ?? []);
+      }
+    } catch (error) {
+      const apiError = getApiError(error);
+      toast.error(apiError.message || "Gagal mengambil histori pengaturan.");
+      setHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const exportHistory = () => {
+    if (history.length === 0) {
+      toast.error("Belum ada histori untuk diekspor.");
+      return;
+    }
+
+    const escapeCsv = (value: unknown) => {
+      const text = value === null || value === undefined ? "" : String(value);
+      return `"${text.replaceAll('"', '""')}"`;
+    };
+
+    const headers = [
+      "Waktu",
+      "Diubah Oleh",
+      "Keterangan",
+      "Nominal Lama",
+      "Nominal Baru",
+      "Kas RT Lama",
+      "Kas RT Baru",
+      "Kas RW Lama",
+      "Kas RW Baru",
+      "Perubahan",
+    ];
+
+    const rows = history.map((item) => [
+      formatDateTime(item.created_at),
+      item.user?.nama || item.user?.email || "-",
+      item.keterangan || "-",
+      formatCurrency(item.data_lama?.nominal_iuran),
+      formatCurrency(item.data_baru?.nominal_iuran),
+      formatPercent(item.data_lama?.persen_rt),
+      formatPercent(item.data_baru?.persen_rt),
+      formatPercent(item.data_lama?.persen_rw),
+      formatPercent(item.data_baru?.persen_rw),
+      item.perubahan
+        .map((change) => `${change.label}: ${change.lama ?? "-"} → ${change.baru ?? "-"}`)
+        .join("; "),
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map(escapeCsv).join(","))
+      .join("\n");
+
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `histori-pengaturan-iuran-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -90,24 +210,29 @@ export default function PengaturanIuranPage() {
           Pengaturan Iuran
         </h1>
         <p className="text-lg text-slate-500 dark:text-muted-foreground max-w-2xl">
-          Tentukan nominal iuran standar bulanan dan bagaimana dana tersebut dibagi antara Kas RT dan Kas RW secara otomatis.
+          Tentukan nominal iuran bulanan per kepala keluarga yang dibebankan merata ke seluruh RT, lalu atur pembagian otomatis ke Kas RT dan Kas RW.
         </p>
       </div>
 
       <Card className="border-none shadow-lg shadow-slate-200/40 dark:shadow-none bg-white/90 dark:bg-card/50 backdrop-blur-xl">
         <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle>Pengaturan Per Warga</CardTitle>
+          <CardTitle>Pengaturan Iuran Per Kepala Keluarga</CardTitle>
           <CardDescription>
-            Kalau nanti Anda ingin menyesuaikan data per warga, tempatnya ada di menu Iuran Warga RW. Menu itu dipakai untuk kontrol per warga, bukan RT.
+            Nominal ini berlaku sama untuk setiap kepala keluarga di seluruh RT dalam wilayah RW ini. Detail per warga tetap dilihat di menu Data Penduduk.
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-500 dark:text-muted-foreground">
-            Saat ini halaman ini fokus ke kebijakan global: nominal iuran dan pembagian RT/RW.
-          </p>
-          <Link href="/dashboard/rw/warga">
-            <Button variant="outline" className="gap-2">
-              Buka Iuran Warga
+        <CardContent className="pt-5 grid gap-4 lg:grid-cols-[1.4fr_0.6fr] lg:items-center">
+          <div className="space-y-2">
+            <p className="text-sm text-slate-500 dark:text-muted-foreground">
+              Pengaturan ini adalah kebijakan wilayah, bukan per blok. RT menggunakan nominal yang sama saat menagih iuran ke warga.
+            </p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Pembagian kas dipisahkan jelas menjadi dua kolom: bagian Kas RT dan bagian Kas RW.
+            </p>
+          </div>
+          <Link href="/dashboard/rw/data-penduduk" className="lg:justify-self-end">
+            <Button variant="outline" className="gap-2 w-full lg:w-auto">
+              Buka Data Penduduk
             </Button>
           </Link>
         </CardContent>
@@ -123,7 +248,7 @@ export default function PengaturanIuranPage() {
                 </div>
                 <div>
                   <CardTitle className="text-2xl font-bold">Kebijakan Iuran Wilayah</CardTitle>
-                  <CardDescription>Standarisasi iuran untuk seluruh warga</CardDescription>
+                  <CardDescription>Standarisasi iuran per kepala keluarga untuk seluruh RT di wilayah RW</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -145,7 +270,7 @@ export default function PengaturanIuranPage() {
                   />
                 </div>
                 <p className="text-sm text-slate-400 font-medium italic">
-                  * RT akan menggunakan nominal ini sebagai standar penagihan kepada warga.
+                  * Nominal ini dibebankan sama rata ke setiap kepala keluarga di semua RT.
                 </p>
               </div>
 
@@ -153,8 +278,11 @@ export default function PengaturanIuranPage() {
                 <div className="space-y-3 p-6 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
                   <Label htmlFor="persenRT" className="text-base font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-2">
                     <div className="size-2 rounded-full bg-emerald-500" />
-                    Porsi Kas RT
+                    Porsi untuk Kas RT
                   </Label>
+                  <p className="text-sm text-emerald-700/80 dark:text-emerald-300/80">
+                    Bagian nominal iuran yang masuk ke kas RT.
+                  </p>
                   <div className="relative">
                     <Input
                       id="persenRT"
@@ -176,8 +304,11 @@ export default function PengaturanIuranPage() {
                 <div className="space-y-3 p-6 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30">
                   <Label htmlFor="persenRW" className="text-base font-bold text-indigo-800 dark:text-indigo-400 flex items-center gap-2">
                     <div className="size-2 rounded-full bg-indigo-500" />
-                    Porsi Kas RW
+                    Porsi untuk Kas RW
                   </Label>
+                  <p className="text-sm text-indigo-700/80 dark:text-indigo-300/80">
+                    Bagian nominal iuran yang masuk ke kas RW.
+                  </p>
                   <div className="relative">
                     <Input
                       id="persenRW"
@@ -228,6 +359,18 @@ export default function PengaturanIuranPage() {
                 </div>
               </div>
 
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 dark:border-white/10 dark:bg-white/5">
+                <div className="flex items-start gap-3">
+                  <ArrowRightLeft className="mt-1 size-5 text-indigo-500" />
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-slate-900 dark:text-slate-100">Catatan pembagian</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                      Kolom Kas RT dan Kas RW dipisahkan agar pembagian dana mudah dibaca dan tidak tercampur.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <Button 
                 type="submit" 
                 disabled={saving || (persenRT + persenRW !== 100)}
@@ -249,6 +392,91 @@ export default function PengaturanIuranPage() {
           </Card>
         </div>
       </form>
+
+      <Card className="border-none shadow-lg shadow-slate-200/40 dark:shadow-none bg-white/90 dark:bg-card/50 backdrop-blur-xl">
+        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4 flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <History className="size-5 text-indigo-500" />
+              Histori Perubahan Iuran
+            </CardTitle>
+            <CardDescription>
+              Menampilkan kapan perubahan dilakukan, siapa yang mengubah, dan nilai sebelum-sesudahnya.
+            </CardDescription>
+          </div>
+          <Button type="button" variant="outline" className="gap-2" onClick={exportHistory} disabled={historyLoading || history.length === 0}>
+            <Download className="size-4" />
+            Export CSV
+          </Button>
+        </CardHeader>
+        <CardContent className="pt-5">
+          {historyLoading ? (
+            <div className="text-sm text-slate-500">Memuat histori...</div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Waktu</TableHead>
+                    <TableHead>Diubah Oleh</TableHead>
+                    <TableHead>Nominal</TableHead>
+                    <TableHead>Kas RT</TableHead>
+                    <TableHead>Kas RW</TableHead>
+                    <TableHead>Detail Perubahan</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {history.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="align-top whitespace-nowrap">{formatDateTime(item.created_at)}</TableCell>
+                      <TableCell className="align-top">
+                        <div className="font-medium text-slate-900 dark:text-slate-100">{item.user?.nama || "-"}</div>
+                        <div className="text-xs text-slate-500">{item.user?.email || "-"}</div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="text-xs text-slate-500">{formatCurrency(item.data_lama?.nominal_iuran)}</div>
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">→ {formatCurrency(item.data_baru?.nominal_iuran)}</div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="text-xs text-slate-500">{formatPercent(item.data_lama?.persen_rt)}</div>
+                        <div className="font-semibold text-emerald-600 dark:text-emerald-400">→ {formatPercent(item.data_baru?.persen_rt)}</div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="text-xs text-slate-500">{formatPercent(item.data_lama?.persen_rw)}</div>
+                        <div className="font-semibold text-indigo-600 dark:text-indigo-400">→ {formatPercent(item.data_baru?.persen_rw)}</div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="space-y-1">
+                          {item.keterangan ? <p className="text-sm text-slate-700 dark:text-slate-300">{item.keterangan}</p> : null}
+                          {item.perubahan.length > 0 ? (
+                            <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                              {item.perubahan.map((change) => (
+                                <li key={change.field}>
+                                  <span className="font-medium text-slate-800 dark:text-slate-200">{change.label}:</span>{" "}
+                                  {String(change.lama ?? "-")} → {String(change.baru ?? "-")}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-slate-500">Tidak ada perubahan nilai terdeteksi.</p>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {history.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-slate-500">
+                        Belum ada histori perubahan pengaturan iuran.
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

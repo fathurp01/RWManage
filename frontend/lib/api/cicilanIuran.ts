@@ -20,6 +20,13 @@ export interface CreateCicilanPayload {
   jumlah_bulan: number;
   bulan_mulai: number;
   tahun_mulai: number;
+  tambahan_nominal?: number;
+}
+
+export interface UpdateCicilanPayload {
+  jumlah_bulan?: number;
+  bulan_mulai?: number;
+  tahun_mulai?: number;
 }
 
 const getBasePath = (scope: CicilanIuranScope = "rw"): string => `/${scope}/cicilan-iuran`;
@@ -37,6 +44,11 @@ export const cicilanIuranClient = {
     return res.data.data;
   },
 
+  async update(cicilan_id: string, payload: UpdateCicilanPayload, scope: CicilanIuranScope = "rw"): Promise<CicilanIuranRecord> {
+    const res = await api.patch<{ data: CicilanIuranRecord }>(`${getBasePath(scope)}/${cicilan_id}`, payload);
+    return res.data.data;
+  },
+
   async markAsPaid(cicilan_id: string, scope: CicilanIuranScope = "rw"): Promise<CicilanIuranRecord> {
     const res = await api.patch<{ data: CicilanIuranRecord }>(`${getBasePath(scope)}/${cicilan_id}/bayar`);
     return res.data.data;
@@ -44,5 +56,22 @@ export const cicilanIuranClient = {
 
   async remove(cicilan_id: string, scope: CicilanIuranScope = "rw"): Promise<void> {
     await api.delete(`${getBasePath(scope)}/${cicilan_id}`);
+  },
+
+  async history(params?: { tahun?: number }, scope: CicilanIuranScope = "rt"): Promise<Array<{
+    id: string;
+    warga_id: string;
+    bulan: number;
+    tahun: number;
+    nominal: string | number;
+    nominal_kas_rt: string | number | null;
+    nominal_kas_rw: string | number | null;
+    status: "BELUM" | "LUNAS";
+    kode_unik: string | null;
+    tanggal_bayar: string | null;
+    warga: { nama_kk: string };
+  }>> {
+    const res = await api.get<{ data: Array<any> }>(`${scope === "rt" ? "/rt/iuran/history" : "/rw/iuran/history"}`, { params });
+    return res.data.data ?? [];
   },
 };

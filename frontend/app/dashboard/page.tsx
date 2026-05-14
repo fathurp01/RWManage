@@ -11,7 +11,11 @@ export default async function DashboardIndexPage() {
   }
 
   if (roleFromCookie === "RW") {
-    redirect("/dashboard/rw/warga");
+    redirect("/dashboard/rw/data-penduduk");
+  }
+
+  if (roleFromCookie === "RT") {
+    redirect("/dashboard/rt/overview");
   }
 
   redirect("/dashboard/masjid");

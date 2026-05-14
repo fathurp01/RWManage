@@ -21,6 +21,9 @@ import {
   updateWarga,
   updateKasRW,
   getDataPenduduk,
+  getMonitoringRonda,
+  getDetailRondaBlok,
+  getPresensiSummaryBlok,
 } from "../controllers/rwController";
 import {
   createRwMasjid,
@@ -77,6 +80,7 @@ import {
   createCicilanIuran,
   getCicilanIuranList,
   updateCicilanStatus,
+  updateCicilanIuran,
   deleteCicilanIuran,
 } from "../controllers/cicilanIuranController";
 import {
@@ -91,6 +95,8 @@ import {
   updateLaporanInsiden,
   closeLaporanInsiden,
   deleteLaporanInsiden,
+  exportLaporanPdf,
+  getMonitoringInsidenRw,
 } from "../controllers/laporanInsidenController";
 import {
   getAuditLogList,
@@ -108,13 +114,24 @@ import {
   createWargaForRt,
   getWargaForRt,
   getIuranForRt,
+  getIuranHistoryForRt,
   bayarIuranForRt,
   createPerformaRondaForRt,
   updatePerformaRondaForRt,
   deletePerformaRondaForRt,
+  getJadwalRondaForRt,
+  createJadwalRonda,
+  updateJadwalRonda,
+  deleteJadwalRonda,
+  getPetugasForJadwal,
+  addPetugasToJadwal,
+  removePetugasFromJadwal,
+  markPresenceRonda,
+  getPresenceForJadwal,
 } from "../controllers/rtController";
 import {
   getPengaturanIuranRW,
+  getPengaturanIuranHistory,
   upsertPengaturanIuranRW,
 } from "../controllers/pengaturanIuranController";
 import {
@@ -175,6 +192,8 @@ import {
   validateBody,
   validateParams,
   validateQuery,
+  validateNominalPositive,
+  validateNumericFields,
 } from "../middlewares/validateRequest";
 import {
   approvePengurusSchema,
@@ -258,6 +277,7 @@ import {
   pengaturanIuranRWSchema,
   createKasRTSchema,
   approveSetoranSchema,
+  updateCicilanIuranSchema,
 } from "../validation/schemas";
 
 const router = Router();
@@ -307,7 +327,7 @@ router.post(
   "/rw/warga",
   rwActionRateLimit,
   verifyToken,
-  checkRole(["RW"]),
+  checkRole(["RT"]),
   checkApproval,
   validateBody(createWargaSchema),
   createWarga
@@ -316,7 +336,7 @@ router.get(
   "/rw/warga",
   rwActionRateLimit,
   verifyToken,
-  checkRole(["RW"]),
+  checkRole(["RT"]),
   checkApproval,
   validateQuery(getWargaListQuerySchema),
   getWargaList
@@ -325,7 +345,7 @@ router.get(
   "/rw/warga/:warga_id",
   rwActionRateLimit,
   verifyToken,
-  checkRole(["RW"]),
+  checkRole(["RT"]),
   checkApproval,
   validateParams(wargaParamsSchema),
   getWargaDetail
@@ -334,7 +354,7 @@ router.patch(
   "/rw/warga/:warga_id",
   rwActionRateLimit,
   verifyToken,
-  checkRole(["RW"]),
+  checkRole(["RT"]),
   checkApproval,
   validateParams(wargaParamsSchema),
   validateBody(updateWargaSchema),
@@ -344,7 +364,7 @@ router.delete(
   "/rw/warga/:warga_id",
   rwActionRateLimit,
   verifyToken,
-  checkRole(["RW"]),
+  checkRole(["RT"]),
   checkApproval,
   validateParams(wargaParamsSchema),
   deleteWarga
@@ -609,6 +629,49 @@ router.delete(
   validateParams(laporanInsidenParamsSchema),
   deleteLaporanInsiden
 );
+router.get(
+  "/rw/laporan-insiden/:laporan_id/export-pdf",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(laporanInsidenParamsSchema),
+  exportLaporanPdf
+);
+router.get(
+  "/rw/monitoring-laporan",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getMonitoringInsidenRw
+);
+
+// ==================== RW MONITORING RONDA (READ-ONLY) ====================
+router.get(
+  "/rw/monitoring-ronda",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getMonitoringRonda
+);
+router.get(
+  "/rw/monitoring-ronda/blok/:blok_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getDetailRondaBlok
+);
+router.get(
+  "/rw/monitoring-ronda/presensi",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getPresensiSummaryBlok
+);
 
 // ==================== BLOK WILAYAH ROUTES ====================
 router.post(
@@ -680,6 +743,14 @@ router.get(
   }
 );
 router.get(
+  "/rt/iuran/history",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  getIuranHistoryForRt
+);
+router.get(
   "/rt/warga",
   rwActionRateLimit,
   verifyToken,
@@ -695,6 +766,16 @@ router.post(
   checkApproval,
   validateBody(createRtWargaSchema),
   createWargaForRt
+);
+router.patch(
+  "/rt/cicilan-iuran/:cicilan_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateParams(cicilanIuranParamsSchema),
+  validateBody(updateCicilanIuranSchema),
+  updateCicilanIuran
 );
 router.get(
   "/rt/anggota-keluarga",
@@ -816,6 +897,85 @@ router.delete(
   validateParams(rtPerformaRondaParamsSchema),
   deletePerformaRondaForRt
 );
+
+// JADWAL RONDA ROUTES
+router.get(
+  "/rt/jadwal-ronda",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  getJadwalRondaForRt
+);
+router.post(
+  "/rt/jadwal-ronda",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  createJadwalRonda
+);
+router.patch(
+  "/rt/jadwal-ronda/:jadwal_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  updateJadwalRonda
+);
+router.delete(
+  "/rt/jadwal-ronda/:jadwal_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  deleteJadwalRonda
+);
+
+// RONDA PETUGAS ROUTES
+router.get(
+  "/rt/jadwal-ronda/:jadwal_id/petugas",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  getPetugasForJadwal
+);
+router.post(
+  "/rt/jadwal-ronda/:jadwal_id/petugas",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  addPetugasToJadwal
+);
+router.delete(
+  "/rt/ronda-petugas/:petugas_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  removePetugasFromJadwal
+);
+
+// PRESENSI RONDA ROUTES
+router.post(
+  "/rt/jadwal-ronda/:jadwal_id/presensi",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  markPresenceRonda
+);
+router.get(
+  "/rt/jadwal-ronda/:jadwal_id/presensi",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  getPresenceForJadwal
+);
+
 router.get(
   "/rt/laporan-insiden",
   rwActionRateLimit,
@@ -900,6 +1060,14 @@ router.get(
   checkRole(["RW"]),
   checkApproval,
   getPengaturanIuranRW
+);
+router.get(
+  "/rw/pengaturan-iuran/history",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getPengaturanIuranHistory
 );
 router.post(
   "/rw/pengaturan-iuran",
@@ -1020,6 +1188,7 @@ router.post(
   rwActionRateLimit,
   verifyToken,
   checkRole(["RW"]),
+  validateNominalPositive(),
   checkApproval,
   upload.single("bukti_foto"),
   validateBody(createKasRWSchema),
@@ -1187,6 +1356,7 @@ router.post(
   zisActionRateLimit,
   verifyToken,
   checkRole(["PENGURUS_MASJID"]),
+  validateNumericFields(["jumlah_jiwa", "nominal_zakat", "nominal_infaq", "total_beras_kg"]),
   checkApproval,
   validateBody(createTransaksiZisSchema),
   createTransaksiZis
@@ -1452,6 +1622,114 @@ router.get(
   checkApproval,
   getApprovalQueue
 );
+
+// ==================== RT RONDA MANAGEMENT ====================
+router.post(
+  "/rt/jadwal-ronda",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  createJadwalRonda
+);
+router.get(
+  "/rt/jadwal-ronda",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  getJadwalRondaForRt
+);
+// Note: Single jadwal detail, PATCH, and DELETE are handled by the main routes above
+/*
+router.get(
+  "/rt/jadwal-ronda/:jadwal_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  getJadwalRonda
+);
+*/
+/*
+router.patch(
+  "/rt/jadwal-ronda/:jadwal_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  updateJadwalRonda
+);
+router.delete(
+  "/rt/jadwal-ronda/:jadwal_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  deleteJadwalRonda
+);
+*/
+router.post(
+  "/rt/jadwal-ronda/:jadwal_id/petugas",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  addPetugasToJadwal
+);
+router.delete(
+  "/rt/ronda-petugas/:petugas_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  removePetugasFromJadwal
+);
+router.post(
+  "/rt/jadwal-ronda/:jadwal_id/presensi",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  markPresenceRonda
+);
+router.get(
+  "/rt/jadwal-ronda/:jadwal_id/presensi",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  getPresenceForJadwal
+);
+
+// ==================== RW RONDA MONITORING ====================
+// TODO: Implement RW monitoring ronda endpoints
+/*
+router.get(
+  "/rw/monitoring-ronda",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getMonitoringRonda
+);
+router.get(
+  "/rw/monitoring-ronda/blok/:blok_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getDetailRondaBlok
+);
+router.get(
+  "/rw/monitoring-ronda/presensi/blok",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  getPresensiSummaryBlok
+);
+*/
 
 // ==================== PUBLIC ROUTES ====================
 router.get(
