@@ -324,6 +324,7 @@ export const createTransaksiZisSchema = z.object({
   // For MAAL: nilai_harta (total asset value) and optional nominal_zakat (if admin calculates externally)
   nilai_harta: z.coerce.number().min(0).optional(),
   nominal_zakat: z.coerce.number().min(0).optional(),
+  total_beras_kg: z.coerce.number().min(0).optional(),
   nominal_infaq: z.coerce.number().min(0).optional(),
   waktu_transaksi: z.string().datetime({ offset: true }).optional(),
 });

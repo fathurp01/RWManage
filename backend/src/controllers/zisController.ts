@@ -278,15 +278,25 @@ export const createTransaksiZisWithClient = async (
       return;
     }
 
-    // Perhitungan Zakat Otomatis
+    // Perhitungan Zakat — gunakan nilai manual jika ada, otomatis jika tidak
+    const bodyNominalZakat = (req.body as any).nominal_zakat;
+    const bodyTotalBeras = (req.body as any).total_beras_kg;
+
     let calculatedZakatUang = 0;
     let calculatedTotalBeras = 0;
 
     if (jenis_bayar === JenisBayar.UANG) {
-      // Zakat Fits = jumlah_jiwa * 2.5 kg * harga_beras_per_kg
-      calculatedZakatUang = Math.round(jumlahJiwaInt * 2.5 * Number(pengaturan.harga_beras_per_kg));
+      if (bodyNominalZakat !== undefined && bodyNominalZakat !== "" && !Number.isNaN(Number(bodyNominalZakat)) && Number(bodyNominalZakat) > 0) {
+        calculatedZakatUang = Math.round(Number(bodyNominalZakat));
+      } else {
+        calculatedZakatUang = Math.round(jumlahJiwaInt * 2.5 * Number(pengaturan.harga_beras_per_kg));
+      }
     } else if (jenis_bayar === JenisBayar.BERAS) {
-      calculatedTotalBeras = jumlahJiwaInt * 2.5; // standar 2.5 kg per jiwa
+      if (bodyTotalBeras !== undefined && bodyTotalBeras !== "" && !Number.isNaN(Number(bodyTotalBeras)) && Number(bodyTotalBeras) > 0) {
+        calculatedTotalBeras = Number(bodyTotalBeras);
+      } else {
+        calculatedTotalBeras = jumlahJiwaInt * 2.5;
+      }
     }
 
     const now = waktu_transaksi ? new Date(waktu_transaksi) : new Date();

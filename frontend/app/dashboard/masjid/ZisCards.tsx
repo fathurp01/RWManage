@@ -31,11 +31,17 @@ const distributionLabels: {
   label: string;
   pctKey: keyof PengaturanZis;
 }[] = [
-  { key: "fakir", label: "Fakir Miskin", pctKey: "persen_fakir" },
-  { key: "amil", label: "Amil", pctKey: "persen_amil" },
-  { key: "fisabilillah", label: "Fisabilillah", pctKey: "persen_fisabilillah" },
-  { key: "lainnya", label: "Lainnya", pctKey: "persen_lainnya" },
-];
+    { key: "fakir", label: "Fakir Miskin", pctKey: "persen_fakir" },
+    { key: "amil", label: "Amil", pctKey: "persen_amil" },
+    { key: "fisabilillah", label: "Fisabilillah", pctKey: "persen_fisabilillah" },
+    { key: "lainnya", label: "Lainnya", pctKey: "persen_lainnya" },
+  ];
+
+interface KasData {
+  total_kas_masuk: number;
+  total_kas_keluar: number;
+  saldo_kas: number;
+}
 
 export default function ZisCards({
   dashboardData,
@@ -43,12 +49,14 @@ export default function ZisCards({
   fixedBerasDistribution,
   formatRupiah,
   pengaturanZis,
+  kasData,
 }: {
   dashboardData: DashboardZisPayload;
   fixedUangDistribution: Distribution;
   fixedBerasDistribution: Distribution;
   formatRupiah: (value: number) => string;
   pengaturanZis?: PengaturanZis;
+  kasData?: KasData | null;
 }) {
   const totalUangZakat = Number(dashboardData.total_uang_zakat || 0);
   const totalInfaq = Number(dashboardData.total_infaq || 0);
@@ -66,6 +74,33 @@ export default function ZisCards({
 
   return (
     <div className="flex flex-col gap-4">
+      {/* ── Card Kas Masjid ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className={cn(
+          "rounded-2xl border shadow-sm px-5 py-4",
+          !kasData || kasData.saldo_kas >= 0
+            ? "border-blue-200/70 dark:border-blue-800/30 bg-blue-50/60 dark:bg-blue-950/20"
+            : "border-rose-200/70 dark:border-rose-800/30 bg-rose-50/60 dark:bg-rose-950/20"
+        )}>
+          <p className="text-xs font-semibold text-blue-600/70 dark:text-blue-400/70 mb-1.5">Total Kas Masjid</p>
+          <p className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-foreground">
+            {kasData != null ? formatRupiah(kasData.saldo_kas) : "-"}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-emerald-200/70 dark:border-emerald-800/30 bg-emerald-50/60 dark:bg-emerald-950/20 shadow-sm px-5 py-4">
+          <p className="text-xs font-semibold text-emerald-600/70 dark:text-emerald-400/70 mb-1.5">Total Pemasukan Kas</p>
+          <p className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-foreground">
+            {kasData != null ? formatRupiah(kasData.total_kas_masuk) : "-"}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-rose-200/70 dark:border-rose-800/30 bg-rose-50/60 dark:bg-rose-950/20 shadow-sm px-5 py-4">
+          <p className="text-xs font-semibold text-rose-600/70 dark:text-rose-400/70 mb-1.5">Total Pengeluaran Kas</p>
+          <p className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-foreground">
+            {kasData != null ? formatRupiah(kasData.total_kas_keluar) : "-"}
+          </p>
+        </div>
+      </div>
+
       {/* ── Card 1: Penerimaan (3 kolom terpisah jelas) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white dark:bg-card shadow-sm px-5 py-4">
@@ -87,6 +122,8 @@ export default function ZisCards({
           </p>
         </div>
       </div>
+
+
 
       {/* ── Card 2: Detail Distribusi ── */}
       <div className="rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white dark:bg-card shadow-sm overflow-hidden">

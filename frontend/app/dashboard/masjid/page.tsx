@@ -519,6 +519,7 @@ export default function MasjidDashboardPage() {
               fixedBerasDistribution={fixedBerasDistribution}
               formatRupiah={formatRupiah}
               pengaturanZis={dashboardData.pengaturan_zis}
+              kasData={reportData?.summary ?? null}
             />
           </Suspense>
 
@@ -527,7 +528,7 @@ export default function MasjidDashboardPage() {
             <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <CardTitle>Riwayat Transaksi</CardTitle>
+                  <CardTitle>Riwayat Transaksi ZIS</CardTitle>
                   <CardDescription className="mt-0.5">
                     {transaksi.length} data transaksi ZIS
                     {appliedStart || appliedEnd ? " (terfilter)" : ""}

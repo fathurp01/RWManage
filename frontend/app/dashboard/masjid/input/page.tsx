@@ -77,6 +77,7 @@ export default function ZisInputPage() {
   const [jenisZakat, setJenisZakat] = useState<"FITRAH" | "MAAL">("FITRAH");
   const [nilaiHarta, setNilaiHarta] = useState("");
   const [manualNominalMaal, setManualNominalMaal] = useState("");
+  const [manualBerasKg, setManualBerasKg] = useState("");
   const [nominalInfaq, setNominalInfaq] = useState("");
 
   const [step1Errors, setStep1Errors] = useState<{ nama?: string; alamat?: string; waktu?: string }>({});
@@ -106,8 +107,8 @@ export default function ZisInputPage() {
       const wktVal = String(formData.get("waktu_transaksi") ?? "").trim();
       const jiwaVal = String(formData.get("jumlah_jiwa") ?? "").trim();
       const jenisVal = String(formData.get("jenis_bayar") ?? "").trim();
-      const jenisZakatVal = String(formData.get("jenis_zakat") ?? "FITRAH").trim();
-      const nilaiHartaVal = String(formData.get("nilai_harta") ?? "").trim();
+      const jenisZakatVal = "FITRAH";
+      const nilaiHartaVal = "";
       const nominalZakatVal = String(formData.get("nominal_zakat") ?? "").trim();
       const infaqVal = String(formData.get("nominal_infaq") ?? "0").trim();
 
@@ -118,10 +119,6 @@ export default function ZisInputPage() {
       if (!wktVal) fieldErrors.waktu_transaksi = "Waktu transaksi wajib diisi.";
       if (!jiwaVal || Number(jiwaVal) <= 0) fieldErrors.jumlah_jiwa = "Jumlah jiwa harus lebih dari 0.";
       if (jenisVal !== "UANG" && jenisVal !== "BERAS") fieldErrors.jenis_bayar = "Pilih jenis bayar.";
-      if (jenisZakatVal !== "FITRAH" && jenisZakatVal !== "MAAL") fieldErrors.jenis_zakat = "Pilih jenis zakat.";
-      if (jenisZakatVal === "MAAL" && !nominalZakatVal && !nilaiHartaVal) {
-        fieldErrors.nominal_zakat = "Isi nominal zakat maal atau nilai harta.";
-      }
       if (Object.keys(fieldErrors).length > 0) {
         return { message: "Ada isian yang belum lengkap / tidak valid.", fieldErrors };
       }
@@ -135,8 +132,8 @@ export default function ZisInputPage() {
           jumlah_jiwa: Number(jiwaVal),
           jenis_bayar: jenisVal,
           jenis_zakat: jenisZakatVal,
-          ...(nilaiHartaVal ? { nilai_harta: Number(nilaiHartaVal) } : {}),
           ...(nominalZakatVal ? { nominal_zakat: Number(nominalZakatVal) } : {}),
+          ...(formData.get("total_beras_kg") ? { total_beras_kg: Number(formData.get("total_beras_kg")) } : {}),
           nominal_infaq: Number(infaqVal || 0),
         });
 
@@ -156,6 +153,7 @@ export default function ZisInputPage() {
         setJenisZakat("FITRAH");
         setNilaiHarta("");
         setManualNominalMaal("");
+        setManualBerasKg("");
         setNominalInfaq("");
 
         return { message: "", fieldErrors: {} };
@@ -237,9 +235,10 @@ export default function ZisInputPage() {
         <input type="hidden" name="waktu_transaksi" value={waktuTransaksi} />
         <input type="hidden" name="jumlah_jiwa" value={String(jumlahJiwa)} />
         <input type="hidden" name="jenis_bayar" value={jenisBayar} />
-        <input type="hidden" name="jenis_zakat" value={jenisZakat} />
-        <input type="hidden" name="nilai_harta" value={nilaiHarta} />
-        <input type="hidden" name="nominal_zakat" value={manualNominalMaal} />
+        <input type="hidden" name="jenis_zakat" value="FITRAH" />
+        <input type="hidden" name="nilai_harta" value="" />
+        <input type="hidden" name="nominal_zakat" value={manualNominalMaal ? String(Number(manualNominalMaal) * jumlahJiwa) : ""} />
+        <input type="hidden" name="total_beras_kg" value={manualBerasKg ? String(Number(manualBerasKg) * jumlahJiwa) : ""} />
         <input type="hidden" name="nominal_infaq" value={nominalInfaq || "0"} />
 
         {/* STEP 1: Data Dasar */}
@@ -405,58 +404,39 @@ export default function ZisInputPage() {
                 </div>
               </div>
 
-              {/* Jenis Zakat (Fitrah / Maal) */}
-              <div className="space-y-2">
-                <Label>Jenis Zakat</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setJenisZakat("FITRAH")}
-                    className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-sm font-semibold ${jenisZakat === "FITRAH"
-                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-card text-slate-600 dark:text-slate-400 hover:border-emerald-300"
-                      }`}
-                  >
-                    Zakat Fitrah
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setJenisZakat("MAAL")}
-                    className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-sm font-semibold ${jenisZakat === "MAAL"
-                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-card text-slate-600 dark:text-slate-400 hover:border-emerald-300"
-                      }`}
-                  >
-                    Zakat Maal
-                  </button>
-                </div>
-              </div>
-
-              {jenisZakat === "MAAL" && (
-                <div className="space-y-2">
-                  <Label htmlFor="s2_nilai_harta">Nilai Harta (IDR)</Label>
+              {/* Nominal Zakat (opsional override) */}
+              {jenisBayar === "UANG" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="s2_nominal_zakat">
+                    Nominal Zakat Fitrah / jiwa{" "}
+                    <span className="text-slate-400 text-xs font-normal">(opsional, otomatis dihitung dari jumlah jiwa)</span>
+                  </Label>
                   <Input
-                    id="s2_nilai_harta"
-                    type="number"
-                    min={0}
-                    step={1000}
-                    value={nilaiHarta}
-                    onChange={(e) => setNilaiHarta(e.target.value)}
-                    placeholder="Total nilai harta yang dizakatkan"
-                  />
-                  <p className="text-xs text-slate-500 dark:text-muted-foreground">
-                    Jika diisi, sistem akan menghitung 2.5% dari nilai harta bila nominal manual tidak diisi.
-                  </p>
-
-                  <Label htmlFor="s2_nominal_maal">Nominal Zakat Maal</Label>
-                  <Input
-                    id="s2_nominal_maal"
+                    id="s2_nominal_zakat"
                     type="number"
                     min={0}
                     step={1000}
                     value={manualNominalMaal}
                     onChange={(e) => setManualNominalMaal(e.target.value)}
-                    placeholder="Override nominal otomatis jika perlu"
+                    placeholder={`Otomatis: ${formatCurrencyId(autoTotalUang)}`}
+                  />
+                </div>
+              )}
+
+              {jenisBayar === "BERAS" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="s2_beras_kg">
+                    Jumlah Beras (kg){" "}
+                    <span className="text-slate-400 text-xs font-normal">(opsional, otomatis dihitung dari jumlah jiwa)</span>
+                  </Label>
+                  <Input
+                    id="s2_beras_kg"
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    value={manualBerasKg}
+                    onChange={(e) => setManualBerasKg(e.target.value)}
+                    placeholder={`Otomatis: 2.5 kg/jiwa`}
                   />
                 </div>
               )}
@@ -557,41 +537,20 @@ export default function ZisInputPage() {
                 <div className="h-px bg-emerald-200 dark:bg-emerald-800/60 rounded" />
 
                 <div className="flex justify-between items-center text-sm">
-                  {jenisZakat === "FITRAH" ? (
-                    <>
-                      <div>
-                        <p className="font-semibold text-emerald-800 dark:text-emerald-200">Zakat Fitrah</p>
-                        <p className="flex items-center gap-2 text-base font-bold text-slate-800 dark:text-white">
-                          /jiwa = {jenisBayar === "UANG" ? formatCurrencyId(2.5 * hargaBeras) : "2.5 Kg"}
-                        </p>
-                      </div>
-                      <p className="text-lg font-black text-slate-800 dark:text-white">
-                        {jenisBayar === "UANG" ? formatCurrencyId(autoTotalUang) : `${autoTotalBeras.toFixed(1)} Kg`}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <p className="font-semibold text-emerald-800 dark:text-emerald-200">Zakat Maal</p>
-                        <p className="text-sm text-slate-600 dark:text-foreground/70">
-                          {manualNominalMaal
-                            ? `Nominal (manual): ${formatCurrencyId(Number(manualNominalMaal))}`
-                            : nilaiHarta
-                              ? `Perkiraan (2.5% dari nilai harta): ${formatCurrencyId(
-                                Math.round(Number(nilaiHarta) * 0.025)
-                              )}`
-                              : `Masukkan nilai harta atau nominal untuk menghitung.`}
-                        </p>
-                      </div>
-                      <p className="text-lg font-black text-slate-800 dark:text-white">
-                        {manualNominalMaal
-                          ? formatCurrencyId(Number(manualNominalMaal))
-                          : nilaiHarta
-                            ? formatCurrencyId(Math.round(Number(nilaiHarta) * 0.025))
-                            : formatCurrencyId(0)}
-                      </p>
-                    </>
-                  )}
+                  <div>
+                    <p className="font-semibold text-emerald-800 dark:text-emerald-200">Zakat Fitrah</p>
+                    <p className="flex items-center gap-2 text-base font-bold text-slate-800 dark:text-white">
+                      /jiwa ={" "}
+                      {jenisBayar === "UANG"
+                        ? formatCurrencyId(manualNominalMaal ? Number(manualNominalMaal) : 2.5 * hargaBeras)
+                        : `${manualBerasKg ? Number(manualBerasKg).toFixed(2) : "2.5"} Kg`}
+                    </p>
+                  </div>
+                  <p className="text-lg font-black text-slate-800 dark:text-white">
+                    {jenisBayar === "UANG"
+                      ? formatCurrencyId(manualNominalMaal ? Number(manualNominalMaal) * jumlahJiwa : autoTotalUang)
+                      : `${manualBerasKg ? (Number(manualBerasKg) * jumlahJiwa).toFixed(1) : autoTotalBeras.toFixed(1)} Kg`}
+                  </p>
                 </div>
 
                 {Number(nominalInfaq) > 0 && (
