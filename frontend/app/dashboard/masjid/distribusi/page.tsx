@@ -178,8 +178,11 @@ export default function DistribusiPage() {
         persen_fisabilillah: payload.pengaturan_zis.persen_fisabilillah,
         persen_lainnya: payload.pengaturan_zis.persen_lainnya,
       });
-      // Fetch dummy distribution records
-      setDistribusiRecords([]);
+      // Fetch real distribution records
+      const recordsRes = await api.get(`/zis/distribusi?masjid_id=${payload.masjid_id}`);
+      if (recordsRes.data.success) {
+        setDistribusiRecords(recordsRes.data.data);
+      }
     } catch (err) {
       toast.error(getApiError(err).message || "Gagal memuat data distribusi");
     } finally {
@@ -221,20 +224,17 @@ export default function DistribusiPage() {
       }
 
       setIsSaving(true);
-      // This would typically post to a distribution records API endpoint
-      // For now, just add to local state
-      const record: DistribusiRecord = {
-        id: Date.now().toString(),
+      const response = await api.post("/zis/distribusi", {
+        masjid_id: data?.masjid_id,
         kategori: newRecord.kategori,
         jenis: newRecord.jenis,
         nominal: parseFloat(newRecord.nominal),
         deskripsi: newRecord.deskripsi,
-        tanggal: new Date().toISOString(),
-        dicatat_oleh: user?.nama,
-      };
+      });
 
-      setDistribusiRecords((prev) => [record, ...prev]);
+      setDistribusiRecords((prev) => [response.data.data, ...prev]);
       toast.success("Pencatatan distribusi berhasil ditambahkan");
+      fetchData(); // Refresh dashboard stats
       setIsAddRecordDialogOpen(false);
       setNewRecord({
         kategori: "FAKIR",
@@ -257,14 +257,19 @@ export default function DistribusiPage() {
       }
 
       setIsSaving(true);
-      // Simulate API call
+      const response = await api.patch(`/zis/distribusi/${editingRecord.id}`, {
+        kategori: editingRecord.kategori,
+        jenis: editingRecord.jenis,
+        nominal: parseFloat(editingRecord.nominal.toString()),
+        deskripsi: editingRecord.deskripsi,
+        tanggal: editingRecord.tanggal,
+      });
+
       setDistribusiRecords((prev) =>
-        prev.map((r) => (r.id === editingRecord.id ? {
-          ...editingRecord,
-          nominal: parseFloat(editingRecord.nominal.toString())
-        } : r))
+        prev.map((r) => (r.id === editingRecord.id ? response.data.data : r))
       );
       toast.success("Pencatatan distribusi berhasil diperbarui");
+      fetchData(); // Refresh dashboard stats
       setEditingRecord(null);
     } catch (err) {
       toast.error(getApiError(err).message || "Gagal memperbarui pencatatan distribusi");
@@ -278,9 +283,10 @@ export default function DistribusiPage() {
       if (!recordToDelete) return;
 
       setIsSaving(true);
-      // Simulate API call
+      await api.delete(`/zis/distribusi/${recordToDelete.id}`);
       setDistribusiRecords((prev) => prev.filter((r) => r.id !== recordToDelete.id));
       toast.success("Pencatatan distribusi berhasil dihapus");
+      fetchData(); // Refresh dashboard stats
       setRecordToDelete(null);
     } catch (err) {
       toast.error(getApiError(err).message || "Gagal menghapus pencatatan distribusi");
@@ -475,8 +481,8 @@ export default function DistribusiPage() {
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums font-medium text-slate-900 dark:text-foreground whitespace-nowrap">
                         {record.jenis === "UANG"
-                          ? formatRupiah(record.nominal)
-                          : `${record.nominal.toFixed(2)} kg`}
+                          ? formatRupiah(Number(record.nominal))
+                          : `${Number(record.nominal).toFixed(2)} kg`}
                       </td>
                       <td className="px-4 py-3 text-slate-500 dark:text-foreground/70 text-xs">
                         {record.deskripsi || "-"}
@@ -706,8 +712,8 @@ export default function DistribusiPage() {
                   <span className="text-slate-500">Nominal:</span>
                   <span className="font-medium">
                     {recordToDelete.jenis === "UANG"
-                      ? formatRupiah(recordToDelete.nominal)
-                      : `${recordToDelete.nominal.toFixed(2)} kg`}
+                      ? formatRupiah(Number(recordToDelete.nominal))
+                      : `${Number(recordToDelete.nominal).toFixed(2)} kg`}
                   </span>
                 </div>
               </div>

@@ -32,6 +32,7 @@ async function main() {
   await safeDelete(() => prisma.anggotaKeluarga.deleteMany(), 'anggotaKeluarga');
   await safeDelete(() => prisma.kasMasjid.deleteMany(), 'kasMasjid');
   await safeDelete(() => prisma.pengaturanZis.deleteMany(), 'pengaturanZis');
+  await safeDelete(() => prisma.pencatatanDistribusi.deleteMany(), 'pencatatanDistribusi');
   await safeDelete(() => prisma.transaksiZis.deleteMany(), 'transaksiZis');
   await safeDelete(() => prisma.pengurusMasjid.deleteMany(), 'pengurusMasjid');
   await safeDelete(() => prisma.masjid.deleteMany(), 'masjid');
@@ -495,6 +496,38 @@ async function main() {
         keterangan: 'Donasi pembangunan teras',
         nominal: 1200000,
         kode_unik: `KM-${currentYear}-NH-M-01`,
+      },
+    ],
+  });
+
+  await prisma.pencatatanDistribusi.createMany({
+    data: [
+      {
+        masjid_id: masjidAlIkhlas.id,
+        kategori: 'FAKIR',
+        jenis: 'UANG',
+        nominal: 500000,
+        deskripsi: 'Distribusi dana zakat kepada 5 KK fakir miskin',
+        tanggal: new Date(currentYear, 3, 5, 10, 0, 0),
+        dicatat_oleh: pengurusApproved.id,
+      },
+      {
+        masjid_id: masjidAlIkhlas.id,
+        kategori: 'FISABILILLAH',
+        jenis: 'BERAS',
+        nominal: 50,
+        deskripsi: 'Bantuan beras untuk panti asuhan',
+        tanggal: new Date(currentYear, 3, 6, 11, 30, 0),
+        dicatat_oleh: pengurusApproved.id,
+      },
+      {
+        masjid_id: masjidNurHidayah.id,
+        kategori: 'AMIL',
+        jenis: 'UANG',
+        nominal: 200000,
+        deskripsi: 'Operasional amil zakat',
+        tanggal: new Date(currentYear, 3, 7, 9, 0, 0),
+        dicatat_oleh: pengurusPending.id,
       },
     ],
   });

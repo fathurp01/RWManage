@@ -66,6 +66,13 @@ enum TipeDokumen {
   LAINNYA
 }
 
+enum KategoriDistribusi {
+  FAKIR
+  AMIL
+  FISABILILLAH
+  LAINNYA
+}
+
 enum AksiAudit {
   CREATE
   READ
@@ -145,6 +152,7 @@ model Masjid {
   transaksi_zis   TransaksiZis[]
   kas_masjid      KasMasjid[]
   pengaturan_zis  PengaturanZis?
+  pencatatan_distribusi PencatatanDistribusi[]
 
   @@map("masjid")
 }
@@ -494,4 +502,19 @@ model PresensiRonda {
   
   @@unique([jadwal_ronda_id, tanggal, nama_petugas])
   @@map("presensi_ronda")
+}
+
+model PencatatanDistribusi {
+  id            String             @id @default(uuid())
+  masjid_id     String
+  kategori      KategoriDistribusi
+  jenis         JenisBayar
+  nominal       Decimal            @db.Decimal(10, 2)
+  deskripsi     String?            @db.Text
+  tanggal       DateTime           @default(now())
+  dicatat_oleh  String?
+
+  masjid        Masjid             @relation(fields: [masjid_id], references: [id])
+
+  @@map("pencatatan_distribusi")
 }

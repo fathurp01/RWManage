@@ -1,4 +1,4 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import {
   approvePengurus,
   listPendingPengurus,
@@ -40,6 +40,11 @@ import {
   exportRekapMuzaqi,
   exportRekapDistribusi,
   exportKwitansiZis,
+  createPencatatanDistribusi,
+  getPencatatanDistribusiList,
+  updatePencatatanDistribusi,
+  deletePencatatanDistribusi,
+  updatePengaturanZis,
 } from "../controllers/zisController";
 import {
   exportMasjidReport,
@@ -1434,6 +1439,50 @@ router.delete(
   checkApproval,
   validateParams(transaksiZisParamsSchema),
   deleteTransaksiZis
+);
+
+// ==================== ZIS DISTRIBUSI ROUTES ====================
+router.post(
+  "/zis/distribusi",
+  zisActionRateLimit,
+  verifyToken,
+  checkRole(["PENGURUS_MASJID"]),
+  checkApproval,
+  createPencatatanDistribusi
+);
+router.get(
+  "/zis/distribusi",
+  zisActionRateLimit,
+  verifyToken,
+  checkRole(["PENGURUS_MASJID"]),
+  checkApproval,
+  getPencatatanDistribusiList
+);
+router.patch(
+  "/zis/distribusi/:id",
+  zisActionRateLimit,
+  verifyToken,
+  checkRole(["PENGURUS_MASJID"]),
+  checkApproval,
+  updatePencatatanDistribusi
+);
+router.delete(
+  "/zis/distribusi/:id",
+  zisActionRateLimit,
+  verifyToken,
+  checkRole(["PENGURUS_MASJID"]),
+  checkApproval,
+  deletePencatatanDistribusi
+);
+
+// ==================== ZIS PENGATURAN ROUTES ====================
+router.patch(
+  "/pengaturan-zis/:id",
+  zisActionRateLimit,
+  verifyToken,
+  checkRole(["PENGURUS_MASJID"]),
+  checkApproval,
+  updatePengaturanZis
 );
 
 // ==================== MASJID REPORT ROUTES ====================

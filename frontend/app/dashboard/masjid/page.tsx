@@ -197,7 +197,7 @@ export default function MasjidDashboardPage() {
   const [appliedEnd, setAppliedEnd] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  
+
   // Edit State
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editTrxId, setEditTrxId] = useState("");
@@ -214,7 +214,7 @@ export default function MasjidDashboardPage() {
     setEditTrxId(trx.id);
     setEditNamaKk(trx.nama_kk);
     setEditAlamat(trx.alamat_muzaqi);
-    
+
     // adjust timezone for input display
     const dt = new Date(trx.waktu_transaksi);
     dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
@@ -591,7 +591,7 @@ export default function MasjidDashboardPage() {
                   onClick={() => handleExport("muzaqi")}
                 >
                   <Download className="size-3.5" />
-                  Export Rekap Muzaqi
+                  Rekap Muzaqi
                 </Button>
                 <Button
                   size="sm"
@@ -599,7 +599,7 @@ export default function MasjidDashboardPage() {
                   onClick={() => handleExport("distribusi")}
                 >
                   <Download className="size-3.5" />
-                  Export Rekap Distribusi
+                  Rekap Distribusi
                 </Button>
               </div>
             </CardHeader>
@@ -814,7 +814,7 @@ export default function MasjidDashboardPage() {
                 className="rounded-xl border-2 h-11"
               />
             </div>
-            
+
             <div className="space-y-1.5">
               <Label className="font-bold text-slate-700 dark:text-foreground">Alamat Lengkap</Label>
               <Input

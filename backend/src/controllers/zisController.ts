@@ -153,6 +153,50 @@ const calculateDistribution = (
   };
 };
 
+const getAvailableZisBalance = async (
+  client: typeof prisma,
+  masjid_id: string,
+  exclude_pencatatan_id?: string
+) => {
+  const [aggregateZis, sumDistribusi, pengaturan] = await Promise.all([
+    client.transaksiZis.aggregate({
+      where: { masjid_id },
+      _sum: { total_beras_kg: true, nominal_zakat: true, nominal_infaq: true },
+    }),
+    client.pencatatanDistribusi.groupBy({
+      by: ["kategori", "jenis"],
+      where: { masjid_id, ...(exclude_pencatatan_id ? { id: { not: exclude_pencatatan_id } } : {}) },
+      _sum: { nominal: true },
+    }),
+    client.pengaturanZis.findUnique({ where: { masjid_id } })
+  ]);
+
+  const totalBeras = roundTo2(decimalToNumber(aggregateZis._sum.total_beras_kg));
+  const totalUangZakat = roundTo2(decimalToNumber(aggregateZis._sum.nominal_zakat));
+
+  const used: Record<string, { uang: number; beras: number }> = {
+    FAKIR: { uang: 0, beras: 0 }, AMIL: { uang: 0, beras: 0 },
+    FISABILILLAH: { uang: 0, beras: 0 }, LAINNYA: { uang: 0, beras: 0 },
+  };
+  sumDistribusi.forEach(d => {
+    const nominal = decimalToNumber(d._sum.nominal);
+    if (d.jenis === "UANG") used[d.kategori].uang += nominal;
+    if (d.jenis === "BERAS") used[d.kategori].beras += nominal;
+  });
+
+  if (!pengaturan) throw new Error("Pengaturan ZIS tidak ditemukan");
+
+  const allocUang = calculateDistribution(pengaturan, totalUangZakat);
+  const allocBeras = calculateDistribution(pengaturan, totalBeras);
+
+  return {
+    FAKIR: { uang: Math.max(0, allocUang.fakir - used.FAKIR.uang), beras: Math.max(0, allocBeras.fakir - used.FAKIR.beras) },
+    AMIL: { uang: Math.max(0, allocUang.amil - used.AMIL.uang), beras: Math.max(0, allocBeras.amil - used.AMIL.beras) },
+    FISABILILLAH: { uang: Math.max(0, allocUang.fisabilillah - used.FISABILILLAH.uang), beras: Math.max(0, allocBeras.fisabilillah - used.FISABILILLAH.beras) },
+    LAINNYA: { uang: Math.max(0, allocUang.lainnya - used.LAINNYA.uang), beras: Math.max(0, allocBeras.lainnya - used.LAINNYA.beras) },
+  };
+};
+
 // Helper: parse date filter
 const parseDateRange = (start_date?: string, end_date?: string) => {
   const startParsed = start_date ? new Date(start_date) : null;
@@ -361,6 +405,33 @@ export const getDashboardZisWithClient = async (
 
     const distribusiUang = calculateDistribution(pengaturan, totalUangZakat);
     const distribusiBerasKg = calculateDistribution(pengaturan, totalBeras);
+
+    // Deduct distributed amounts
+    const sumDistribusi = await client.pencatatanDistribusi.groupBy({
+      by: ["kategori", "jenis"],
+      where: { masjid_id: authorizedMasjidId },
+      _sum: { nominal: true }
+    });
+
+    const used: Record<string, { uang: number; beras: number }> = {
+      FAKIR: { uang: 0, beras: 0 }, AMIL: { uang: 0, beras: 0 },
+      FISABILILLAH: { uang: 0, beras: 0 }, LAINNYA: { uang: 0, beras: 0 },
+    };
+    sumDistribusi.forEach(d => {
+      const nominal = decimalToNumber(d._sum.nominal);
+      if (d.jenis === "UANG") used[d.kategori].uang += nominal;
+      if (d.jenis === "BERAS") used[d.kategori].beras += nominal;
+    });
+
+    distribusiUang.fakir = Math.max(0, roundTo2(distribusiUang.fakir - used.FAKIR.uang));
+    distribusiUang.amil = Math.max(0, roundTo2(distribusiUang.amil - used.AMIL.uang));
+    distribusiUang.fisabilillah = Math.max(0, roundTo2(distribusiUang.fisabilillah - used.FISABILILLAH.uang));
+    distribusiUang.lainnya = Math.max(0, roundTo2(distribusiUang.lainnya - used.LAINNYA.uang));
+
+    distribusiBerasKg.fakir = Math.max(0, roundTo2(distribusiBerasKg.fakir - used.FAKIR.beras));
+    distribusiBerasKg.amil = Math.max(0, roundTo2(distribusiBerasKg.amil - used.AMIL.beras));
+    distribusiBerasKg.fisabilillah = Math.max(0, roundTo2(distribusiBerasKg.fisabilillah - used.FISABILILLAH.beras));
+    distribusiBerasKg.lainnya = Math.max(0, roundTo2(distribusiBerasKg.lainnya - used.LAINNYA.beras));
 
     const totalDanaDistribusi = totalUangZakat + totalInfaq;
 
@@ -1209,5 +1280,221 @@ export const exportKwitansiZis = async (
     doc.end();
   } catch (err) {
     res.status(500).json({ success: false, message: "Gagal mengekspor kwitansi" });
+  }
+};
+
+// ─── Pencatatan Distribusi ─────────────────────────────────────────────────────
+
+export const createPencatatanDistribusi = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { masjid_id, kategori, jenis, nominal, deskripsi, tanggal } = req.body;
+
+    if (!masjid_id || !kategori || !jenis || nominal === undefined) {
+      res.status(400).json({ success: false, message: "masjid_id, kategori, jenis, dan nominal wajib diisi." });
+      return;
+    }
+
+    const authorizedMasjidId = await getAuthorizedMasjidId(prisma, req, masjid_id);
+    if (!authorizedMasjidId) {
+      res.status(403).json({ success: false, message: "Akses ditolak." });
+      return;
+    }
+
+    try {
+      const balances = await getAvailableZisBalance(prisma, authorizedMasjidId);
+      const avail = balances[kategori as keyof typeof balances];
+      if (!avail) {
+        res.status(400).json({ success: false, message: "Kategori tidak valid." });
+        return;
+      }
+
+      if (jenis === "UANG" && nominal > avail.uang) {
+        res.status(400).json({ success: false, message: `Nominal melebihi sisa dana uang untuk kategori ini (${formatCurrencyId(avail.uang)}).` });
+        return;
+      }
+      
+      if (jenis === "BERAS" && nominal > avail.beras) {
+        res.status(400).json({ success: false, message: `Nominal melebihi sisa beras untuk kategori ini (${avail.beras.toFixed(2)} kg).` });
+        return;
+      }
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: "Gagal memverifikasi saldo ZIS." });
+      return;
+    }
+
+    const record = await prisma.pencatatanDistribusi.create({
+      data: {
+        masjid_id: authorizedMasjidId,
+        kategori,
+        jenis,
+        nominal: new Prisma.Decimal(nominal),
+        deskripsi,
+        tanggal: tanggal ? new Date(tanggal) : new Date(),
+        dicatat_oleh: req.user?.id,
+      },
+    });
+
+    res.status(201).json({ success: true, message: "Pencatatan distribusi berhasil.", data: record });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat mencatat distribusi." });
+  }
+};
+
+export const getPencatatanDistribusiList = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { masjid_id, kategori, jenis } = req.query;
+
+    const authorizedMasjidId = await getAuthorizedMasjidId(prisma, req, masjid_id as string);
+    if (!authorizedMasjidId) {
+      res.status(403).json({ success: false, message: "Akses ditolak." });
+      return;
+    }
+
+    const records = await prisma.pencatatanDistribusi.findMany({
+      where: {
+        masjid_id: authorizedMasjidId,
+        ...(kategori ? { kategori: kategori as any } : {}),
+        ...(jenis ? { jenis: jenis as any } : {}),
+      },
+      orderBy: { tanggal: "desc" },
+    });
+
+    res.status(200).json({ success: true, data: records });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengambil data distribusi." });
+  }
+};
+
+export const updatePencatatanDistribusi = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const { kategori, jenis, nominal, deskripsi, tanggal } = req.body;
+
+    const existing = await prisma.pencatatanDistribusi.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: "Data tidak ditemukan." });
+      return;
+    }
+
+    const authorizedMasjidId = await getAuthorizedMasjidId(prisma, req, existing.masjid_id);
+    if (!authorizedMasjidId) {
+      res.status(403).json({ success: false, message: "Akses ditolak." });
+      return;
+    }
+
+    try {
+      const balances = await getAvailableZisBalance(prisma, authorizedMasjidId, id);
+      
+      const finalKategori = kategori || existing.kategori;
+      const finalJenis = jenis || existing.jenis;
+      const finalNominal = nominal !== undefined ? Number(nominal) : decimalToNumber(existing.nominal);
+      
+      const avail = balances[finalKategori as keyof typeof balances];
+      if (!avail) {
+        res.status(400).json({ success: false, message: "Kategori tidak valid." });
+        return;
+      }
+
+      if (finalJenis === "UANG" && finalNominal > avail.uang) {
+        res.status(400).json({ success: false, message: `Nominal melebihi sisa dana uang untuk kategori ini (${formatCurrencyId(avail.uang)}).` });
+        return;
+      }
+      
+      if (finalJenis === "BERAS" && finalNominal > avail.beras) {
+        res.status(400).json({ success: false, message: `Nominal melebihi sisa beras untuk kategori ini (${avail.beras.toFixed(2)} kg).` });
+        return;
+      }
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: "Gagal memverifikasi saldo ZIS." });
+      return;
+    }
+
+    const updated = await prisma.pencatatanDistribusi.update({
+      where: { id },
+      data: {
+        ...(kategori && { kategori }),
+        ...(jenis && { jenis }),
+        ...(nominal !== undefined && { nominal: new Prisma.Decimal(nominal) }),
+        ...(deskripsi !== undefined && { deskripsi }),
+        ...(tanggal && { tanggal: new Date(tanggal) }),
+      },
+    });
+
+    res.status(200).json({ success: true, message: "Data berhasil diubah.", data: updated });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengubah data." });
+  }
+};
+
+export const deletePencatatanDistribusi = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+
+    const existing = await prisma.pencatatanDistribusi.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: "Data tidak ditemukan." });
+      return;
+    }
+
+    const authorizedMasjidId = await getAuthorizedMasjidId(prisma, req, existing.masjid_id);
+    if (!authorizedMasjidId) {
+      res.status(403).json({ success: false, message: "Akses ditolak." });
+      return;
+    }
+
+    await prisma.pencatatanDistribusi.delete({ where: { id } });
+    res.status(200).json({ success: true, message: "Data berhasil dihapus." });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat menghapus data." });
+  }
+};
+
+// ─── Pengaturan ZIS ────────────────────────────────────────────────────────────
+
+export const updatePengaturanZis = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const { persen_fakir, persen_amil, persen_fisabilillah, persen_lainnya } = req.body;
+
+    const existing = await prisma.pengaturanZis.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: "Pengaturan tidak ditemukan." });
+      return;
+    }
+
+    const authorizedMasjidId = await getAuthorizedMasjidId(prisma, req, existing.masjid_id);
+    if (!authorizedMasjidId) {
+      res.status(403).json({ success: false, message: "Akses ditolak." });
+      return;
+    }
+
+    const updated = await prisma.pengaturanZis.update({
+      where: { id },
+      data: {
+        ...(persen_fakir !== undefined && { persen_fakir: Number(persen_fakir) }),
+        ...(persen_amil !== undefined && { persen_amil: Number(persen_amil) }),
+        ...(persen_fisabilillah !== undefined && { persen_fisabilillah: Number(persen_fisabilillah) }),
+        ...(persen_lainnya !== undefined && { persen_lainnya: Number(persen_lainnya) }),
+      },
+    });
+
+    res.status(200).json({ success: true, message: "Pengaturan berhasil diperbarui.", data: updated });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat memperbarui pengaturan ZIS." });
   }
 };
