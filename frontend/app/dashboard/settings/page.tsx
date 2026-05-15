@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { api, getApiError } from "@/lib/axios";
-import { useTheme } from "@/context/ThemeContext";
+
 
 interface UserPreferenceResponse {
   data: {
@@ -21,7 +21,7 @@ interface UserPreferenceResponse {
 }
 
 export default function SettingsPage() {
-  const { theme, resolvedTheme, setTheme } = useTheme();
+
   const [loading, setLoading] = useState(false);
   const [preference, setPreference] = useState<UserPreferenceResponse["data"] | null>(null);
 
@@ -42,26 +42,11 @@ export default function SettingsPage() {
     load().catch(() => undefined);
   }, []);
 
-  const toggleDarkMode = async (checked: boolean) => {
-    setTheme(checked ? "dark" : "light");
-    setPreference((current) =>
-      current
-        ? {
-            ...current,
-            dark_mode: checked,
-          }
-        : current
-    );
-    toast.success("Preferensi tema berhasil disimpan.");
-  };
 
   const updateGeneralPreference = async (patch: Partial<NonNullable<typeof preference>>) => {
     try {
       const response = await api.patch<UserPreferenceResponse>("/user/preference", patch);
       setPreference(response.data.data);
-      if (typeof patch.dark_mode === "boolean") {
-        setTheme(patch.dark_mode ? "dark" : "light");
-      }
       toast.success("Preferensi berhasil diperbarui.");
     } catch (error) {
       const apiError = getApiError(error);
@@ -90,17 +75,6 @@ export default function SettingsPage() {
             <CardDescription>Atur mode tampilan aplikasi dan sinkronkan ke server.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/60 px-4 py-3 dark:border-white/8 dark:bg-white/5">
-              <div>
-                <Label className="text-base font-semibold">Mode Gelap</Label>
-                <p className="text-sm text-slate-500 dark:text-muted-foreground">
-                  Saat ini: {resolvedTheme === "dark" ? "Dark" : "Light"} {theme === "system" ? "(system)" : ""}
-                </p>
-              </div>
-              <Button variant={resolvedTheme === "dark" ? "rw" : "outline"} onClick={() => toggleDarkMode(resolvedTheme !== "dark")} disabled={loading}>
-                {resolvedTheme === "dark" ? "Matikan Dark" : "Aktifkan Dark"}
-              </Button>
-            </div>
 
             <div className="space-y-2">
               <Label>Bahasa</Label>

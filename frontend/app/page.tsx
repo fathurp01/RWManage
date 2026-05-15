@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+
 
 /* ─── Feature data ─── */
 const features = [
@@ -138,7 +138,7 @@ export default function Home() {
 
           {/* CTA */}
           <div className="flex items-center gap-2">
-            <ThemeToggle />
+
             <Button asChild variant="ghost" size="sm">
               <Link href="/auth/login">Masuk</Link>
             </Button>

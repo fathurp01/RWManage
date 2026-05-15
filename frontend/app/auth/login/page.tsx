@@ -20,7 +20,7 @@ import {
   HandCoins,
   ChevronLeft,
 } from "lucide-react";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+
 
 interface FormState {
   message: string;
@@ -254,10 +254,7 @@ export default function LoginPage() {
   // ─── Render ───────────────────────────────────────────────
   return (
     <main className="flex flex-1 min-h-screen items-center justify-center px-4 py-12 hero-gradient overflow-hidden">
-      {/* Theme toggle */}
-      <div className="fixed top-4 right-4 z-50">
-        <ThemeToggle />
-      </div>
+
 
       {/* Background blobs */}
       <div aria-hidden className="pointer-events-none fixed -top-40 -left-40 size-125 rounded-full bg-indigo-400/8 blur-3xl" />

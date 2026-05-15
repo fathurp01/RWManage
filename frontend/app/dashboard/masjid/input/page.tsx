@@ -207,21 +207,19 @@ export default function ZisInputPage() {
         {([1, 2, 3] as Step[]).map((s) => (
           <div key={s} className="flex flex-1 items-center">
             <div
-              className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold border transition-all ${
-                step === s
-                  ? "bg-emerald-500 border-emerald-500 text-white"
-                  : step > s
+              className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold border transition-all ${step === s
+                ? "bg-emerald-500 border-emerald-500 text-white"
+                : step > s
                   ? "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-700 dark:text-emerald-300"
                   : "bg-white border-slate-300 text-slate-400 dark:bg-white/5 dark:border-white/15"
-              }`}
+                }`}
             >
               {step > s ? "✓" : s}
             </div>
             {s < 3 && (
               <div
-                className={`flex-1 h-0.5 mx-2 rounded-full ${
-                  step > s ? "bg-emerald-400" : "bg-slate-200 dark:bg-white/10"
-                }`}
+                className={`flex-1 h-0.5 mx-2 rounded-full ${step > s ? "bg-emerald-400" : "bg-slate-200 dark:bg-white/10"
+                  }`}
               />
             )}
           </div>
@@ -385,11 +383,10 @@ export default function ZisInputPage() {
                   <button
                     type="button"
                     onClick={() => setJenisBayar("UANG")}
-                    className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-sm font-semibold ${
-                      jenisBayar === "UANG"
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-                        : "border-slate-200 dark:border-white/10 bg-white dark:bg-card text-slate-600 dark:text-slate-400 hover:border-emerald-300"
-                    }`}
+                    className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-sm font-semibold ${jenisBayar === "UANG"
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-card text-slate-600 dark:text-slate-400 hover:border-emerald-300"
+                      }`}
                   >
                     <Banknote className={`size-5 ${jenisBayar === "UANG" ? "text-emerald-500" : "text-slate-400"}`} />
                     Uang Tunai
@@ -397,11 +394,10 @@ export default function ZisInputPage() {
                   <button
                     type="button"
                     onClick={() => setJenisBayar("BERAS")}
-                    className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-sm font-semibold ${
-                      jenisBayar === "BERAS"
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-                        : "border-slate-200 dark:border-white/10 bg-white dark:bg-card text-slate-600 dark:text-slate-400 hover:border-emerald-300"
-                    }`}
+                    className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-sm font-semibold ${jenisBayar === "BERAS"
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-card text-slate-600 dark:text-slate-400 hover:border-emerald-300"
+                      }`}
                   >
                     <Wheat className={`size-5 ${jenisBayar === "BERAS" ? "text-emerald-500" : "text-slate-400"}`} />
                     Beras (Kg)
@@ -416,22 +412,20 @@ export default function ZisInputPage() {
                   <button
                     type="button"
                     onClick={() => setJenisZakat("FITRAH")}
-                    className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-sm font-semibold ${
-                      jenisZakat === "FITRAH"
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-                        : "border-slate-200 dark:border-white/10 bg-white dark:bg-card text-slate-600 dark:text-slate-400 hover:border-emerald-300"
-                    }`}
+                    className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-sm font-semibold ${jenisZakat === "FITRAH"
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-card text-slate-600 dark:text-slate-400 hover:border-emerald-300"
+                      }`}
                   >
                     Zakat Fitrah
                   </button>
                   <button
                     type="button"
                     onClick={() => setJenisZakat("MAAL")}
-                    className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-sm font-semibold ${
-                      jenisZakat === "MAAL"
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-                        : "border-slate-200 dark:border-white/10 bg-white dark:bg-card text-slate-600 dark:text-slate-400 hover:border-emerald-300"
-                    }`}
+                    className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-sm font-semibold ${jenisZakat === "MAAL"
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-card text-slate-600 dark:text-slate-400 hover:border-emerald-300"
+                      }`}
                   >
                     Zakat Maal
                   </button>
@@ -583,18 +577,18 @@ export default function ZisInputPage() {
                           {manualNominalMaal
                             ? `Nominal (manual): ${formatCurrencyId(Number(manualNominalMaal))}`
                             : nilaiHarta
-                            ? `Perkiraan (2.5% dari nilai harta): ${formatCurrencyId(
+                              ? `Perkiraan (2.5% dari nilai harta): ${formatCurrencyId(
                                 Math.round(Number(nilaiHarta) * 0.025)
                               )}`
-                            : `Masukkan nilai harta atau nominal untuk menghitung.`}
+                              : `Masukkan nilai harta atau nominal untuk menghitung.`}
                         </p>
                       </div>
                       <p className="text-lg font-black text-slate-800 dark:text-white">
                         {manualNominalMaal
                           ? formatCurrencyId(Number(manualNominalMaal))
                           : nilaiHarta
-                          ? formatCurrencyId(Math.round(Number(nilaiHarta) * 0.025))
-                          : formatCurrencyId(0)}
+                            ? formatCurrencyId(Math.round(Number(nilaiHarta) * 0.025))
+                            : formatCurrencyId(0)}
                       </p>
                     </>
                   )}

@@ -6,7 +6,7 @@ import { useCallback } from "react";
 import type { AppRole } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+
 import {
   LayoutDashboard,
   Users,
@@ -20,6 +20,7 @@ import {
   Wallet,
   LogOut,
   Settings,
+  Gift,
 } from "lucide-react";
 
 type SidebarItem = {
@@ -131,6 +132,18 @@ const masjidItems: SidebarItem[] = [
     icon: HandCoins,
   },
   {
+    href: "/dashboard/masjid/input",
+    label: "Catat ZIS Baru",
+    description: "Input transaksi zakat dan infaq",
+    icon: SquarePen,
+  },
+  {
+    href: "/dashboard/masjid/distribusi",
+    label: "Manajemen Distribusi",
+    description: "Kelola distribusi zakat",
+    icon: Gift,
+  },
+  {
     href: "/dashboard/masjid/kas",
     label: "Buku Kas Masjid",
     description: "Catat kas operasional masjid",
@@ -147,12 +160,6 @@ const masjidItems: SidebarItem[] = [
     label: "Share Link Masjid",
     description: "Kelola link transparansi publik",
     icon: Link2,
-  },
-  {
-    href: "/dashboard/masjid/input",
-    label: "Catat ZIS Baru",
-    description: "Input transaksi zakat dan infaq",
-    icon: SquarePen,
   },
 ];
 
@@ -302,7 +309,7 @@ export function DashboardSidebar({ role }: { role: AppRole | null }) {
   const { logout } = useAuth();
   const accent = getAccent(role);
   let items: SidebarItem[] = rwItems;
-  
+
   if (role === "PENGURUS_MASJID") {
     items = masjidItems;
   } else if (role === "RT") {
@@ -413,7 +420,7 @@ export function DashboardSidebar({ role }: { role: AppRole | null }) {
         })}
       </nav>
 
-      
+
 
       {/* Spacer */}
       <div className="flex-1" />
@@ -435,8 +442,7 @@ export function DashboardSidebar({ role }: { role: AppRole | null }) {
           <span className="font-medium">Keluar</span>
         </button>
 
-        {/* Theme toggle */}
-        <ThemeToggle variant="pill" />
+
 
       </div>
     </div>

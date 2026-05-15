@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+
 import { Search, Globe, Receipt, CheckCircle2, Building2, FileText, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -137,7 +137,7 @@ export default function TransparansiPage() {
             <span className="font-bold tracking-tight text-slate-900 dark:text-foreground">RWManage</span>
           </Link>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
+
             <Badge variant="masjid" className="gap-1.5">
               <Globe className="size-3" />
               Portal Publik
