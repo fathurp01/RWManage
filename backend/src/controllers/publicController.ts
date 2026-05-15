@@ -201,6 +201,7 @@ export const cekKodeUnikWithClient = async (
             alamat_muzaqi: true,
             jumlah_jiwa: true,
             jenis_bayar: true,
+            jenis_zakat: true,
             nominal_zakat: true,
             nominal_infaq: true,
             total_beras_kg: true,

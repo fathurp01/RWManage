@@ -316,6 +316,7 @@ export default function TransparansiPage() {
                       ["Alamat", safeText(receipt.detail.alamat_muzaqi)],
                       ["Jumlah Jiwa", safeText(receipt.detail.jumlah_jiwa)],
                       ["Jenis Bayar", safeText(receipt.detail.jenis_bayar)],
+                      ["Jenis Zakat", safeText(receipt.detail.jenis_zakat ?? "FITRAH")],
                       ["Nominal Zakat", formatCurrency(receipt.detail.nominal_zakat)],
                       ["Nominal Infaq", formatCurrency(receipt.detail.nominal_infaq)],
                       ["Beras (kg)", safeText(receipt.detail.total_beras_kg)],

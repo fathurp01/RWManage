@@ -504,6 +504,7 @@ const buildMasjidReport = async (req: Request): Promise<MasjidReportPayload | nu
       nominal_infaq: true,
       total_beras_kg: true,
       jenis_bayar: true,
+      jenis_zakat: true,
     },
   });
 

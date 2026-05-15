@@ -684,3 +684,102 @@ export const getPublicSharedDashboard = async (req: Request, res: Response): Pro
     res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengambil data share link publik." });
   }
 };
+
+export const getPublicSharedMuzaqi = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.params as ShareTokenParams;
+
+    if (!token) {
+      res.status(400).json({ success: false, message: "Token wajib diisi." });
+      return;
+    }
+
+    const link = await prisma.shareLink.findUnique({
+      where: { token },
+      select: { scope: true, scope_id: true, expires_at: true, revoked_at: true },
+    });
+
+    if (!link) {
+      res.status(404).json({ success: false, message: "Share link tidak ditemukan." });
+      return;
+    }
+
+    if (link.revoked_at) {
+      res.status(410).json({ success: false, message: "Share link sudah dinonaktifkan." });
+      return;
+    }
+
+    if (link.expires_at && link.expires_at < new Date()) {
+      res.status(410).json({ success: false, message: "Share link sudah kedaluwarsa." });
+      return;
+    }
+
+    // Optional date filters: accept ?start_date=ISO&end_date=ISO; if not provided, return all available
+    const { start_date, end_date } = req.query as { start_date?: string; end_date?: string };
+
+    const parseDate = (s?: string, endOfDay = false) => {
+      if (!s) return undefined;
+      const d = new Date(s);
+      if (Number.isNaN(d.getTime())) return undefined;
+      if (endOfDay) {
+        d.setHours(23, 59, 59, 999);
+      }
+      return d;
+    };
+
+    const gte = parseDate(start_date, false);
+    const lte = parseDate(end_date, true);
+
+    const baseSelect = {
+      id: true,
+      kode_unik: true,
+      nama_kk: true,
+      alamat_muzaqi: true,
+      jumlah_jiwa: true,
+      jenis_bayar: true,
+      nominal_zakat: true,
+      nominal_infaq: true,
+      total_beras_kg: true,
+      waktu_transaksi: true,
+    } as const;
+
+    let transactions = [] as any[];
+
+    if (link.scope === "MASJID") {
+      const where: any = { masjid_id: link.scope_id };
+      if (gte || lte) where.waktu_transaksi = {};
+      if (gte) where.waktu_transaksi.gte = gte;
+      if (lte) where.waktu_transaksi.lte = lte;
+
+      transactions = await prisma.transaksiZis.findMany({
+        where,
+        orderBy: { waktu_transaksi: "desc" },
+        select: baseSelect,
+      });
+    } else {
+      const masjids = await prisma.masjid.findMany({
+        where: { blok_wilayah: { wilayah_rw_id: link.scope_id } },
+        select: { id: true },
+      });
+      const masjidIds = masjids.map((m) => m.id);
+      if (!masjidIds.length) {
+        transactions = [];
+      } else {
+        const where: any = { masjid_id: { in: masjidIds } };
+        if (gte || lte) where.waktu_transaksi = {};
+        if (gte) where.waktu_transaksi.gte = gte;
+        if (lte) where.waktu_transaksi.lte = lte;
+
+        transactions = await prisma.transaksiZis.findMany({
+          where,
+          orderBy: { waktu_transaksi: "desc" },
+          select: baseSelect,
+        });
+      }
+    }
+
+    res.status(200).json({ success: true, data: transactions });
+  } catch {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengambil daftar muzaqi." });
+  }
+};

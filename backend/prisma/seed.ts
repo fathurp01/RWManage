@@ -6,32 +6,41 @@ import { Prisma } from '@prisma/client';
 async function main() {
   console.log('Seeding data...');
 
-  await prisma.presensiRonda.deleteMany();
-  await prisma.rondaPetugas.deleteMany();
-  await prisma.jadwalRonda.deleteMany();
-  await prisma.kasRT.deleteMany();
-  await prisma.setoranIuranRT.deleteMany();
-  await prisma.pengaturanIuranRW.deleteMany();
-  await prisma.userPreference.deleteMany();
+  // Helper to attempt deleteMany and continue when the corresponding table/model is not present
+  const safeDelete = async (fn: () => Promise<any>, name: string) => {
+    try {
+      await fn();
+    } catch (err: any) {
+      console.warn(`Skipping deleteMany for ${name}:`, err?.message ?? err);
+    }
+  };
 
-  await prisma.shareLink.deleteMany();
-  await prisma.auditLog.deleteMany();
-  await prisma.laporanInsiden.deleteMany();
-  await prisma.performaRonda.deleteMany();
-  await prisma.cicilanIuran.deleteMany();
-  await prisma.identitasWarga.deleteMany();
-  await prisma.anggotaKeluarga.deleteMany();
-  await prisma.kasMasjid.deleteMany();
-  await prisma.pengaturanZis.deleteMany();
-  await prisma.transaksiZis.deleteMany();
-  await prisma.pengurusMasjid.deleteMany();
-  await prisma.masjid.deleteMany();
-  await prisma.iuranWarga.deleteMany();
-  await prisma.warga.deleteMany();
-  await prisma.kasRW.deleteMany();
-  await prisma.blokWilayah.deleteMany();
-  await prisma.wilayahRW.deleteMany();
-  await prisma.user.deleteMany();
+  await safeDelete(() => prisma.presensiRonda.deleteMany(), 'presensiRonda');
+  await safeDelete(() => prisma.rondaPetugas.deleteMany(), 'rondaPetugas');
+  await safeDelete(() => prisma.jadwalRonda.deleteMany(), 'jadwalRonda');
+  await safeDelete(() => prisma.kasRT.deleteMany(), 'kasRT');
+  await safeDelete(() => prisma.setoranIuranRT.deleteMany(), 'setoranIuranRT');
+  await safeDelete(() => prisma.pengaturanIuranRW.deleteMany(), 'pengaturanIuranRW');
+  await safeDelete(() => prisma.userPreference.deleteMany(), 'userPreference');
+
+  await safeDelete(() => prisma.shareLink.deleteMany(), 'shareLink');
+  await safeDelete(() => prisma.auditLog.deleteMany(), 'auditLog');
+  await safeDelete(() => prisma.laporanInsiden.deleteMany(), 'laporanInsiden');
+  await safeDelete(() => prisma.performaRonda.deleteMany(), 'performaRonda');
+  await safeDelete(() => prisma.cicilanIuran.deleteMany(), 'cicilanIuran');
+  await safeDelete(() => prisma.identitasWarga.deleteMany(), 'identitasWarga');
+  await safeDelete(() => prisma.anggotaKeluarga.deleteMany(), 'anggotaKeluarga');
+  await safeDelete(() => prisma.kasMasjid.deleteMany(), 'kasMasjid');
+  await safeDelete(() => prisma.pengaturanZis.deleteMany(), 'pengaturanZis');
+  await safeDelete(() => prisma.transaksiZis.deleteMany(), 'transaksiZis');
+  await safeDelete(() => prisma.pengurusMasjid.deleteMany(), 'pengurusMasjid');
+  await safeDelete(() => prisma.masjid.deleteMany(), 'masjid');
+  await safeDelete(() => prisma.iuranWarga.deleteMany(), 'iuranWarga');
+  await safeDelete(() => prisma.warga.deleteMany(), 'warga');
+  await safeDelete(() => prisma.kasRW.deleteMany(), 'kasRW');
+  await safeDelete(() => prisma.blokWilayah.deleteMany(), 'blokWilayah');
+  await safeDelete(() => prisma.wilayahRW.deleteMany(), 'wilayahRW');
+  await safeDelete(() => prisma.user.deleteMany(), 'user');
 
   const currentYear = new Date().getFullYear();
   const saltRounds = 10;

@@ -1122,6 +1122,16 @@ export const exportKwitansiZis = async (
       return;
     }
 
+    const userId = (req as any).user?.id as string | undefined;
+    let petugasNama = "Petugas Zakat";
+    if (userId) {
+      const petugas = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { nama: true },
+      });
+      petugasNama = petugas?.nama || petugasNama;
+    }
+
     const tglParsed = new Date(transaksi.waktu_transaksi);
     const dateFormatted = `${tglParsed.getDate()}/${tglParsed.getMonth() + 1}/${tglParsed.getFullYear()}, ${tglParsed.getHours().toString().padStart(2, '0')}.${tglParsed.getMinutes().toString().padStart(2, '0')}.${tglParsed.getSeconds().toString().padStart(2, '0')}`;
 
@@ -1191,7 +1201,7 @@ export const exportKwitansiZis = async (
 
     // Signature line
     doc.moveTo(370, signY + 110).lineTo(530, signY + 110).strokeColor("#94a3b8").lineWidth(1).stroke();
-    doc.fillColor("#1e293b").font("Helvetica-Bold").text("(__________________)", 370, signY + 115, { width: 160, align: "center" });
+    doc.fillColor("#1e293b").font("Helvetica-Bold").text(petugasNama, 370, signY + 115, { width: 160, align: "center" });
 
     // Footer note
     doc.fillColor("#94a3b8").font("Helvetica").fontSize(8).text("Kwitansi ini dicetak otomatis dari sistem pengelola zakat masjid.", 60, signY + 115);

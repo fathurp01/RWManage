@@ -97,6 +97,7 @@ interface TransaksiZisItem {
   alamat_muzaqi: string;
   jumlah_jiwa: number;
   jenis_bayar: "UANG" | "BERAS";
+  jenis_zakat: "FITRAH" | "MAAL";
   nominal_zakat: string | number;
   nominal_infaq: string | number;
   total_beras_kg: string | number;
@@ -205,6 +206,7 @@ export default function MasjidDashboardPage() {
   const [editWaktu, setEditWaktu] = useState("");
   const [editJumlahJiwa, setEditJumlahJiwa] = useState(1);
   const [editJenisBayar, setEditJenisBayar] = useState<"UANG" | "BERAS">("UANG");
+  const [editJenisZakat, setEditJenisZakat] = useState<"FITRAH" | "MAAL">("FITRAH");
   const [editNominalInfaq, setEditNominalInfaq] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -220,6 +222,7 @@ export default function MasjidDashboardPage() {
 
     setEditJumlahJiwa(trx.jumlah_jiwa);
     setEditJenisBayar(trx.jenis_bayar);
+    setEditJenisZakat(trx.jenis_zakat ?? "FITRAH");
     setEditNominalInfaq(String(trx.nominal_infaq || ""));
     setIsEditOpen(true);
   };
@@ -239,6 +242,7 @@ export default function MasjidDashboardPage() {
         waktu_transaksi: new Date(editWaktu).toISOString(),
         jumlah_jiwa: editJumlahJiwa,
         jenis_bayar: editJenisBayar,
+        jenis_zakat: editJenisZakat,
         nominal_infaq: Number(editNominalInfaq || 0),
       });
       toast.success("Data berhasil diperbarui!");
@@ -643,6 +647,7 @@ export default function MasjidDashboardPage() {
                     <tbody className="divide-y divide-slate-100 dark:divide-white/6">
                       {transaksi.map((trx) => {
                         const isUang = trx.jenis_bayar === "UANG";
+                        const isMaal = trx.jenis_zakat === "MAAL";
                         const nominalZakat = Number(trx.nominal_zakat || 0);
                         const nominalInfaq = Number(trx.nominal_infaq || 0);
                         const totalBeras = Number(trx.total_beras_kg || 0);
@@ -669,6 +674,14 @@ export default function MasjidDashboardPage() {
                                   }`}
                               >
                                 {trx.jenis_bayar === "UANG" ? "Uang" : "Beras"}
+                              </span>
+                              <span
+                                className={`mt-1 inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${isMaal
+                                  ? "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300"
+                                  : "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300"
+                                  }`}
+                              >
+                                {isMaal ? "Maal" : "Fitrah"}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right tabular-nums font-medium text-slate-900 dark:text-foreground whitespace-nowrap">
@@ -788,7 +801,7 @@ export default function MasjidDashboardPage() {
         <DialogContent className="rounded-3xl border-2 border-emerald-300 dark:border-emerald-700 bg-white dark:bg-card shadow-2xl sm:max-w-md">
           <DialogHeader className="mb-2">
             <DialogTitle className="text-xl font-extrabold text-slate-900 dark:text-foreground flex items-center gap-2">
-              <Pencil className="size-5 text-blue-600" /> Revisi Data ZIS
+              <Pencil className="size-5 text-emerald-600 dark:text-emerald-300" /> Revisi Data ZIS
             </DialogTitle>
           </DialogHeader>
 
@@ -840,6 +853,17 @@ export default function MasjidDashboardPage() {
                   <option value="UANG">Tunai (Uang)</option>
                   <option value="BERAS">Beras (Kg)</option>
                 </select>
+                <div className="space-y-1.5">
+                  <Label className="font-bold text-slate-700 dark:text-foreground">Jenis Zakat</Label>
+                  <select
+                    className="w-full flex h-11 items-center justify-between rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-card dark:text-white"
+                    value={editJenisZakat}
+                    onChange={(e) => setEditJenisZakat(e.target.value as any)}
+                  >
+                    <option value="FITRAH">Fitrah</option>
+                    <option value="MAAL">Maal</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -857,10 +881,10 @@ export default function MasjidDashboardPage() {
 
             <div className="pt-2 flex flex-col gap-2">
               <div className="text-xs text-slate-500 mb-2 italic">
-                *) Nominal Zakat akan otomatis dihitung ulang secara ketat oleh sistem.
+                *) Nominal Zakat akan otomatis dihitung ulang oleh sistem.
               </div>
               <Button type="submit" variant="masjid" size="lg" className="w-full shadow-lg" disabled={isUpdating}>
-                {isUpdating ? "Menyimpan Ulang..." : "Simpan Revisi ✅"}
+                {isUpdating ? "Menyimpan Ulang..." : "Simpan Revisi"}
               </Button>
             </div>
           </form>

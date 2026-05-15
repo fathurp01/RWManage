@@ -3,9 +3,39 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MiniBarChart } from "@/components/dashboard/MiniBarChart";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  HandCoins,
+  Users,
+  Wheat,
+  Banknote,
+  Search,
+  FilterX,
+  BellRing,
+  Calendar,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface MuzaqiItem {
+  id: string;
+  kode_unik: string;
+  nama_kk: string;
+  alamat_muzaqi: string;
+  jumlah_jiwa: number;
+  jenis_bayar: "UANG" | "BERAS";
+  nominal_zakat: string | number;
+  nominal_infaq: string | number;
+  total_beras_kg: string | number;
+  waktu_transaksi: string;
+}
 
 interface SharedDashboardResponse {
   data: {
@@ -19,16 +49,14 @@ interface SharedDashboardResponse {
       year: number;
       entity: {
         id: string;
-        nama_kompleks?: string;
-        no_rw?: string;
         nama_masjid?: string;
         alamat?: string;
+        nama_kompleks?: string;
+        no_rw?: string;
       };
       summary: Record<string, number>;
       series: Array<{
         month: number;
-        paid_count: number;
-        unpaid_count: number;
         kas_masuk: number;
         kas_keluar: number;
         kas_saldo: number;
@@ -39,175 +67,497 @@ interface SharedDashboardResponse {
   };
 }
 
-const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat("id-ID", {
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const fmt = (v: number) =>
+  new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
     maximumFractionDigits: 0,
-  }).format(value);
-};
+  }).format(v);
 
-const formatDate = (value: string | null): string => {
-  if (!value) {
-    return "Tanpa batas waktu";
-  }
+const fmtTgl = (iso: string) =>
+  new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
 
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
+// ─── Sub-components ──────────────────────────────────────────────────────────
 
-  return new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(parsed);
-};
+function StatCard({
+  icon,
+  label,
+  value,
+  color = "slate",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+  color?: "slate" | "emerald" | "amber" | "teal";
+}) {
+  const palettes = {
+    slate: "border-slate-200/70 dark:border-white/10 bg-white dark:bg-card",
+    emerald:
+      "border-emerald-200/70 dark:border-emerald-800/30 bg-emerald-50/60 dark:bg-emerald-950/20",
+    amber:
+      "border-amber-200/70 dark:border-amber-800/30 bg-amber-50/60 dark:bg-amber-950/20",
+    teal: "border-teal-200/70 dark:border-teal-800/30 bg-teal-50/60 dark:bg-teal-950/20",
+  };
+  const iconPalettes = {
+    slate: "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300",
+    emerald:
+      "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300",
+    amber: "bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300",
+    teal: "bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-300",
+  };
+
+  return (
+    <div
+      className={`rounded-2xl border shadow-sm px-5 py-4 flex flex-col gap-3 ${palettes[color]}`}
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">
+          {label}
+        </p>
+        <span
+          className={`inline-flex size-7 items-center justify-center rounded-lg ${iconPalettes[color]}`}
+        >
+          {icon}
+        </span>
+      </div>
+      <div className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-foreground leading-tight">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PublicSharedDashboardPage() {
   const params = useParams<{ token: string }>();
   const token = params?.token;
 
   const [data, setData] = useState<SharedDashboardResponse["data"] | null>(null);
+  const [muzaqiList, setMuzaqiList] = useState<MuzaqiItem[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [appliedStart, setAppliedStart] = useState("");
+  const [appliedEnd, setAppliedEnd] = useState("");
 
+  useEffect(() => {
+    if (!token) return;
     const fetchData = async () => {
       setIsLoading(true);
       setErrorMessage("");
-
       try {
-        const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api").replace(/\/$/, "");
-        const response = await fetch(`${baseUrl}/public/shared/${encodeURIComponent(token)}`);
-
-        if (!response.ok) {
-          const payload = (await response.json()) as { message?: string };
-          throw new Error(payload.message || "Gagal memuat data transparansi publik.");
+        const baseUrl = (
+          process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api"
+        ).replace(/\/$/, "");
+        const res = await fetch(
+          `${baseUrl}/public/shared/${encodeURIComponent(token)}`
+        );
+        if (!res.ok) {
+          const p = (await res.json()) as { message?: string };
+          throw new Error(p.message || "Gagal memuat data.");
         }
+        const p = (await res.json()) as SharedDashboardResponse;
+        setData(p.data);
 
-        const payload = (await response.json()) as SharedDashboardResponse;
-        setData(payload.data);
-      } catch (error) {
+        // Coba ambil daftar muzaqi (endpoint opsional)
+        try {
+          const mRes = await fetch(
+            `${baseUrl}/public/shared/${encodeURIComponent(token)}/muzaqi`
+          );
+          if (mRes.ok) {
+            const mData = (await mRes.json()) as { data: MuzaqiItem[] };
+            setMuzaqiList(mData.data ?? []);
+          }
+        } catch {
+          setMuzaqiList([]);
+        }
+      } catch (err) {
         setData(null);
-        setErrorMessage(error instanceof Error ? error.message : "Gagal memuat data transparansi publik.");
+        setErrorMessage(
+          err instanceof Error ? err.message : "Gagal memuat data."
+        );
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchData().catch(() => undefined);
   }, [token]);
 
-  const kasChartItems = useMemo(() => {
-    if (!data) {
-      return [];
-    }
+  const filteredMuzaqi = useMemo(() => {
+    if (!muzaqiList.length) return [];
+    return muzaqiList.filter((item) => {
+      const t = new Date(item.waktu_transaksi).getTime();
+      if (appliedStart && t < new Date(appliedStart).getTime()) return false;
+      if (appliedEnd) {
+        const e = new Date(appliedEnd);
+        e.setHours(23, 59, 59, 999);
+        if (t > e.getTime()) return false;
+      }
+      return true;
+    });
+  }, [muzaqiList, appliedStart, appliedEnd]);
 
-    return data.payload.series
-      .filter((item) => item.kas_masuk !== 0 || item.kas_keluar !== 0)
-      .map((item) => ({
-        label: `Bulan ${item.month}`,
-        value: item.kas_saldo,
-        hint: formatCurrency(item.kas_saldo),
-      }));
+  const summary = useMemo(() => {
+    if (!data?.payload?.summary) return null;
+    const s = data.payload.summary;
+    return {
+      totalKk: Number(s.total_kk ?? s.total_transaksi_zis ?? 0),
+      totalJiwa: Number(s.total_jiwa ?? 0),
+      zakatUang: Number(s.zis_zakat ?? s.total_zis_uang_zakat ?? 0),
+      zakatBeras: Number(s.total_beras ?? s.total_zis_beras ?? 0),
+    };
   }, [data]);
 
-  const zisChartItems = useMemo(() => {
-    if (!data || data.payload.scope !== "MASJID") {
-      return [];
-    }
+  const isFiltered = !!appliedStart || !!appliedEnd;
 
-    return data.payload.series
-      .filter((item) => item.zis_uang_zakat !== 0 || item.zis_uang_infaq !== 0)
-      .map((item) => ({
-      label: `Bulan ${item.month}`,
-        value: item.zis_uang_zakat + item.zis_uang_infaq,
-        hint: formatCurrency(item.zis_uang_zakat + item.zis_uang_infaq),
-      }));
-  }, [data]);
+  const computeHijriYear = (date: Date) => {
+    // Algorithm from the astronomical/julian conversion to Islamic calendar
+    const gy = date.getFullYear();
+    const gm = date.getMonth() + 1;
+    const gd = date.getDate();
+
+    const jd = Math.floor((1461 * (gy + 4800 + Math.floor((gm - 14) / 12))) / 4)
+      + Math.floor((367 * (gm - 2 - 12 * Math.floor((gm - 14) / 12))) / 12)
+      - Math.floor((3 * Math.floor((gy + 4900 + Math.floor((gm - 14) / 12)) / 100)) / 4)
+      + gd - 32075;
+
+    let l = jd - 1948440 + 10632;
+    const n = Math.floor((l - 1) / 10631);
+    l = l - 10631 * n + 354;
+    const j = (Math.floor((10985 - l) / 5316)) * (Math.floor((50 * l) / 17719)) + (Math.floor(l / 5670)) * (Math.floor((43 * l) / 15238));
+    l = l - (Math.floor((30 - j) / 15)) * (Math.floor((17719 * j) / 50)) - (Math.floor(j / 16)) * (Math.floor((15238 * j) / 43)) + 29;
+    const m = Math.floor((24 * l) / 709);
+    const d = l - Math.floor((709 * m) / 24);
+    const y = 30 * n + j - 30;
+    return y;
+  };
+
+  const hijriYear = useMemo(() => computeHijriYear(new Date()), []);
+
+  const isMasjidShared = Boolean(data?.payload?.entity?.nama_masjid);
+  const headerTitle = data?.payload?.entity?.nama_masjid
+    ? `Monitor Zakat ${data.payload.entity.nama_masjid}`
+    : data?.payload?.entity?.nama_kompleks
+    ? `Monitor Zakat RW ${data.payload.entity.nama_kompleks}`
+    : "Monitor Zakat Warga";
+
+  const headerDescription = data?.payload?.entity?.nama_masjid
+    ? "Halaman ini bersifat read-only untuk pengunjung masjid."
+    : "Halaman ini bersifat read-only untuk warga.";
+
+  const headerClass = `text-2xl font-extrabold tracking-tight ${isMasjidShared ? "text-emerald-700 dark:text-emerald-400" : "text-slate-900 dark:text-foreground"}`;
+
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-slate-50 to-white dark:from-slate-950 dark:to-black px-4 py-10">
-      <div className="mx-auto w-full max-w-5xl space-y-6">
-        <header className="space-y-3 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <Badge variant="success">Transparansi Publik</Badge>
-            {data ? <Badge variant="outline">{data.link.scope}</Badge> : null}
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {/* Top bar dekoratif */}
+      <div className="h-1 w-full bg-linear-to-r from-emerald-400 via-teal-500 to-emerald-600" />
+
+      <div className="mx-auto w-full max-w-5xl px-4 py-8 space-y-6">
+
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <header className="flex flex-col gap-1">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/25">
+              <HandCoins className="size-5" />
+            </span>
+            <div>
+              <h1 className={headerClass}>
+                {headerTitle}
+              </h1>
+              <p className="text-sm text-slate-500 dark:text-muted-foreground">
+                {headerDescription}
+              </p>
+            </div>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
-            Dashboard Transparansi
-          </h1>
-          <p className="text-base text-slate-500 dark:text-muted-foreground">
-            Data agregat publik dari share-link tokenized.
-          </p>
         </header>
 
+        {/* ── Loading / Error ─────────────────────────────────────────────── */}
         {isLoading ? (
           <Card>
-            <CardContent className="py-12 text-center text-slate-500 dark:text-muted-foreground">
-              Memuat data transparansi...
+            <CardContent className="py-16 flex flex-col items-center gap-3 text-slate-400 dark:text-muted-foreground">
+              <div className="size-8 rounded-full border-4 border-emerald-200 border-t-emerald-500 animate-spin" />
+              <span className="text-sm">Memuat data transparansi...</span>
             </CardContent>
           </Card>
         ) : errorMessage ? (
-          <Card>
-            <CardContent className="py-12 text-center text-rose-600 dark:text-rose-400">
-              {errorMessage}
+          <Card className="border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/20">
+            <CardContent className="py-12 text-center">
+              <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">
+                {errorMessage}
+              </p>
             </CardContent>
           </Card>
         ) : data ? (
           <>
+            {/* ── Pengingat Warga ─────────────────────────────────────────── */}
+            <div className="rounded-2xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/25 p-5 flex gap-4 items-start">
+              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-300 mt-0.5">
+                <BellRing className="size-5" />
+              </span>
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-amber-900 dark:text-amber-100">
+                  Pengingat Warga
+                </p>
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                  Segera Tunaikan Zakat Fitrah {hijriYear}H sebagai penyempurna puasa Ramadhan kita!
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  Jika nama Anda belum terupdate, mohon segera konfirmasi kembali kepada panitia masjid.
+                </p>
+              </div>
+            </div>
+
+            {/* ── Filter Periode ──────────────────────────────────────────── */}
             <Card>
-              <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-                <CardTitle>Informasi Share Link</CardTitle>
+              <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Calendar className="size-4 text-slate-400" />
+                  Filter Periode
+                </CardTitle>
               </CardHeader>
-              <CardContent className="pt-5 grid gap-3 text-sm text-slate-600 dark:text-muted-foreground sm:grid-cols-2">
-                <p>Scope: <strong>{data.link.scope}</strong></p>
-                <p>Tahun Data: <strong>{data.payload.year}</strong></p>
-                <p>Dibuat: <strong>{formatDate(data.link.created_at)}</strong></p>
-                <p>Kedaluwarsa: <strong>{formatDate(data.link.expires_at)}</strong></p>
+              <CardContent className="pt-4">
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-muted-foreground">
+                      Dari Tanggal
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="h-9 rounded-xl border border-input bg-white dark:bg-card px-3 text-sm min-w-28 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-muted-foreground">
+                      Sampai Tanggal
+                    </label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="h-9 rounded-xl border border-input bg-white dark:bg-card px-3 text-sm min-w-28 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => {
+                        setAppliedStart(startDate);
+                        setAppliedEnd(endDate);
+                      }}
+                    >
+                      <Search className="size-3.5" />
+                      Terapkan
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 h-9"
+                      onClick={() => {
+                        setStartDate("");
+                        setEndDate("");
+                        setAppliedStart("");
+                        setAppliedEnd("");
+                      }}
+                    >
+                      <FilterX className="size-3.5" />
+                      Reset
+                    </Button>
+                  </div>
+                </div>
+                {isFiltered && (
+                  <p className="mt-3 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    Filter aktif: {appliedStart || "awal"} → {appliedEnd || "akhir"}
+                  </p>
+                )}
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {Object.entries(data.payload.summary).slice(0, 4).map(([key, value]) => (
-                <Card key={key}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm capitalize">{key.replace(/_/g, " ")}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-2xl font-extrabold text-slate-900 dark:text-foreground">
-                    {key.includes("kas") || key.includes("nominal") || key.includes("zakat") || key.includes("infaq")
-                      ? formatCurrency(value)
-                      : value}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              <MiniBarChart
-                title="Trend Saldo Kas"
-                description="Hanya bulan dengan transaksi kas yang ditampilkan."
-                items={kasChartItems}
-              />
-
-              {data.payload.scope === "MASJID" ? (
-                <MiniBarChart
-                  title="Trend Penerimaan ZIS"
-                  description="Hanya bulan dengan penerimaan zakat atau infaq yang ditampilkan."
-                  items={zisChartItems}
+            {/* ── Ringkasan Stat Cards ─────────────────────────────────────── */}
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-muted-foreground mb-3 px-0.5">
+                Ringkasan Warga Sudah Tunaikan
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <StatCard
+                  color="slate"
+                  icon={<Users className="size-4" />}
+                  label="Total KK"
+                  value={
+                    <span>
+                      {summary?.totalKk ?? 0}{" "}
+                      <span className="text-sm font-semibold text-slate-400">KK</span>
+                    </span>
+                  }
                 />
-              ) : null}
+                <StatCard
+                  color="slate"
+                  icon={<Users className="size-4" />}
+                  label="Total Jiwa"
+                  value={
+                    <span>
+                      {summary?.totalJiwa ?? 0}{" "}
+                      <span className="text-sm font-semibold text-slate-400">jiwa</span>
+                    </span>
+                  }
+                />
+                <StatCard
+                  color="emerald"
+                  icon={<Banknote className="size-4" />}
+                  label="Zakat Uang"
+                  value={fmt(summary?.zakatUang ?? 0)}
+                />
+                <StatCard
+                  color="amber"
+                  icon={<Wheat className="size-4" />}
+                  label="Zakat Beras"
+                  value={
+                    <span>
+                      {(summary?.zakatBeras ?? 0).toFixed(1)}{" "}
+                      <span className="text-sm font-semibold ">kg</span>
+                    </span>
+                  }
+                />
+              </div>
             </div>
+
+            {/* ── Daftar Muzaqi ────────────────────────────────────────────── */}
+            <Card>
+              <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-base">
+                      Daftar Muzaqi Sudah Tunaikan
+                    </CardTitle>
+                    <CardDescription className="mt-0.5">
+                      {filteredMuzaqi.length > 0
+                        ? `${filteredMuzaqi.length} muzaqi${isFiltered ? " · terfilter" : ""}`
+                        : "Data akan tampil di sini"}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-0">
+                {filteredMuzaqi.length === 0 ? (
+                  <div className="py-14 flex flex-col items-center gap-3 text-center">
+                    <span className="text-4xl opacity-30">📋</span>
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-slate-600 dark:text-foreground/70">
+                        Data daftar muzaqi belum tersedia
+                      </p>
+                      <p className="text-xs text-slate-400 dark:text-muted-foreground">
+                        Ringkasan total sudah ditampilkan di atas.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 dark:border-white/8 bg-slate-50/60 dark:bg-white/3">
+                          {[
+                            ["Nama KK", "text-left"],
+                            ["Alamat", "text-left"],
+                            ["Jiwa", "text-center"],
+                            ["Jenis", "text-center"],
+                            ["Nominal Zakat", "text-right"],
+                            ["Infaq", "text-right"],
+                            ["Status", "text-center"],
+                            ["Waktu", "text-left"],
+                          ].map(([label, align]) => (
+                            <th
+                              key={label}
+                              className={`px-4 py-3 ${align} text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground whitespace-nowrap`}
+                            >
+                              {label}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-white/6">
+                        {filteredMuzaqi.map((trx, idx) => {
+                          const isUang = trx.jenis_bayar === "UANG";
+                          const nominalZakat = Number(trx.nominal_zakat || 0);
+                          const nominalInfaq = Number(trx.nominal_infaq || 0);
+                          const totalBeras = Number(trx.total_beras_kg || 0);
+                          return (
+                            <tr
+                              key={trx.id}
+                              className={`hover:bg-slate-50/70 dark:hover:bg-white/3 transition-colors ${
+                                idx % 2 === 0 ? "" : "bg-slate-50/30 dark:bg-white/1"
+                              }`}
+                            >
+                              <td className="px-4 py-3 font-semibold text-slate-900 dark:text-foreground whitespace-nowrap">
+                                {trx.nama_kk}
+                              </td>
+                              <td className="px-4 py-3 text-slate-500 dark:text-foreground/70 whitespace-nowrap">
+                                {trx.alamat_muzaqi}
+                              </td>
+                              <td className="px-4 py-3 text-center font-medium text-slate-700 dark:text-foreground/80">
+                                {trx.jumlah_jiwa}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span
+                                  className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                                    isUang
+                                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                                  }`}
+                                >
+                                  {isUang ? "Uang" : "Beras"}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right tabular-nums font-semibold text-slate-800 dark:text-foreground whitespace-nowrap">
+                                {isUang
+                                  ? fmt(nominalZakat)
+                                  : `${totalBeras.toFixed(2)} kg`}
+                              </td>
+                              <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-foreground/80 whitespace-nowrap">
+                                {fmt(nominalInfaq)}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                  ✓ Tunaikan
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-slate-500 dark:text-muted-foreground whitespace-nowrap text-xs">
+                                {fmtTgl(trx.waktu_transaksi)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </>
         ) : null}
 
-        <div className="text-center">
-          <Link href="/transparansi" className="text-sm font-semibold text-indigo-600 hover:underline underline-offset-4">
-            Kembali ke halaman transparansi
+        {/* ── Footer ─────────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-center pt-2 pb-6">
+          <Link
+            href="/transparansi"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg shadow-sm transition-colors"
+          >
+            ← Kembali ke halaman transparansi
           </Link>
         </div>
       </div>

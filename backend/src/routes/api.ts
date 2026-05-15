@@ -57,6 +57,7 @@ import {
   createMasjidShareLink,
   createRwShareLink,
   getPublicSharedDashboard,
+  getPublicSharedMuzaqi,
   listMasjidShareLinks,
   listRwShareLinks,
   revokeMasjidShareLink,
@@ -1756,6 +1757,12 @@ router.get(
   publicRateLimit,
   validateParams(shareLinkTokenParamsSchema),
   getPublicSharedDashboard
+);
+router.get(
+  "/public/shared/:token/muzaqi",
+  publicRateLimit,
+  validateParams(shareLinkTokenParamsSchema),
+  getPublicSharedMuzaqi
 );
 
 export default router;

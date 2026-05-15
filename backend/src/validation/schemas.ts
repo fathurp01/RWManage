@@ -320,6 +320,10 @@ export const createTransaksiZisSchema = z.object({
   alamat_muzaqi: z.string().trim().min(3).max(1000),
   jumlah_jiwa: z.coerce.number().int().positive(),
   jenis_bayar: z.enum(["UANG", "BERAS"]),
+  jenis_zakat: z.enum(["FITRAH", "MAAL"]).optional(),
+  // For MAAL: nilai_harta (total asset value) and optional nominal_zakat (if admin calculates externally)
+  nilai_harta: z.coerce.number().min(0).optional(),
+  nominal_zakat: z.coerce.number().min(0).optional(),
   nominal_infaq: z.coerce.number().min(0).optional(),
   waktu_transaksi: z.string().datetime({ offset: true }).optional(),
 });
@@ -349,6 +353,8 @@ export const updateTransaksiZisSchema = z.object({
   alamat_muzaqi: z.string().trim().min(3).max(1000).optional(),
   jumlah_jiwa: z.coerce.number().int().positive().optional(),
   jenis_bayar: z.enum(["UANG", "BERAS"]).optional(),
+  jenis_zakat: z.enum(["FITRAH", "MAAL"]).optional(),
+  nilai_harta: z.coerce.number().min(0).optional(),
   nominal_zakat: z.coerce.number().min(0).optional(),
   nominal_infaq: z.coerce.number().min(0).optional(),
   total_beras_kg: z.coerce.number().min(0).optional(),
