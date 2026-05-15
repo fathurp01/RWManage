@@ -148,8 +148,8 @@ export default function MasjidReportPage() {
 
   const chartItems = report
     ? report.series
-        .filter((item) => item.kas_masuk !== 0 || item.kas_keluar !== 0)
-        .map((item) => ({
+      .filter((item) => item.kas_masuk !== 0 || item.kas_keluar !== 0)
+      .map((item) => ({
         label: item.label,
         value: item.kas_saldo,
         hint: formatCurrency(item.kas_saldo),
@@ -170,7 +170,7 @@ export default function MasjidReportPage() {
             Laporan Masjid Bulanan
           </h1>
           <p className="text-base text-slate-500 dark:text-muted-foreground">
-            Pilih periode lalu unduh hasilnya dalam PDF atau Excel.
+            Pilih periode lalu unduh hasilnya dalam PDF.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -182,10 +182,10 @@ export default function MasjidReportPage() {
             <FileText className="size-4" />
             PDF
           </Button>
-          <Button variant="masjid" className="gap-2" onClick={() => handleExport("XLSX")} disabled={isLoading}>
+          {/* <Button variant="masjid" className="gap-2" onClick={() => handleExport("XLSX")} disabled={isLoading}>
             <FileDown className="size-4" />
             Excel
-          </Button>
+          </Button> */}
         </div>
       </header>
 
@@ -242,10 +242,10 @@ export default function MasjidReportPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle>Total Transaksi ZIS</CardTitle>
+                <CardTitle>ZIS Beras</CardTitle>
               </CardHeader>
-              <CardContent className="text-3xl font-extrabold text-slate-900 dark:text-foreground">
-                {report.summary.total_transaksi_zis}
+              <CardContent className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-300">
+                {report.summary.total_zis_beras_kg} <span className="text-sm font-medium text-slate-500">kg</span>
               </CardContent>
             </Card>
             <Card>
@@ -258,31 +258,31 @@ export default function MasjidReportPage() {
             </Card>
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle>Kas Masuk</CardTitle>
+                <CardTitle>ZIS Infaq</CardTitle>
               </CardHeader>
-              <CardContent className="text-2xl font-extrabold text-slate-900 dark:text-foreground">
-                {formatCurrency(report.summary.total_kas_masuk)}
+              <CardContent className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-300">
+                {formatCurrency(report.summary.total_zis_uang_infaq)}
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle>Saldo Kas</CardTitle>
               </CardHeader>
-              <CardContent className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-300">
+              <CardContent className="text-2xl font-extrabold text-slate-900 dark:text-foreground">
                 {formatCurrency(report.summary.saldo_kas)}
               </CardContent>
             </Card>
           </div>
 
           <MiniBarChart
-            title="Grafik Saldo Bulanan"
+            title={`Grafik Saldo Kas Bulanan Tahun ${tahun}`}
             description="Hanya bulan dengan transaksi kas yang ditampilkan."
             items={chartItems}
           />
 
           <Card>
             <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-              <CardTitle>Rincian Bulanan</CardTitle>
+              <CardTitle>Rincian Bulanan Tahun {tahun}</CardTitle>
             </CardHeader>
             <CardContent className="pt-5">
               <Table>
@@ -291,10 +291,10 @@ export default function MasjidReportPage() {
                     <TableHead>Bulan</TableHead>
                     <TableHead>Kas Masuk</TableHead>
                     <TableHead>Kas Keluar</TableHead>
+                    <TableHead>Saldo Kas</TableHead>
                     <TableHead>ZIS Zakat</TableHead>
                     <TableHead>ZIS Infaq</TableHead>
-                    <TableHead>Beras (Kg)</TableHead>
-                    <TableHead>Saldo</TableHead>
+                    <TableHead>ZIS Beras (Kg)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -303,12 +303,12 @@ export default function MasjidReportPage() {
                       <TableCell className="font-semibold">{item.label}</TableCell>
                       <TableCell>{formatCurrency(item.kas_masuk)}</TableCell>
                       <TableCell>{formatCurrency(item.kas_keluar)}</TableCell>
-                      <TableCell>{formatCurrency(item.zis_uang_zakat)}</TableCell>
-                      <TableCell>{formatCurrency(item.zis_uang_infaq)}</TableCell>
-                      <TableCell>{item.zis_beras_kg.toFixed(2)}</TableCell>
                       <TableCell className={item.kas_saldo >= 0 ? "text-emerald-600" : "text-rose-600"}>
                         {formatCurrency(item.kas_saldo)}
                       </TableCell>
+                      <TableCell>{formatCurrency(item.zis_uang_zakat)}</TableCell>
+                      <TableCell>{formatCurrency(item.zis_uang_infaq)}</TableCell>
+                      <TableCell>{item.zis_beras_kg.toFixed(2)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

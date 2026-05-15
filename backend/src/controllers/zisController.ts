@@ -600,6 +600,60 @@ export const deleteTransaksiZis = async (
       return;
     }
 
+
+
+    // Check if deleting this transaction will make ZIS distribution balance negative
+    const balances = await getAvailableZisBalance(prisma, authorizedMasjidId);
+    const settings = await prisma.pengaturanZis.findUnique({ where: { masjid_id: authorizedMasjidId } });
+    
+    if (settings) {
+      const trans = await prisma.transaksiZis.findUnique({ where: { id: transaksi_id } });
+      if (trans) {
+        const categories = ["FAKIR", "AMIL", "FISABILILLAH", "LAINNYA"];
+        const zakatNominal = Number(trans.nominal_zakat || 0);
+        const berasNominal = Number(trans.total_beras_kg || 0);
+        
+        for (const cat of categories) {
+          const catKey = cat as "FAKIR" | "AMIL" | "FISABILILLAH" | "LAINNYA";
+          const percent = Number(settings[`persen_${cat.toLowerCase()}` as keyof typeof settings] || 0);
+          
+          const reductionUang = (percent / 100) * zakatNominal;
+          const reductionBeras = (percent / 100) * berasNominal;
+          
+          // Re-calculate used amount without Math.max(0) to see the true debt
+          const sumDist = await prisma.pencatatanDistribusi.aggregate({
+            where: { masjid_id: authorizedMasjidId, kategori: cat as any, jenis: "UANG" },
+            _sum: { nominal: true }
+          });
+          const sumBeras = await prisma.pencatatanDistribusi.aggregate({
+            where: { masjid_id: authorizedMasjidId, kategori: cat as any, jenis: "BERAS" },
+            _sum: { nominal: true }
+          });
+          
+          const totalUang = await prisma.transaksiZis.aggregate({
+            where: { masjid_id: authorizedMasjidId, id: { not: transaksi_id } },
+            _sum: { nominal_zakat: true }
+          });
+          const totalBeras = await prisma.transaksiZis.aggregate({
+            where: { masjid_id: authorizedMasjidId, id: { not: transaksi_id } },
+            _sum: { total_beras_kg: true }
+          });
+          
+          const newAllocUang = (percent / 100) * Number(totalUang._sum.nominal_zakat || 0);
+          const newAllocBeras = (percent / 100) * Number(totalBeras._sum.total_beras_kg || 0);
+          
+          if (newAllocUang < Number(sumDist._sum.nominal || 0)) {
+            res.status(400).json({ success: false, message: `Tidak bisa menghapus. Dana zakat kategori ${cat} sudah terdistribusi melebihi sisa alokasi baru.` });
+            return;
+          }
+          if (newAllocBeras < Number(sumBeras._sum.nominal || 0)) {
+            res.status(400).json({ success: false, message: `Tidak bisa menghapus. Beras kategori ${cat} sudah terdistribusi melebihi sisa alokasi baru.` });
+            return;
+          }
+        }
+      }
+    }
+
     await prisma.transaksiZis.delete({ where: { id: transaksi_id } });
     res.status(200).json({ success: true, message: "Transaksi ZIS berhasil dihapus." });
   } catch {
@@ -673,10 +727,70 @@ export const updateTransaksiZis = async (
     let calculatedZakatUang = 0;
     let calculatedTotalBeras = 0;
 
+    const bodyNominalZakat = (req.body as any).nominal_zakat;
+    const bodyTotalBeras = (req.body as any).total_beras_kg;
+
     if (finalJenisBayar === JenisBayar.UANG) {
-      calculatedZakatUang = Math.round((finalJumlahJiwa ?? 0) * 2.5 * Number(pengaturan.harga_beras_per_kg));
+      if (bodyNominalZakat !== undefined && bodyNominalZakat !== "" && !Number.isNaN(Number(bodyNominalZakat)) && Number(bodyNominalZakat) > 0) {
+        calculatedZakatUang = Math.round(Number(bodyNominalZakat));
+      } else {
+        calculatedZakatUang = Math.round((finalJumlahJiwa ?? 0) * 2.5 * Number(pengaturan.harga_beras_per_kg));
+      }
     } else if (finalJenisBayar === JenisBayar.BERAS) {
-      calculatedTotalBeras = (finalJumlahJiwa ?? 0) * 2.5; 
+      if (bodyTotalBeras !== undefined && bodyTotalBeras !== "" && !Number.isNaN(Number(bodyTotalBeras)) && Number(bodyTotalBeras) > 0) {
+        calculatedTotalBeras = Number(bodyTotalBeras);
+      } else {
+        calculatedTotalBeras = (finalJumlahJiwa ?? 0) * 2.5; 
+      }
+    }
+
+    // Check if update will make ZIS distribution balance negative
+    const settings = await prisma.pengaturanZis.findUnique({ where: { masjid_id: authorizedMasjidId } });
+    if (settings) {
+      const categories = ["FAKIR", "AMIL", "FISABILILLAH", "LAINNYA"];
+      for (const cat of categories) {
+        const percent = Number(settings[`persen_${cat.toLowerCase()}` as keyof typeof settings] || 0);
+        
+        const sumDist = await prisma.pencatatanDistribusi.aggregate({
+          where: { masjid_id: authorizedMasjidId, kategori: cat as any, jenis: "UANG" },
+          _sum: { nominal: true }
+        });
+        const sumBeras = await prisma.pencatatanDistribusi.aggregate({
+          where: { masjid_id: authorizedMasjidId, kategori: cat as any, jenis: "BERAS" },
+          _sum: { nominal: true }
+        });
+        
+        // Projected total after update
+        const allTransactions = await prisma.transaksiZis.findMany({
+          where: { masjid_id: authorizedMasjidId },
+          select: { id: true, nominal_zakat: true, total_beras_kg: true }
+        });
+        
+        let newTotalUang = 0;
+        let newTotalBeras = 0;
+        
+        for (const t of allTransactions) {
+          if (t.id === transaksi_id) {
+            newTotalUang += calculatedZakatUang;
+            newTotalBeras += calculatedTotalBeras;
+          } else {
+            newTotalUang += Number(t.nominal_zakat || 0);
+            newTotalBeras += Number(t.total_beras_kg || 0);
+          }
+        }
+        
+        const newAllocUang = (percent / 100) * newTotalUang;
+        const newAllocBeras = (percent / 100) * newTotalBeras;
+        
+        if (newAllocUang < Number(sumDist._sum.nominal || 0)) {
+          res.status(400).json({ success: false, message: `Tidak bisa mengubah. Dana zakat kategori ${cat} sudah terdistribusi melebihi alokasi baru.` });
+          return;
+        }
+        if (newAllocBeras < Number(sumBeras._sum.nominal || 0)) {
+          res.status(400).json({ success: false, message: `Tidak bisa mengubah. Beras kategori ${cat} sudah terdistribusi melebihi alokasi baru.` });
+          return;
+        }
+      }
     }
 
     const updated = await prisma.transaksiZis.update({

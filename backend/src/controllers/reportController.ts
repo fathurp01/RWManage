@@ -574,25 +574,6 @@ const buildMasjidReport = async (req: Request): Promise<MasjidReportPayload | nu
   };
 };
 
-const sendPdf = async (res: Response, filename: string, title: string, lines: string[]) => {
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-
-  const doc = new PDFDocument({ margin: 40, size: "A4" });
-  doc.pipe(res);
-
-  doc.fontSize(18).font("Helvetica-Bold").text(title);
-  doc.moveDown(0.5);
-  doc.fontSize(10).font("Helvetica").text(`Dicetak: ${new Date().toLocaleString("id-ID")}`);
-  doc.moveDown();
-
-  lines.forEach((line) => {
-    doc.fontSize(11).text(line, { lineGap: 4 });
-  });
-
-  doc.end();
-};
-
 const addSummarySheet = (workbook: ExcelJS.Workbook, title: string, rows: Array<[string, string]>) => {
   const sheet = workbook.addWorksheet("Ringkasan");
   sheet.addRow([title]);
@@ -678,13 +659,12 @@ const exportMasjidExcel = async (res: Response, report: MasjidReportPayload) => 
     ["Alamat", report.masjid.alamat],
     ["RW", `${report.masjid.blok_wilayah.no_rw} - ${report.masjid.blok_wilayah.nama_kompleks}`],
     ["RT / Blok", `${report.masjid.blok_wilayah.no_rt ?? "-"} / ${report.masjid.blok_wilayah.nama_blok}`],
-    ["Transaksi ZIS", String(report.summary.total_transaksi_zis)],
+    ["Total Beras (Kg)", report.summary.total_zis_beras_kg.toFixed(2)],
     ["ZIS Zakat", formatCurrency(report.summary.total_zis_uang_zakat)],
     ["ZIS Infaq", formatCurrency(report.summary.total_zis_uang_infaq)],
-    ["Beras (Kg)", report.summary.total_zis_beras_kg.toFixed(2)],
-    ["Kas Masuk", formatCurrency(report.summary.total_kas_masuk)],
-    ["Kas Keluar", formatCurrency(report.summary.total_kas_keluar)],
-    ["Saldo Kas", formatCurrency(report.summary.saldo_kas)],
+    ["Total Kas Masuk", formatCurrency(report.summary.total_kas_masuk)],
+    ["Total Kas Keluar", formatCurrency(report.summary.total_kas_keluar)],
+    ["Saldo Kas Saat Ini", formatCurrency(report.summary.saldo_kas)],
   ]);
   addSeriesSheet(workbook, report.series);
 
@@ -754,41 +734,92 @@ export const exportRwReport = async (req: Request, res: Response): Promise<void>
     const report = await buildRwReport(req);
 
     if (!report) {
-      res.status(403).json({
-        success: false,
-        message: "Akses ditolak atau RW tidak ditemukan.",
-      });
+      res.status(403).json({ success: false, message: "Laporan tidak ditemukan." });
       return;
     }
 
     const format = String((req.query as ReportQuery).format ?? "PDF").toUpperCase() as ReportFormat;
-
     if (format === "XLSX") {
       await exportRwExcel(res, report);
       return;
     }
 
     const filename = `laporan-rw-${report.periode.tahun}${report.periode.bulan ? `-${String(report.periode.bulan).padStart(2, "0")}` : ""}.pdf`;
-    await sendPdf(res, filename, `Laporan RW - ${report.periode.label}`, [
-      `RW: ${report.wilayah_rw.no_rw} - ${report.wilayah_rw.nama_kompleks}`,
-      `Total warga aktif: ${report.summary.total_warga}`,
-      `Iuran lunas: ${report.summary.total_iuran_lunas_count} (${formatCurrency(report.summary.total_iuran_lunas_nominal)})`,
-      `Iuran belum: ${report.summary.total_iuran_belum_count} (${formatCurrency(report.summary.total_iuran_belum_nominal)})`,
-      `Kas masuk: ${formatCurrency(report.summary.total_kas_masuk)}`,
-      `Kas keluar: ${formatCurrency(report.summary.total_kas_keluar)}`,
-      `Saldo kas: ${formatCurrency(report.summary.saldo_kas)}`,
-      "",
-      "Series bulanan:",
-      ...report.series.map(
-        (item) =>
-          `${item.label}: iuran lunas ${item.iuran_lunas_count}, iuran belum ${item.iuran_belum_count}, kas masuk ${formatCurrency(item.kas_masuk)}, kas keluar ${formatCurrency(item.kas_keluar)}, saldo ${formatCurrency(item.kas_saldo)}`
-      ),
-    ]);
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error instanceof Error ? error.message : "Terjadi kesalahan saat mengunduh laporan RW.",
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    doc.pipe(res);
+
+    // Header logic
+    doc.fontSize(18).font("Helvetica-Bold").fillColor("#1e293b").text("Laporan RW Bulanan", { align: "left" });
+    doc.moveDown(0.2);
+    doc.fontSize(10).font("Helvetica").fillColor("#64748b").text(`Periode: ${report.periode.label}`);
+    doc.text(`Dicetak: ${new Date().toLocaleString("id-ID")}`);
+    doc.moveDown(1.5);
+
+    // Summary Block
+    doc.fontSize(12).font("Helvetica-Bold").fillColor("#1e293b").text("Ringkasan Wilayah", { underline: true });
+    doc.moveDown(0.5);
+    doc.fontSize(10).font("Helvetica").fillColor("#334155");
+    doc.text(`Kompleks: ${report.wilayah_rw.nama_kompleks}`);
+    doc.text(`No RW: ${report.wilayah_rw.no_rw}`);
+    doc.text(`Total Warga: ${report.summary.total_warga}`);
+    doc.moveDown();
+
+    doc.fontSize(12).font("Helvetica-Bold").text("Ringkasan Keuangan");
+    doc.moveDown(0.5);
+    const summaryX1 = 40;
+    const summaryX2 = 300;
+    let currentY = doc.y;
+
+    doc.fontSize(10).font("Helvetica");
+    doc.text(`Iuran Lunas: ${report.summary.total_iuran_lunas_count} (${formatCurrency(report.summary.total_iuran_lunas_nominal)})`, summaryX1, currentY);
+    doc.text(`Total Kas Masuk: ${formatCurrency(report.summary.total_kas_masuk)}`, summaryX2, currentY);
+    currentY += 15;
+    doc.text(`Iuran Belum: ${report.summary.total_iuran_belum_count} (${formatCurrency(report.summary.total_iuran_belum_nominal)})`, summaryX1, currentY);
+    doc.text(`Total Kas Keluar: ${formatCurrency(report.summary.total_kas_keluar)}`, summaryX2, currentY);
+    currentY += 20;
+    doc.font("Helvetica-Bold").text(`Saldo Kas Akhir: ${formatCurrency(report.summary.saldo_kas)}`, summaryX1, currentY);
+    
+    doc.moveDown(2);
+
+    // Table
+    const headers = ["Bulan", "Lunas", "Belum", "Masuk", "Keluar", "Saldo"];
+    const colWidths = [80, 80, 80, 90, 90, 90];
+    let tableY = doc.y;
+
+    const drawRow = (data: string[], isHeader = false) => {
+        const h = 20;
+        if (tableY + h > 750) {
+            doc.addPage();
+            tableY = 40;
+        }
+        let x = 40;
+        doc.font(isHeader ? "Helvetica-Bold" : "Helvetica").fontSize(9);
+        data.forEach((text, i) => {
+            doc.rect(x, tableY, colWidths[i], h).stroke();
+            doc.text(text, x + 5, tableY + 6, { width: colWidths[i] - 10, align: "left" });
+            x += colWidths[i];
+        });
+        tableY += h;
+    };
+
+    drawRow(headers, true);
+    report.series.forEach(item => {
+        drawRow([
+            item.label,
+            String(item.iuran_lunas_count),
+            String(item.iuran_belum_count),
+            formatCurrency(item.kas_masuk),
+            formatCurrency(item.kas_keluar),
+            formatCurrency(item.kas_saldo)
+        ]);
     });
+
+    doc.end();
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Gagal ekspor laporan." });
   }
 };
 
@@ -797,44 +828,92 @@ export const exportMasjidReport = async (req: Request, res: Response): Promise<v
     const report = await buildMasjidReport(req);
 
     if (!report) {
-      res.status(403).json({
-        success: false,
-        message: "Akses ditolak atau masjid tidak ditemukan.",
-      });
+      res.status(403).json({ success: false, message: "Laporan tidak ditemukan." });
       return;
     }
 
     const format = String((req.query as ReportQuery).format ?? "PDF").toUpperCase() as ReportFormat;
-
     if (format === "XLSX") {
       await exportMasjidExcel(res, report);
       return;
     }
 
     const filename = `laporan-masjid-${report.periode.tahun}${report.periode.bulan ? `-${String(report.periode.bulan).padStart(2, "0")}` : ""}.pdf`;
-    await sendPdf(res, filename, `Laporan Masjid - ${report.periode.label}`, [
-      `Masjid: ${report.masjid.nama_masjid}`,
-      `Alamat: ${report.masjid.alamat}`,
-      `RW: ${report.masjid.blok_wilayah.no_rw} - ${report.masjid.blok_wilayah.nama_kompleks}`,
-      `RT / Blok: ${report.masjid.blok_wilayah.no_rt ?? "-"} / ${report.masjid.blok_wilayah.nama_blok}`,
-      `Transaksi ZIS: ${report.summary.total_transaksi_zis}`,
-      `ZIS zakat: ${formatCurrency(report.summary.total_zis_uang_zakat)}`,
-      `ZIS infaq: ${formatCurrency(report.summary.total_zis_uang_infaq)}`,
-      `Beras (Kg): ${report.summary.total_zis_beras_kg.toFixed(2)}`,
-      `Kas masuk: ${formatCurrency(report.summary.total_kas_masuk)}`,
-      `Kas keluar: ${formatCurrency(report.summary.total_kas_keluar)}`,
-      `Saldo kas: ${formatCurrency(report.summary.saldo_kas)}`,
-      "",
-      "Series bulanan:",
-      ...report.series.map(
-        (item) =>
-          `${item.label}: kas masuk ${formatCurrency(item.kas_masuk)}, kas keluar ${formatCurrency(item.kas_keluar)}, saldo ${formatCurrency(item.kas_saldo)}, zakat ${formatCurrency(item.zis_uang_zakat)}, infaq ${formatCurrency(item.zis_uang_infaq)}, beras ${item.zis_beras_kg.toFixed(2)} Kg`
-      ),
-    ]);
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error instanceof Error ? error.message : "Terjadi kesalahan saat mengunduh laporan masjid.",
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    doc.pipe(res);
+
+    // Header logic
+    doc.fontSize(18).font("Helvetica-Bold").fillColor("#059669").text("Laporan Masjid Bulanan", { align: "left" });
+    doc.moveDown(0.2);
+    doc.fontSize(10).font("Helvetica").fillColor("#64748b").text(`Periode: ${report.periode.label}`);
+    doc.text(`Dicetak: ${new Date().toLocaleString("id-ID")}`);
+    doc.moveDown(1.5);
+
+    // Info Block
+    doc.fontSize(12).font("Helvetica-Bold").fillColor("#1e293b").text("Informasi Masjid", { underline: true });
+    doc.moveDown(0.5);
+    doc.fontSize(10).font("Helvetica").fillColor("#334155");
+    doc.text(`Nama Masjid: ${report.masjid.nama_masjid}`);
+    doc.text(`Alamat: ${report.masjid.alamat}`);
+    doc.text(`Wilayah: RW ${report.masjid.blok_wilayah.no_rw}, RT ${report.masjid.blok_wilayah.no_rt ?? "-"} / Blok ${report.masjid.blok_wilayah.nama_blok}`);
+    doc.moveDown();
+
+    // Summary ZIS & Kas
+    doc.fontSize(12).font("Helvetica-Bold").text("Ringkasan Keuangan");
+    doc.moveDown(0.5);
+    let currentY = doc.y;
+    doc.fontSize(10).font("Helvetica");
+    
+    // Left Column
+    doc.text(`ZIS Zakat: ${formatCurrency(report.summary.total_zis_uang_zakat)}`, 40, currentY);
+    doc.text(`ZIS Infaq: ${formatCurrency(report.summary.total_zis_uang_infaq)}`, 40, currentY + 15);
+    doc.text(`Total Beras: ${report.summary.total_zis_beras_kg.toFixed(2)} kg`, 40, currentY + 30);
+
+    // Right Column
+    doc.text(`Total Kas Masuk: ${formatCurrency(report.summary.total_kas_masuk)}`, 300, currentY);
+    doc.text(`Total Kas Keluar: ${formatCurrency(report.summary.total_kas_keluar)}`, 300, currentY + 15);
+    doc.font("Helvetica-Bold").text(`Saldo Kas Akhir: ${formatCurrency(report.summary.saldo_kas)}`, 300, currentY + 30);
+    
+    doc.moveDown(4);
+
+    // Table
+    const headers = ["Bulan", "Kas Masuk", "Kas Keluar", "Zakat", "Infaq", "Beras"];
+    const colWidths = [70, 95, 95, 95, 95, 60];
+    let tableY = doc.y;
+
+    const drawRow = (data: string[], isHeader = false) => {
+        const h = 22;
+        if (tableY + h > 750) {
+            doc.addPage();
+            tableY = 40;
+        }
+        let x = 40;
+        doc.font(isHeader ? "Helvetica-Bold" : "Helvetica").fontSize(8);
+        data.forEach((text, i) => {
+            doc.rect(x, tableY, colWidths[i], h).strokeColor("#e2e8f0").stroke();
+            doc.text(text, x + 4, tableY + 7, { width: colWidths[i] - 8, align: "left" });
+            x += colWidths[i];
+        });
+        tableY += h;
+    };
+
+    drawRow(headers, true);
+    report.series.forEach(item => {
+        drawRow([
+            item.label,
+            formatCurrency(item.kas_masuk),
+            formatCurrency(item.kas_keluar),
+            formatCurrency(item.zis_uang_zakat),
+            formatCurrency(item.zis_uang_infaq),
+            `${item.zis_beras_kg.toFixed(1)} kg`
+        ]);
     });
+
+    doc.end();
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Gagal ekspor laporan." });
   }
 };

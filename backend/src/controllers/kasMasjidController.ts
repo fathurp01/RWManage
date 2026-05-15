@@ -126,6 +126,33 @@ export const createKasMasjid = async (
       return;
     }
 
+    if (jenis_transaksi === JenisTransaksi.KELUAR) {
+      const aggregate = await prisma.kasMasjid.aggregate({
+        where: { masjid_id: authorizedMasjidId },
+        _sum: { nominal: true },
+      });
+
+      const totalMasuk = await prisma.kasMasjid.aggregate({
+        where: { masjid_id: authorizedMasjidId, jenis_transaksi: JenisTransaksi.MASUK },
+        _sum: { nominal: true },
+      });
+
+      const totalKeluar = await prisma.kasMasjid.aggregate({
+        where: { masjid_id: authorizedMasjidId, jenis_transaksi: JenisTransaksi.KELUAR },
+        _sum: { nominal: true },
+      });
+
+      const currentSaldo = Number(totalMasuk._sum.nominal || 0) - Number(totalKeluar._sum.nominal || 0);
+
+      if (nominalKas > currentSaldo) {
+        res.status(400).json({
+          success: false,
+          message: `Saldo tidak mencukupi. Saldo saat ini: Rp ${currentSaldo.toLocaleString("id-ID")}`,
+        });
+        return;
+      }
+    }
+
     let tanggalParsed = new Date();
     if (tanggal) {
       const testDate = new Date(tanggal);
@@ -352,6 +379,8 @@ export const updateKasMasjid = async (
       select: {
         id: true,
         masjid_id: true,
+        jenis_transaksi: true,
+        nominal: true,
       },
     });
 
@@ -440,6 +469,37 @@ export const updateKasMasjid = async (
       dataToUpdate.bukti_url = bukti_url.trim() ? bukti_url : null;
     }
 
+    // Check for negative balance if this update changes nominal or type
+    const finalJenis = dataToUpdate.jenis_transaksi ?? existingKas.jenis_transaksi;
+    const finalNominal = dataToUpdate.nominal ? Number(dataToUpdate.nominal) : Number(existingKas.nominal);
+
+    if (finalJenis === JenisTransaksi.KELUAR || (existingKas.jenis_transaksi === JenisTransaksi.MASUK && finalJenis === JenisTransaksi.MASUK)) {
+        const totalMasuk = await prisma.kasMasjid.aggregate({
+          where: { masjid_id: authorizedMasjidId, jenis_transaksi: JenisTransaksi.MASUK, id: { not: kas_id } },
+          _sum: { nominal: true },
+        });
+
+        const totalKeluar = await prisma.kasMasjid.aggregate({
+          where: { masjid_id: authorizedMasjidId, jenis_transaksi: JenisTransaksi.KELUAR, id: { not: kas_id } },
+          _sum: { nominal: true },
+        });
+
+        let projectedSaldo = Number(totalMasuk._sum.nominal || 0) - Number(totalKeluar._sum.nominal || 0);
+        if (finalJenis === JenisTransaksi.MASUK) {
+            projectedSaldo += finalNominal;
+        } else {
+            projectedSaldo -= finalNominal;
+        }
+
+        if (projectedSaldo < 0) {
+          res.status(400).json({
+            success: false,
+            message: "Transaksi ini akan menyebabkan saldo menjadi negatif.",
+          });
+          return;
+        }
+    }
+
     const updatedKas = await prisma.kasMasjid.update({
       where: { id: kas_id },
       data: dataToUpdate,
@@ -497,6 +557,8 @@ export const deleteKasMasjid = async (
       select: {
         id: true,
         masjid_id: true,
+        jenis_transaksi: true,
+        nominal: true,
       },
     });
 
@@ -515,6 +577,28 @@ export const deleteKasMasjid = async (
         message: "Akses ditolak. Anda tidak memiliki akses ke data kas ini.",
       });
       return;
+    }
+
+    if (existingKas.jenis_transaksi === JenisTransaksi.MASUK) {
+        const totalMasuk = await prisma.kasMasjid.aggregate({
+          where: { masjid_id: authorizedMasjidId, jenis_transaksi: JenisTransaksi.MASUK, id: { not: kas_id } },
+          _sum: { nominal: true },
+        });
+
+        const totalKeluar = await prisma.kasMasjid.aggregate({
+          where: { masjid_id: authorizedMasjidId, jenis_transaksi: JenisTransaksi.KELUAR },
+          _sum: { nominal: true },
+        });
+
+        const projectedSaldo = Number(totalMasuk._sum.nominal || 0) - Number(totalKeluar._sum.nominal || 0);
+
+        if (projectedSaldo < 0) {
+          res.status(400).json({
+            success: false,
+            message: "Menghapus transaksi ini akan menyebabkan saldo menjadi negatif.",
+          });
+          return;
+        }
     }
 
     const deletedKas = await prisma.kasMasjid.delete({

@@ -385,7 +385,7 @@ export default function KasMasjidDashboardPage() {
                 id="nominal"
                 name="nominal"
                 type="number"
-                min={1}
+                min={0}
                 step={1000}
                 aria-invalid={Boolean(createState.fieldErrors.nominal)}
                 disabled={disabled}
@@ -625,7 +625,7 @@ function EditKasMasjidDialog({
               id={`nominal-${item.id}`}
               name="nominal"
               type="number"
-              min={1}
+              min={0}
               step={1000}
               defaultValue={String(Number(item.nominal))}
               aria-invalid={Boolean(editState.fieldErrors.nominal)}
