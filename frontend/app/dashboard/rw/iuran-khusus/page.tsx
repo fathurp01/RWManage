@@ -9,9 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Plus, Pencil, Trash2, Wallet, ArrowLeft, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, Wallet, ArrowLeft, FileText, TrendingUp } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 interface KasItem {
@@ -162,20 +160,57 @@ export default function IuranKhususRwPage() {
     );
   }
 
+  const summaryCards = [
+    {
+      label: "Total Masuk",
+      value: formatRupiah(summary.total_masuk),
+      gradient: "from-emerald-500 to-teal-600",
+      iconBg: "bg-emerald-50 dark:bg-emerald-950/40",
+      iconText: "text-emerald-600 dark:text-emerald-400",
+      border: "border-emerald-200/50 dark:border-emerald-800/30",
+      valueColor: "text-emerald-700 dark:text-emerald-400",
+      icon: TrendingUp,
+    },
+    {
+      label: "Total Tercatat",
+      value: formatRupiah(nominalTotal),
+      gradient: "from-violet-500 to-purple-600",
+      iconBg: "bg-violet-50 dark:bg-violet-950/40",
+      iconText: "text-violet-600 dark:text-violet-400",
+      border: "border-violet-200/50 dark:border-violet-800/30",
+      valueColor: "text-violet-700 dark:text-violet-400",
+      icon: FileText,
+    },
+    {
+      label: "Saldo RW",
+      value: formatRupiah(summary.saldo),
+      gradient: "from-indigo-500 to-violet-600",
+      iconBg: "bg-indigo-50 dark:bg-indigo-950/40",
+      iconText: "text-indigo-600 dark:text-indigo-400",
+      border: "border-indigo-200/50 dark:border-indigo-800/30",
+      valueColor: "text-indigo-700 dark:text-indigo-400",
+      icon: Wallet,
+    },
+  ];
+
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Badge variant="rw">RW</Badge>
-            <span className="text-sm text-slate-500 dark:text-muted-foreground">Pemasukan non-RT, masuk 100% ke Kas RW</span>
+      {/* Page Header */}
+      <header className="flex flex-col gap-1">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-purple-600 text-white shadow-sm shadow-violet-500/30">
+            <Plus className="size-5" />
+          </span>
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
+              Iuran Khusus RW
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-muted-foreground">
+              Pemasukan non-RT, masuk 100% ke Kas RW
+            </p>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">Input Iuran Khusus</h1>
-          <p className="text-base text-slate-500 dark:text-muted-foreground">
-            Catat pemasukan dari sewa fasum, donatur, atau sumber lain di luar RT.
-          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="mt-3">
           <Link href="/dashboard/rw/kas">
             <Button variant="outline" className="gap-2">
               <ArrowLeft className="size-4" />
@@ -185,44 +220,48 @@ export default function IuranKhususRwPage() {
         </div>
       </header>
 
-      <Card>
-        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle className="flex items-center gap-2">
-            <Wallet className="size-4 text-slate-500" />
-            Ringkasan Iuran Khusus
-          </CardTitle>
-          <CardDescription>Semua pemasukan di halaman ini otomatis dicatat sebagai MASUK untuk Kas RW.</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-5 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white dark:bg-card p-4">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Total Masuk</p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-900 dark:text-foreground">{formatRupiah(summary.total_masuk)}</p>
+      {/* Summary Cards */}
+      <section className="grid gap-4 sm:grid-cols-3">
+        {summaryCards.map(({ label, value, icon: Icon, gradient, iconBg, iconText, border, valueColor }) => (
+          <div
+            key={label}
+            className={`relative overflow-hidden rounded-3xl border bg-white dark:bg-card shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${border}`}
+          >
+            <div className={`absolute top-0 left-0 right-0 h-1 bg-linear-to-r ${gradient} rounded-t-3xl`} />
+            <div className="p-5 pt-6 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground mb-1">
+                  {label}
+                </p>
+                <p className={`text-xl font-extrabold tabular-nums truncate ${valueColor}`}>
+                  {value}
+                </p>
+              </div>
+              <span className={`inline-flex size-10 shrink-0 items-center justify-center rounded-2xl ${iconBg} ${iconText}`}>
+                <Icon className="size-5" />
+              </span>
+            </div>
           </div>
-          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white dark:bg-card p-4">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Total Tercatat</p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-900 dark:text-foreground">{formatRupiah(nominalTotal)}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200/70 dark:border-white/8 bg-white dark:bg-card p-4">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Saldo RW</p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-900 dark:text-foreground">{formatRupiah(summary.saldo)}</p>
-          </div>
-        </CardContent>
-      </Card>
+        ))}
+      </section>
 
       <Card>
         <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle>Tambah Iuran Khusus</CardTitle>
-          <CardDescription>Isi sumber dana, nominal, dan bukti bila ada.</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="size-4 text-slate-400" />
+            Tambah Iuran Khusus
+          </CardTitle>
+          <CardDescription>Catat pemasukan dari sewa fasum, donatur, atau sumber lain di luar RT.</CardDescription>
         </CardHeader>
         <CardContent className="pt-5">
           <form action={createAction} className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="tanggal">Tanggal</Label>
+              <Label htmlFor="tanggal" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Tanggal</Label>
               <Input id="tanggal" name="tanggal" type="date" disabled={isCreating} />
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="sumber">Keterangan</Label>
+              <Label htmlFor="sumber" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Keterangan</Label>
               <Input
                 id="sumber"
                 name="sumber"
@@ -234,7 +273,7 @@ export default function IuranKhususRwPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="nominal">Nominal (Rp)</Label>
+              <Label htmlFor="nominal" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Nominal (Rp)</Label>
               <Input
                 id="nominal"
                 name="nominal"
@@ -248,12 +287,12 @@ export default function IuranKhususRwPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="bukti_url">Link Bukti (opsional)</Label>
+              <Label htmlFor="bukti_url" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Link Bukti (opsional)</Label>
               <Input id="bukti_url" name="bukti_url" type="url" placeholder="https://..." disabled={isCreating} />
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="bukti_foto">Foto Bukti (opsional)</Label>
+              <Label htmlFor="bukti_foto" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Foto Bukti (opsional)</Label>
               <Input id="bukti_foto" name="bukti_foto" type="file" accept="image/*" disabled={isCreating} className="cursor-pointer file:cursor-pointer" />
             </div>
 
@@ -269,38 +308,38 @@ export default function IuranKhususRwPage() {
       <Card>
         <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
           <CardTitle className="flex items-center gap-2">
-            <FileText className="size-4 text-slate-500" />
+            <FileText className="size-4 text-slate-400" />
             Riwayat Iuran Khusus
           </CardTitle>
           <CardDescription>Daftar transaksi yang sudah dicatat pada menu ini.</CardDescription>
         </CardHeader>
         <CardContent className="pt-5">
           {loading ? (
-            <p className="text-sm text-slate-500">Memuat data...</p>
+            <div className="py-8 text-center text-sm text-slate-500 dark:text-muted-foreground">Memuat data...</div>
           ) : items.length === 0 ? (
-            <p className="text-sm text-slate-500">Belum ada iuran khusus yang tercatat.</p>
+            <div className="py-8 text-center text-sm text-slate-500 dark:text-muted-foreground">Belum ada iuran khusus yang tercatat.</div>
           ) : (
             <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-white/8">
               <table className="w-full text-left">
                 <thead className="bg-slate-50/80 dark:bg-white/3">
                   <tr>
-                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Tanggal</th>
-                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Keterangan</th>
-                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 text-right">Nominal</th>
-                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 text-right">Aksi</th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Tanggal</th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Keterangan</th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground text-right">Nominal</th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id} className="border-t border-slate-100 dark:border-white/8">
-                      <td className="px-4 py-4 text-sm text-slate-500">{formatDate(item.tanggal)}</td>
-                      <td className="px-4 py-4">
-                        <p className="font-medium text-slate-900 dark:text-foreground">{item.keterangan}</p>
-                        <p className="text-xs text-slate-400">{item.kode_unik}</p>
+                    <tr key={item.id} className="border-t border-slate-100 dark:border-white/8 hover:bg-slate-50/60 dark:hover:bg-white/3 transition-colors">
+                      <td className="px-4 py-3.5 text-sm text-slate-500 dark:text-muted-foreground whitespace-nowrap">{formatDate(item.tanggal)}</td>
+                      <td className="px-4 py-3.5">
+                        <p className="font-semibold text-sm text-slate-900 dark:text-foreground">{item.keterangan}</p>
+                        <code className="text-[10px] text-slate-400 dark:text-muted-foreground/60">{item.kode_unik}</code>
                       </td>
-                      <td className="px-4 py-4 text-right font-semibold text-slate-900 dark:text-foreground">{formatRupiah(item.nominal)}</td>
-                      <td className="px-4 py-4 text-right">
-                        <div className="inline-flex items-center gap-2">
+                      <td className="px-4 py-3.5 text-right font-bold tabular-nums text-slate-900 dark:text-foreground whitespace-nowrap">{formatRupiah(item.nominal)}</td>
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="inline-flex items-center gap-1.5">
                           <EditKasDialog item={item} onSaved={loadData} />
                           <DeleteKasDialog itemId={item.id} onDeleted={loadData} />
                         </div>

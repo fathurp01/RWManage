@@ -99,10 +99,7 @@ async function main() {
     }),
   ]);
 
-  await prisma.user.update({
-    where: { id: rwUser.id },
-    data: { blok_wilayah_id: blokA.id },
-  });
+  // (RW tidak terikat ke blok_wilayah tertentu secara langsung, melainkan ke wilayah_rw)
 
   const [masjidAlIkhlas, masjidNurHidayah] = await Promise.all([
     prisma.masjid.create({
@@ -221,7 +218,6 @@ async function main() {
       no_hp: '081234567897',
       role: 'SUPERADMIN',
       status_akun: 'APPROVED',
-      blok_wilayah_id: blokA.id,
     },
   });
 
@@ -360,18 +356,36 @@ async function main() {
       data: {
         blok_wilayah_id: blokA.id,
         nama_kk: 'Budi Santoso',
+        no_kk: '3171012345678901',
+        nik: '3172098765432101',
+        tanggal_terbit_kk: new Date('2022-01-01T00:00:00.000Z'),
+        tanggal_lahir: new Date('1985-02-10T00:00:00.000Z'),
+        pendidikan: 'SMA',
+        pekerjaan: 'Wiraswasta',
       },
     }),
     prisma.warga.create({
       data: {
         blok_wilayah_id: blokB.id,
         nama_kk: 'Siti Aminah',
+        no_kk: '3171000000000002',
+        nik: '3172000000000002',
+        tanggal_terbit_kk: new Date('2020-05-12T00:00:00.000Z'),
+        tanggal_lahir: new Date('1990-03-15T00:00:00.000Z'),
+        pendidikan: 'DIPLOMA',
+        pekerjaan: 'Pegawai Swasta',
       },
     }),
     prisma.warga.create({
       data: {
         blok_wilayah_id: blokC.id,
         nama_kk: 'Deni Kurniawan',
+        no_kk: '3171000000000003',
+        nik: '3172000000000003',
+        tanggal_terbit_kk: new Date('2018-08-22T00:00:00.000Z'),
+        tanggal_lahir: new Date('1988-11-05T00:00:00.000Z'),
+        pendidikan: 'SARJANA',
+        pekerjaan: 'PNS',
       },
     }),
   ]);
@@ -607,7 +621,7 @@ async function main() {
       {
         warga_id: wargaBudi.id,
         tipe_dokumen: 'KTP',
-        nomor_dokumen: '3171000000000001',
+        nomor_dokumen: '3172098765432101',
         tanggal_terbit: new Date('2018-01-01T00:00:00.000Z'),
         tanggal_berlaku: new Date('2033-01-01T00:00:00.000Z'),
         dokumen_url: '/uploads/sample-ktp-budi.pdf',

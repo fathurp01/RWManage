@@ -99,6 +99,24 @@ export const registerWithClient = async (
       return;
     }
 
+    if (role === Role.RT && blok_wilayah_id) {
+      const existingRT = await client.user.findFirst({
+        where: {
+          role: Role.RT,
+          blok_wilayah_id,
+          status_akun: { in: [StatusAkun.PENDING, StatusAkun.APPROVED] },
+        },
+      });
+
+      if (existingRT) {
+        res.status(409).json({
+          success: false,
+          message: "Blok wilayah tersebut sudah memiliki pendaftar RT atau akun RT yang aktif.",
+        });
+        return;
+      }
+    }
+
     const existingUser = await client.user.findUnique({
       where: { email },
       select: { id: true },
@@ -662,7 +680,7 @@ export const listPendingRegistrationsWithClient = async (
 
     const whereClause: any = {
       status_akun: StatusAkun.PENDING,
-      ...(role ? { role } : { role: { in: ["RW", "RT"] } }),
+      ...(role ? { role } : { role: "RW" }),
       ...(normalizedSearch
         ? {
             OR: [
@@ -755,10 +773,10 @@ export const approveRegistrationWithClient = async (
       return;
     }
 
-    if (targetUser.role !== Role.RW && targetUser.role !== Role.RT) {
+    if (targetUser.role !== Role.RW) {
       res.status(400).json({
         success: false,
-        message: "Hanya pendaftaran RW atau RT yang dapat diproses oleh Superadmin.",
+        message: "Hanya pendaftaran RW yang dapat diproses oleh Superadmin.",
       });
       return;
     }
@@ -822,4 +840,233 @@ export const approveRegistration = async (
   res: Response
 ): Promise<void> => {
   return approveRegistrationWithClient(prisma, req, res);
+};
+
+export const listPendingRTWithClient = async (
+  client: typeof prisma,
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user || req.user.role !== Role.RW) {
+      res.status(403).json({
+        success: false,
+        message: "Hanya role RW yang boleh melihat daftar pendaftaran RT.",
+      });
+      return;
+    }
+
+    const { search } = req.query as { search?: string };
+    const normalizedSearch = search?.trim();
+
+    const rwWilayah = await client.wilayahRW.findUnique({
+      where: { user_id: req.user.id },
+      select: { id: true },
+    });
+
+    if (!rwWilayah) {
+      res.status(403).json({
+        success: false,
+        message: "Data wilayah RW untuk user login tidak ditemukan.",
+      });
+      return;
+    }
+
+    const users = await client.user.findMany({
+      where: {
+        role: Role.RT,
+        status_akun: StatusAkun.PENDING,
+        blok_wilayah: {
+          wilayah_rw_id: rwWilayah.id,
+        },
+        ...(normalizedSearch
+          ? {
+              OR: [
+                { nama: { contains: normalizedSearch, mode: "insensitive" } },
+                { email: { contains: normalizedSearch, mode: "insensitive" } },
+                { no_hp: { contains: normalizedSearch, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        nama: true,
+        email: true,
+        no_hp: true,
+        role: true,
+        status_akun: true,
+        created_at: true,
+        blok_wilayah: {
+          select: {
+            id: true,
+            nama_blok: true,
+            no_rt: true,
+            wilayah_rw: {
+              select: {
+                id: true,
+                nama_kompleks: true,
+                no_rw: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { created_at: "asc" },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Daftar pendaftaran RT pending berhasil diambil.",
+      data: users,
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan saat mengambil daftar pending pendaftaran RT.",
+    });
+  }
+};
+
+export const listPendingRT = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  return listPendingRTWithClient(prisma, req, res);
+};
+
+export const approveRTWithClient = async (
+  client: typeof prisma,
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user || req.user.role !== Role.RW) {
+      res.status(403).json({
+        success: false,
+        message: "Hanya role RW yang boleh melakukan approval RT.",
+      });
+      return;
+    }
+
+    const { user_id, status_akun, alasan_penolakan } = req.body as ApprovePengurusBody;
+
+    if (!user_id || !status_akun) {
+      res.status(400).json({
+        success: false,
+        message: "user_id dan status_akun wajib diisi.",
+      });
+      return;
+    }
+
+    if (status_akun !== "APPROVED" && status_akun !== "REJECTED") {
+      res.status(400).json({
+        success: false,
+        message: "status_akun hanya boleh APPROVED atau REJECTED.",
+      });
+      return;
+    }
+
+    if (status_akun === "REJECTED" && !alasan_penolakan?.trim()) {
+      res.status(400).json({
+        success: false,
+        message: "alasan_penolakan wajib diisi saat menolak pendaftaran.",
+      });
+      return;
+    }
+
+    const rwWilayah = await client.wilayahRW.findUnique({
+      where: { user_id: req.user.id },
+      select: { id: true },
+    });
+
+    if (!rwWilayah) {
+      res.status(403).json({
+        success: false,
+        message: "Data wilayah RW untuk user login tidak ditemukan.",
+      });
+      return;
+    }
+
+    const targetUser = await client.user.findUnique({
+      where: { id: user_id },
+      select: {
+        id: true,
+        role: true,
+        status_akun: true,
+        blok_wilayah: {
+          select: { wilayah_rw_id: true }
+        }
+      },
+    });
+
+    if (!targetUser) {
+      res.status(404).json({
+        success: false,
+        message: "User tidak ditemukan.",
+      });
+      return;
+    }
+
+    if (targetUser.role !== Role.RT) {
+      res.status(400).json({
+        success: false,
+        message: "Hanya akun dengan role RT yang dapat diproses di sini.",
+      });
+      return;
+    }
+
+    if (targetUser.status_akun !== StatusAkun.PENDING) {
+      res.status(400).json({
+        success: false,
+        message: "Approval hanya bisa dilakukan untuk user dengan status PENDING.",
+      });
+      return;
+    }
+    
+    if (targetUser.blok_wilayah?.wilayah_rw_id !== rwWilayah.id) {
+      res.status(403).json({
+        success: false,
+        message: "Akses ditolak. RT ini mendaftar untuk blok wilayah di luar RW Anda.",
+      });
+      return;
+    }
+
+    const updatedUser = await client.user.update({
+      where: { id: user_id },
+      data: {
+        status_akun: status_akun,
+        alasan_penolakan: status_akun === "REJECTED" ? alasan_penolakan?.trim() : null,
+      },
+      select: {
+        id: true,
+        nama: true,
+        email: true,
+        role: true,
+        status_akun: true,
+        alasan_penolakan: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message:
+        status_akun === "APPROVED"
+          ? "Pendaftaran RT berhasil di-approve."
+          : "Pendaftaran RT berhasil di-reject.",
+      data: updatedUser,
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan saat memproses approval RT.",
+    });
+  }
+};
+
+export const approveRT = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  return approveRTWithClient(prisma, req, res);
 };

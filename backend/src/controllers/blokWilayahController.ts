@@ -57,6 +57,27 @@ export const createBlokWilayah = async (
       return;
     }
 
+    // Check for existing nama_blok or no_rt
+    const existingBlok = await prisma.blokWilayah.findFirst({
+      where: {
+        wilayah_rw_id,
+        OR: [
+          { nama_blok: { equals: nama_blok, mode: 'insensitive' } },
+          ...(no_rt ? [{ no_rt: { equals: no_rt, mode: 'insensitive' } }] : [])
+        ]
+      }
+    });
+
+    if (existingBlok) {
+      res.status(409).json({
+        success: false,
+        message: existingBlok.nama_blok.toLowerCase() === nama_blok.toLowerCase()
+          ? `Nama blok "${nama_blok}" sudah terdaftar.` 
+          : `Nomor RT "${no_rt}" sudah terdaftar.`,
+      });
+      return;
+    }
+
     const blok = await prisma.blokWilayah.create({
       data: {
         wilayah_rw_id,
@@ -129,15 +150,40 @@ export const getBlokWilayahList = async (
       include: {
         performa_ronda: {
           select: { id: true }
-        }
+        },
+        users: {
+          select: { role: true }
+        },
+        _count: {
+          select: { 
+            warga: true, 
+            masjid: true 
+          },
+        },
       },
       orderBy: { created_at: "desc" },
+    });
+
+    const formattedBloks = bloks.map((b) => {
+      const rtCount = b.users.filter((u) => u.role === "RT").length;
+      const pengurusCount = b.users.filter((u) => u.role === "PENGURUS_MASJID").length;
+      
+      const { users, ...rest } = b;
+      return {
+        ...rest,
+        _count: {
+          ...rest._count,
+          rt_users: rtCount,
+          pengurus_masjid_users: pengurusCount,
+          users: rtCount + pengurusCount,
+        }
+      };
     });
 
     res.status(200).json({
       success: true,
       message: "Data blok wilayah berhasil diambil.",
-      data: bloks,
+      data: formattedBloks,
     });
   } catch (error) {
     console.error(error);
@@ -175,7 +221,7 @@ export const updateBlokWilayah = async (
 
     const blok = await prisma.blokWilayah.findUnique({
       where: { id: blok_id },
-      select: { wilayah_rw: { select: { user_id: true } } },
+      select: { wilayah_rw_id: true, wilayah_rw: { select: { user_id: true } } },
     });
 
     if (!blok) {
@@ -192,6 +238,29 @@ export const updateBlokWilayah = async (
         message: "Akses ditolak.",
       });
       return;
+    }
+
+    if (nama_blok || no_rt) {
+      const existingBlok = await prisma.blokWilayah.findFirst({
+        where: {
+          wilayah_rw_id: blok.wilayah_rw_id,
+          id: { not: blok_id },
+          OR: [
+            ...(nama_blok ? [{ nama_blok: { equals: nama_blok, mode: 'insensitive' } }] : []),
+            ...(no_rt ? [{ no_rt: { equals: no_rt, mode: 'insensitive' } }] : [])
+          ]
+        }
+      });
+
+      if (existingBlok) {
+        res.status(409).json({
+          success: false,
+          message: existingBlok.nama_blok.toLowerCase() === (nama_blok || '').toLowerCase()
+            ? `Nama blok "${nama_blok}" sudah terdaftar.` 
+            : `Nomor RT "${no_rt}" sudah terdaftar.`,
+        });
+        return;
+      }
     }
 
     const updated = await prisma.blokWilayah.update({

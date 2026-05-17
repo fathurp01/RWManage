@@ -32,7 +32,15 @@ export default function RtWargaPage() {
   const [loading, setLoading] = useState(true);
   const [warga, setWarga] = useState<WargaWithDetails[]>([]);
   const [expandedKK, setExpandedKK] = useState<string | null>(null);
-  const [formKK, setFormKK] = useState("");
+  const [formKK, setFormKK] = useState({
+    nama_kk: "",
+    no_kk: "",
+    nik: "",
+    tanggal_terbit_kk: "",
+    tanggal_lahir: "",
+    pendidikan: "",
+    pekerjaan: "",
+  });
   const [formAnggota, setFormAnggota] = useState({
     kkId: "",
     nama: "",
@@ -87,14 +95,22 @@ export default function RtWargaPage() {
   }, []);
 
   const handleAddKK = async () => {
-    if (!formKK.trim()) {
-      toast.error("Nama KK tidak boleh kosong");
+    if (!formKK.nama_kk.trim()) {
+      toast.error("Nama Kepala Keluarga tidak boleh kosong");
       return;
     }
     try {
-      await rtClient.createWarga({ nama_kk: formKK });
+      await rtClient.createWarga({ 
+        nama_kk: formKK.nama_kk,
+        no_kk: formKK.no_kk || undefined,
+        nik: formKK.nik || undefined,
+        tanggal_terbit_kk: formKK.tanggal_terbit_kk || undefined,
+        tanggal_lahir: formKK.tanggal_lahir || undefined,
+        pendidikan: formKK.pendidikan || undefined,
+        pekerjaan: formKK.pekerjaan || undefined,
+      });
       toast.success("Kepala Keluarga ditambahkan");
-      setFormKK("");
+      setFormKK({ nama_kk: "", no_kk: "", nik: "", tanggal_terbit_kk: "", tanggal_lahir: "", pendidikan: "", pekerjaan: "" });
       loadWarga();
     } catch (err) {
       const e = getApiError(err);
@@ -170,15 +186,59 @@ export default function RtWargaPage() {
           <CardTitle>Tambah Kepala Keluarga</CardTitle>
         </CardHeader>
         <CardContent className="pt-5 space-y-3">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
             <Input
               placeholder="Nama Kepala Keluarga"
-              value={formKK}
-              onChange={(e) => setFormKK(e.target.value)}
+              value={formKK.nama_kk}
+              onChange={(e) => setFormKK({ ...formKK, nama_kk: e.target.value })}
+            />
+            <Input
+              placeholder="No. KK (opsional)"
+              value={formKK.no_kk}
+              onChange={(e) => setFormKK({ ...formKK, no_kk: e.target.value })}
+            />
+            <Input
+              placeholder="NIK Kepala Keluarga (opsional)"
+              value={formKK.nik}
+              onChange={(e) => setFormKK({ ...formKK, nik: e.target.value })}
+            />
+            <Input
+              placeholder="Tanggal Terbit KK (opsional)"
+              type="date"
+              value={formKK.tanggal_terbit_kk}
+              onChange={(e) => setFormKK({ ...formKK, tanggal_terbit_kk: e.target.value })}
+            />
+            <Input
+              placeholder="Tanggal Lahir Kepala Keluarga (opsional)"
+              type="date"
+              value={formKK.tanggal_lahir}
+              onChange={(e) => setFormKK({ ...formKK, tanggal_lahir: e.target.value })}
+            />
+            <Select
+              value={formKK.pendidikan}
+              onValueChange={(v) => setFormKK({ ...formKK, pendidikan: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pendidikan (opsional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TK">TK</SelectItem>
+                <SelectItem value="SD">SD</SelectItem>
+                <SelectItem value="SMP">SMP</SelectItem>
+                <SelectItem value="SMA">SMA/SMK</SelectItem>
+                <SelectItem value="DIPLOMA">Diploma</SelectItem>
+                <SelectItem value="SARJANA">Sarjana</SelectItem>
+                <SelectItem value="LAINNYA">Lainnya</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              placeholder="Pekerjaan (opsional)"
+              value={formKK.pekerjaan}
+              onChange={(e) => setFormKK({ ...formKK, pekerjaan: e.target.value })}
             />
             <Button onClick={handleAddKK}>
               <Plus className="w-4 h-4 mr-2" />
-              Tambah
+              Tambah KK
             </Button>
           </div>
         </CardContent>

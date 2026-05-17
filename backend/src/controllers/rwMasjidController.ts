@@ -131,6 +131,17 @@ export const listRwMasjid = async (req: Request, res: Response): Promise<void> =
             },
           },
         },
+        pengurus_masjid: {
+          select: {
+            id: true,
+            user: {
+              select: {
+                id: true,
+                nama: true,
+              },
+            },
+          },
+        },
       },
       orderBy: [{ nama_masjid: "asc" }],
     });

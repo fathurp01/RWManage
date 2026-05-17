@@ -63,6 +63,9 @@ interface FilterFormState {
 
 const initialState: FilterFormState = { message: "", fieldErrors: {} };
 
+const selectClass =
+  "h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 dark:border-white/10 px-3.5 py-2.5 text-sm text-foreground outline-none transition-all duration-200 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 disabled:pointer-events-none disabled:opacity-50";
+
 export const formatRupiah = (value: number | string): string => {
   const numericValue = Number(value);
   if (!Number.isFinite(numericValue)) return "Rp0";
@@ -256,40 +259,40 @@ export default function RwWargaDashboardPage() {
       {/* Page Header */}
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30">
-            <Users className="size-6" />
+          <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-purple-600 text-white shadow-sm shadow-violet-500/30">
+            <Users className="size-5" />
           </span>
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
               Iuran Warga
             </h1>
-            <p className="text-base text-slate-500 dark:text-muted-foreground">
+            <p className="text-sm text-slate-500 dark:text-muted-foreground">
               Catat dan pantau pembayaran iuran per blok
             </p>
           </div>
         </div>
         <Link href="/dashboard/rw/warga/add">
-          <Button variant="rw" size="lg" className="gap-2 shadow-md shadow-indigo-500/20">
-            <Plus className="size-5" />
+          <Button variant="rw" className="gap-2">
+            <Plus className="size-4" />
             <span className="hidden sm:inline">Tambah Warga</span>
             <span className="sm:hidden">Tambah</span>
           </Button>
         </Link>
       </header>
 
-      {/* Filter — TIDAK ADA UUID! */}
-      <Card className="border-2">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <MapPin className="size-5 text-indigo-500" />
+      {/* Filter */}
+      <Card>
+        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="size-4 text-violet-500" />
             Pilih Blok &amp; Tahun
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-5">
           <form action={filterAction} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
-            {/* Dropdown blok — nama bukan UUID */}
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="blok_wilayah_id" className="text-base font-bold text-slate-700 dark:text-foreground">
+            {/* Dropdown blok */}
+            <div className="space-y-1.5">
+              <Label htmlFor="blok_wilayah_id" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">
                 Nama Blok Wilayah
               </Label>
               <select
@@ -298,7 +301,7 @@ export default function RwWargaDashboardPage() {
                 value={selectedBlokId}
                 onChange={(e) => setSelectedBlokId(e.target.value)}
                 disabled={disabled}
-                className="w-full h-12 rounded-xl border-2 border-input bg-white dark:bg-input/20 dark:border-white/10 px-3.5 text-base text-foreground font-medium outline-none transition-all duration-200 focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/25 disabled:opacity-50 cursor-pointer"
+                className={selectClass}
               >
                 <option value="">-- Pilih Blok --</option>
                 {blokList.map((blok) => (
@@ -308,14 +311,14 @@ export default function RwWargaDashboardPage() {
                 ))}
               </select>
               {filterState.fieldErrors.blok_wilayah_id ? (
-                <p className="text-base font-medium text-destructive">{filterState.fieldErrors.blok_wilayah_id}</p>
+                <p className="text-xs text-destructive">{filterState.fieldErrors.blok_wilayah_id}</p>
               ) : null}
             </div>
 
             {/* Pilih Tahun */}
-            <div className="space-y-2">
-              <Label htmlFor="tahun" className="text-base font-bold text-slate-700 dark:text-foreground">
-                <Calendar className="size-4 inline mr-1" />
+            <div className="space-y-1.5">
+              <Label htmlFor="tahun" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">
+                <Calendar className="size-3.5 inline mr-1" />
                 Tahun
               </Label>
               <select
@@ -323,7 +326,7 @@ export default function RwWargaDashboardPage() {
                 name="tahun"
                 defaultValue={String(currentYear)}
                 disabled={disabled}
-                className="w-full h-12 rounded-xl border-2 border-input bg-white dark:bg-input/20 dark:border-white/10 px-3.5 text-base text-foreground font-medium outline-none transition-all duration-200 focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/25 disabled:opacity-50 cursor-pointer"
+                className={selectClass}
               >
                 {tahunOptions.map((y) => (
                   <option key={y} value={String(y)}>{y}</option>
@@ -331,8 +334,8 @@ export default function RwWargaDashboardPage() {
               </select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="bulan" className="text-base font-bold text-slate-700 dark:text-foreground">
+            <div className="space-y-1.5">
+              <Label htmlFor="bulan" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">
                 Bulan
               </Label>
               <select
@@ -341,7 +344,7 @@ export default function RwWargaDashboardPage() {
                 value={selectedBulan}
                 onChange={(event) => setSelectedBulan(event.target.value)}
                 disabled={disabled}
-                className="w-full h-12 rounded-xl border-2 border-input bg-white dark:bg-input/20 dark:border-white/10 px-3.5 text-base text-foreground font-medium outline-none transition-all duration-200 focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/25 disabled:opacity-50 cursor-pointer"
+                className={selectClass}
               >
                 {bulanOptions.map((option) => (
                   <option key={option.value || "all"} value={option.value}>
@@ -350,12 +353,12 @@ export default function RwWargaDashboardPage() {
                 ))}
               </select>
               {filterState.fieldErrors.bulan ? (
-                <p className="text-base font-medium text-destructive">{filterState.fieldErrors.bulan}</p>
+                <p className="text-xs text-destructive">{filterState.fieldErrors.bulan}</p>
               ) : null}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="status" className="text-base font-bold text-slate-700 dark:text-foreground">
+            <div className="space-y-1.5">
+              <Label htmlFor="status" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">
                 Status
               </Label>
               <select
@@ -364,7 +367,7 @@ export default function RwWargaDashboardPage() {
                 value={selectedStatus}
                 onChange={(event) => setSelectedStatus(event.target.value)}
                 disabled={disabled}
-                className="w-full h-12 rounded-xl border-2 border-input bg-white dark:bg-input/20 dark:border-white/10 px-3.5 text-base text-foreground font-medium outline-none transition-all duration-200 focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/25 disabled:opacity-50 cursor-pointer"
+                className={selectClass}
               >
                 <option value="">Semua Status</option>
                 <option value="BELUM">Belum Bayar</option>
@@ -376,25 +379,25 @@ export default function RwWargaDashboardPage() {
               type="submit"
               disabled={disabled}
               variant="rw"
-              size="lg"
-              className="w-full gap-2 shadow-md shadow-indigo-500/20"
+              size="default"
+              className="w-full gap-2"
             >
-              <ChevronRight className="size-5" />
+              <ChevronRight className="size-4" />
               {disabled ? "Memuat..." : "Tampilkan Data"}
             </Button>
           </form>
 
           {filterState.message ? (
-            <p className="mt-3 text-base font-medium text-destructive">{filterState.message}</p>
+            <p className="mt-3 text-sm text-destructive">{filterState.message}</p>
           ) : null}
         </CardContent>
       </Card>
 
       {/* Keterangan blok aktif */}
       {selectedBlokLabel && residents.length > 0 && (
-        <div className="flex items-center gap-2 rounded-2xl border-2 border-indigo-200 bg-indigo-50 px-4 py-3 dark:border-indigo-800/40 dark:bg-indigo-950/20">
-          <MapPin className="size-4 shrink-0 text-indigo-500" />
-          <p className="text-base font-semibold text-indigo-800 dark:text-indigo-300">
+        <div className="flex items-center gap-2 rounded-2xl border border-violet-200 dark:border-violet-800/40 bg-violet-50 dark:bg-violet-950/20 px-4 py-3">
+          <MapPin className="size-4 shrink-0 text-violet-500" />
+          <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">
             Menampilkan data: <span className="font-extrabold">{selectedBlokLabel}</span> — Tahun {tahunAktif}
             {bulanAktif ? ` • Bulan ${bulanAktif}` : " • Semua Bulan"}
             {statusAktif ? ` • ${statusAktif}` : " • Semua Status"}

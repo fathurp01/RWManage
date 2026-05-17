@@ -6,6 +6,8 @@ import {
   register,
   listPendingRegistrationsWithClient as listPendingRegistrations,
   approveRegistrationWithClient as approveRegistration,
+  listPendingRT,
+  approveRT,
 } from "../controllers/authController";
 import {
   bayarIuran,
@@ -308,6 +310,24 @@ router.get(
   checkApproval,
   validateQuery(listPendingPengurusQuerySchema),
   listPendingPengurus
+);
+router.get(
+  "/auth/pending-rt",
+  authRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateQuery(listPendingPengurusQuerySchema), // Using the same schema since it just takes 'search'
+  listPendingRT
+);
+router.patch(
+  "/auth/approve-rt",
+  authRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateBody(approvePengurusSchema), // Using same schema since it takes user_id, status_akun, alasan_penolakan
+  approveRT
 );
 router.get(
   "/auth/pending-registrations",

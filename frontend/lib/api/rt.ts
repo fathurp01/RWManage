@@ -7,6 +7,12 @@ export interface RtWargaRecord {
   id: string;
   nama_kk: string;
   blok_wilayah_id?: string;
+  no_kk?: string | null;
+  nik?: string | null;
+  tanggal_terbit_kk?: string | null;
+  tanggal_lahir?: string | null;
+  pendidikan?: string | null;
+  pekerjaan?: string | null;
 }
 
 export interface RtAnggotaKeluargaRecord {
@@ -87,7 +93,7 @@ export const rtClient = {
     return res.data.data ?? [];
   },
 
-  async createWarga(payload: { nama_kk: string }): Promise<RtWargaRecord> {
+  async createWarga(payload: { nama_kk: string; no_kk?: string; nik?: string; tanggal_terbit_kk?: string; tanggal_lahir?: string; pendidikan?: string; pekerjaan?: string }): Promise<RtWargaRecord> {
     const res = await api.post<{ data: RtWargaRecord }>("/rt/warga", payload);
     return res.data.data;
   },

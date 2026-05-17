@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { api, getApiError } from "@/lib/axios";
 import { useAuth } from "@/context/AuthContext";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -141,20 +140,22 @@ export default function DashboardRwIndexPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Badge variant="rw">Dashboard RW</Badge>
-            <span className="text-sm text-slate-500 dark:text-muted-foreground">Ringkasan iuran dan kas berjalan</span>
+      {/* Page Header */}
+      <header className="flex flex-col gap-1">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-purple-600 text-white shadow-sm shadow-violet-500/30">
+            <BarChart3 className="size-5" />
+          </span>
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
+              Overview RW
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-muted-foreground">
+              Ringkasan iuran warga dan saldo kas berjalan
+            </p>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
-            Overview RW
-          </h1>
-          <p className="text-base text-slate-500 dark:text-muted-foreground">
-            Lihat performa iuran warga dan saldo kas per bulan.
-          </p>
         </div>
-        <div className="inline-flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           <Link href="/dashboard/rw/iuran-khusus">
             <Button variant="outline" className="gap-2">
               <FileText className="size-4" />
@@ -248,12 +249,12 @@ export default function DashboardRwIndexPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 rounded-2xl border border-indigo-200/60 dark:border-indigo-800/30 bg-indigo-50/60 dark:bg-indigo-950/20 px-4 py-3.5">
-              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
+            <div className="flex items-center gap-3 rounded-2xl border border-violet-200/60 dark:border-violet-800/30 bg-violet-50/60 dark:bg-violet-950/20 px-4 py-3.5">
+              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400">
                 <Wallet className="size-4" />
               </span>
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-600/70 dark:text-indigo-400/70">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-violet-600/70 dark:text-violet-400/70">
                   Saldo Kas
                 </p>
                 <p className="text-base font-extrabold tabular-nums text-slate-900 dark:text-foreground truncate">
@@ -268,12 +269,12 @@ export default function DashboardRwIndexPage() {
             <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Clock className="size-4 text-indigo-500" />
+                  <Clock className="size-4 text-violet-500" />
                   <CardTitle className="text-base">Riwayat Transaksi Kas</CardTitle>
                 </div>
                 <Link
                   href="/dashboard/rw/kas"
-                  className="inline-flex items-center gap-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-xl bg-violet-50 dark:bg-violet-950/30 px-3 py-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors"
                 >
                   Lihat Semua
                   <ChevronRight className="size-3" />
@@ -344,7 +345,7 @@ export default function DashboardRwIndexPage() {
             </CardContent>
           </Card>
 
-          <div className="rounded-2xl border border-indigo-200 dark:border-indigo-800/35 bg-indigo-50 dark:bg-indigo-950/20 px-4 py-3 text-sm text-indigo-800 dark:text-indigo-200">
+          <div className="rounded-2xl border border-violet-200 dark:border-violet-800/35 bg-violet-50 dark:bg-violet-950/20 px-4 py-3 text-sm text-violet-800 dark:text-violet-200">
             <div className="flex items-center gap-1 font-semibold">
               Lanjutkan ke halaman detail laporan untuk ekspor PDF/XLSX
               <ChevronRight className="size-4" />

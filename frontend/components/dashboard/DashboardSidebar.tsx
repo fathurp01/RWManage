@@ -21,6 +21,12 @@ import {
   LogOut,
   Settings,
   Gift,
+  ClipboardList,
+  ShieldAlert,
+  Receipt,
+  BadgeCheck,
+  Map,
+  CheckSquare,
 } from "lucide-react";
 
 type SidebarItem = {
@@ -30,6 +36,11 @@ type SidebarItem = {
   icon: React.ComponentType<{ className?: string }>;
 };
 
+type SidebarGroup = {
+  groupLabel: string;
+  items: SidebarItem[];
+};
+
 const settingsItem: SidebarItem = {
   href: "/dashboard/settings",
   label: "Pengaturan",
@@ -37,183 +48,268 @@ const settingsItem: SidebarItem = {
   icon: Settings,
 };
 
-const rwItems: SidebarItem[] = [
+// ─── RW: Grouped Navigation ─────────────────────────────────────────────────
+const rwGroups: SidebarGroup[] = [
   {
-    href: "/dashboard/rw",
-    label: "Overview RW",
-    description: "Pantau tren iuran dan kas",
-    icon: LayoutDashboard,
+    groupLabel: "Menu",
+    items: [
+      {
+        href: "/dashboard/rw",
+        label: "Overview RW",
+        description: "Pantau tren iuran dan kas",
+        icon: LayoutDashboard,
+      },
+    ],
   },
   {
-    href: "/dashboard/rw/data-penduduk",
-    label: "Data Penduduk",
-    description: "Lihat data seluruh penduduk di RW",
-    icon: Users,
+    groupLabel: "Manajemen Data",
+    items: [
+      {
+        href: "/dashboard/rw/data-penduduk",
+        label: "Data Penduduk",
+        description: "Lihat data seluruh penduduk di RW",
+        icon: Users,
+      },
+      {
+        href: "/dashboard/rw/masjid",
+        label: "Data Masjid",
+        description: "Kelola data masjid per blok",
+        icon: Building2,
+      },
+      {
+        href: "/dashboard/rw/blok-wilayah",
+        label: "Data Blok Wilayah",
+        description: "Kelola Blok Wilayah",
+        icon: Map,
+      },
+    ],
   },
   {
-    href: "/dashboard/rw/approval",
-    label: "Persetujuan Pengurus",
-    description: "Setujui atau tolak pengurus masjid",
-    icon: ShieldCheck,
+    groupLabel: "Manajemen Keuangan",
+    items: [
+      {
+        href: "/dashboard/rw/kas",
+        label: "Buku Kas RW",
+        description: "Catat uang masuk dan keluar",
+        icon: BookOpenText,
+      },
+      {
+        href: "/dashboard/rw/iuran-khusus",
+        label: "Iuran Khusus",
+        description: "Input pemasukan non-RT",
+        icon: Wallet,
+      },
+      {
+        href: "/dashboard/rw/pengaturan-iuran",
+        label: "Pengaturan Iuran",
+        description: "Atur nominal & split iuran",
+        icon: Settings,
+      },
+      {
+        href: "/dashboard/rw/monitoring-kas-rt",
+        label: "Monitoring Kas RT",
+        description: "Pantau saldo kas seluruh RT",
+        icon: Receipt,
+      },
+      {
+        href: "/dashboard/rw/konfirmasi-setoran",
+        label: "Konfirmasi Setoran",
+        description: "Validasi uang masuk dari RT",
+        icon: BadgeCheck,
+      },
+    ],
   },
   {
-    href: "/dashboard/rw/masjid",
-    label: "Master Masjid",
-    description: "Kelola data masjid per blok",
-    icon: Building2,
+    groupLabel: "Keamanan & Pengawasan",
+    items: [
+      {
+        href: "/dashboard/rw/ronda",
+        label: "Monitoring Ronda",
+        description: "Pantau kehadiran petugas ronda",
+        icon: ShieldCheck,
+      },
+      {
+        href: "/dashboard/rw/insiden",
+        label: "Monitoring Insiden",
+        description: "Pantau kejadian keamanan lingkungan",
+        icon: ShieldAlert,
+      },
+    ],
   },
   {
-    href: "/dashboard/rw/kas",
-    label: "Buku Kas RW",
-    description: "Catat uang masuk dan keluar",
-    icon: BookOpenText,
-  },
-  {
-    href: "/dashboard/rw/iuran-khusus",
-    label: "Iuran Khusus",
-    description: "Input pemasukan non-RT",
-    icon: Wallet,
-  },
-  {
-    href: "/dashboard/rw/reports",
-    label: "Laporan RW",
-    description: "Lihat ringkasan iuran dan kas",
-    icon: FileText,
-  },
-  {
-    href: "/dashboard/rw/share-links",
-    label: "Share Link RW",
-    description: "Kelola link transparansi publik",
-    icon: Link2,
-  },
-  {
-    href: "/dashboard/rw/ronda",
-    label: "Monitoring Ronda",
-    description: "Pantau kehadiran petugas ronda",
-    icon: Users,
-  },
-  {
-    href: "/dashboard/rw/insiden",
-    label: "Monitoring Insiden",
-    description: "Pantau kejadian keamanan lingkungan",
-    icon: FileText,
-  },
-  {
-    href: "/dashboard/rw/audit-logs",
-    label: "Audit Logs",
-    description: "Lacak aktivitas pengguna",
-    icon: ShieldCheck,
-  },
-  {
-    href: "/dashboard/rw/pengaturan-iuran",
-    label: "Pengaturan Iuran",
-    description: "Atur nominal & split iuran",
-    icon: Settings,
-  },
-  {
-    href: "/dashboard/rw/monitoring-kas-rt",
-    label: "Monitoring Kas RT",
-    description: "Pantau saldo kas seluruh RT",
-    icon: Building2,
-  },
-  {
-    href: "/dashboard/rw/konfirmasi-setoran",
-    label: "Konfirmasi Setoran",
-    description: "Validasi uang masuk dari RT",
-    icon: ShieldCheck,
-  },
-];
-
-const masjidItems: SidebarItem[] = [
-  {
-    href: "/dashboard/masjid",
-    label: "Dashboard ZIS",
-    description: "Lihat total zakat, infaq, beras",
-    icon: HandCoins,
-  },
-  {
-    href: "/dashboard/masjid/input",
-    label: "Catat ZIS Baru",
-    description: "Input transaksi zakat dan infaq",
-    icon: SquarePen,
-  },
-  {
-    href: "/dashboard/masjid/distribusi",
-    label: "Manajemen Distribusi",
-    description: "Kelola distribusi zakat",
-    icon: Gift,
-  },
-  {
-    href: "/dashboard/masjid/kas",
-    label: "Buku Kas Masjid",
-    description: "Catat kas operasional masjid",
-    icon: BookOpenText,
-  },
-  {
-    href: "/dashboard/masjid/reports",
-    label: "Laporan Masjid",
-    description: "Ringkasan kas dan transaksi ZIS",
-    icon: FileText,
-  },
-  {
-    href: "/dashboard/masjid/share-links",
-    label: "Share Link Masjid",
-    description: "Kelola link transparansi publik",
-    icon: Link2,
-  },
-];
-
-const rtItems: SidebarItem[] = [
-  {
-    href: "/dashboard/rt/overview",
-    label: "Overview RT",
-    description: "Ringkasan warga, iuran, kas, dan setoran",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/dashboard/rt/warga",
-    label: "Kelola Warga",
-    description: "Create, update, delete warga per blok",
-    icon: Users,
-  },
-  {
-    href: "/dashboard/rt/manajemen-iuran",
-    label: "Manajemen Iuran",
-    description: "Kelola tagihan, cicilan, dan histori pembayaran",
-    icon: HandCoins,
-  },
-  {
-    href: "/dashboard/rt/ronda",
-    label: "Manajemen Ronda",
-    description: "Kelola jadwal dan presensi ronda",
-    icon: Users,
-  },
-  {
-    href: "/dashboard/rt/insiden",
-    label: "Laporan Kejadian",
-    description: "Catat insiden keamanan lingkungan",
-    icon: FileText,
-  },
-  {
-    href: "/dashboard/rt/audit-logs",
-    label: "Audit Trail",
-    description: "Lacak perubahan data oleh pengguna",
-    icon: FileText,
-  },
-  {
-    href: "/dashboard/rt/kas",
-    label: "Buku Kas RT",
-    description: "Catat pengeluaran & saldo RT",
-    icon: BookOpenText,
-  },
-  {
-    href: "/dashboard/rt/setoran",
-    label: "Setoran ke RW",
-    description: "Lapor & setor dana iuran ke RW",
-    icon: HandCoins,
+    groupLabel: "Administrasi, Pelaporan & Transparansi",
+    items: [
+      {
+        href: "/dashboard/rw/persetujuan-rt",
+        label: "Persetujuan RT",
+        description: "Persetujuan pendaftaran akun RT",
+        icon: CheckSquare,
+      },
+      {
+        href: "/dashboard/rw/approval",
+        label: "Persetujuan Masjid",
+        description: "Setujui atau tolak pengurus masjid",
+        icon: ShieldCheck,
+      },
+      {
+        href: "/dashboard/rw/reports",
+        label: "Laporan RW",
+        description: "Lihat ringkasan iuran dan kas",
+        icon: FileText,
+      },
+      {
+        href: "/dashboard/rw/share-links",
+        label: "Share Link RW",
+        description: "Kelola link transparansi publik",
+        icon: Link2,
+      },
+      {
+        href: "/dashboard/rw/audit-logs",
+        label: "Audit Logs",
+        description: "Lacak aktivitas pengguna",
+        icon: ClipboardList,
+      },
+    ],
   },
 ];
 
+// Flat list of all RW items (for roles that use flat nav)
+const rwItems: SidebarItem[] = rwGroups.flatMap((g) => g.items);
+
+// ─── Masjid: Grouped Navigation ──────────────────────────────────────────────
+const masjidGroups: SidebarGroup[] = [
+  {
+    groupLabel: "Menu",
+    items: [
+      {
+        href: "/dashboard/masjid",
+        label: "Dashboard ZIS",
+        description: "Lihat total zakat, infaq, beras",
+        icon: HandCoins,
+      },
+    ],
+  },
+  {
+    groupLabel: "Manajemen ZIS",
+    items: [
+      {
+        href: "/dashboard/masjid/input",
+        label: "Catat ZIS Baru",
+        description: "Input transaksi zakat dan infaq",
+        icon: SquarePen,
+      },
+      {
+        href: "/dashboard/masjid/distribusi",
+        label: "Manajemen Distribusi",
+        description: "Kelola distribusi zakat",
+        icon: Gift,
+      },
+    ],
+  },
+  {
+    groupLabel: "Keuangan & Transparansi Masjid",
+    items: [
+      {
+        href: "/dashboard/masjid/kas",
+        label: "Buku Kas Masjid",
+        description: "Catat kas operasional masjid",
+        icon: BookOpenText,
+      },
+      {
+        href: "/dashboard/masjid/reports",
+        label: "Laporan Masjid",
+        description: "Ringkasan kas dan transaksi ZIS",
+        icon: FileText,
+      },
+      {
+        href: "/dashboard/masjid/share-links",
+        label: "Share Link Masjid",
+        description: "Kelola link transparansi publik",
+        icon: Link2,
+      },
+    ],
+  },
+];
+
+// Flat list of all Masjid items
+const masjidItems: SidebarItem[] = masjidGroups.flatMap((g) => g.items);
+
+// ─── RT: Grouped Navigation ──────────────────────────────────────────────────
+const rtGroups: SidebarGroup[] = [
+  {
+    groupLabel: "Menu",
+    items: [
+      {
+        href: "/dashboard/rt/overview",
+        label: "Overview RT",
+        description: "Ringkasan warga, iuran, kas, dan setoran",
+        icon: LayoutDashboard,
+      },
+    ],
+  },
+  {
+    groupLabel: "Manajemen Data",
+    items: [
+      {
+        href: "/dashboard/rt/warga",
+        label: "Kelola Warga",
+        description: "Create, update, delete warga per blok",
+        icon: Users,
+      },
+    ],
+  },
+  {
+    groupLabel: "Manajemen Keuangan",
+    items: [
+      {
+        href: "/dashboard/rt/manajemen-iuran",
+        label: "Manajemen Iuran",
+        description: "Kelola tagihan, cicilan, dan histori pembayaran",
+        icon: HandCoins,
+      },
+      {
+        href: "/dashboard/rt/kas",
+        label: "Buku Kas RT",
+        description: "Catat pengeluaran & saldo RT",
+        icon: BookOpenText,
+      },
+      {
+        href: "/dashboard/rt/setoran",
+        label: "Setoran ke RW",
+        description: "Lapor & setor dana iuran ke RW",
+        icon: HandCoins,
+      },
+    ],
+  },
+  {
+    groupLabel: "Keamanan & Pengawasan",
+    items: [
+      {
+        href: "/dashboard/rt/ronda",
+        label: "Manajemen Ronda",
+        description: "Kelola jadwal dan presensi ronda",
+        icon: ShieldCheck,
+      },
+      {
+        href: "/dashboard/rt/insiden",
+        label: "Laporan Kejadian",
+        description: "Catat insiden keamanan lingkungan",
+        icon: ShieldAlert,
+      },
+      {
+        href: "/dashboard/rt/audit-logs",
+        label: "Audit Trail",
+        description: "Lacak perubahan data oleh pengguna",
+        icon: ClipboardList,
+      },
+    ],
+  },
+];
+
+// Flat list of all RT items
+const rtItems: SidebarItem[] = rtGroups.flatMap((g) => g.items);
+
+// ─── Superadmin ───────────────────────────────────────────────────────────────
 const superadminItems: SidebarItem[] = [
   {
     href: "/dashboard/superadmin",
@@ -303,20 +399,87 @@ const getAccent = (role: AppRole | null): AccentConfig => {
   };
 };
 
+// ─── NavItem ─────────────────────────────────────────────────────────────────
+function NavItem({
+  item,
+  pathname,
+  accent,
+}: {
+  item: SidebarItem;
+  pathname: string;
+  accent: AccentConfig;
+}) {
+  const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+  const Icon = item.icon;
+
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left",
+        "transition-all duration-150",
+        isActive
+          ? cn("shadow-sm", accent.activeBg)
+          : "hover:bg-slate-100/70 dark:hover:bg-white/5"
+      )}
+    >
+      {/* Active indicator */}
+      {isActive && (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute left-0 top-[20%] h-[60%] w-1 rounded-r-full",
+            accent.indicator
+          )}
+        />
+      )}
+
+      {/* Icon */}
+      <span
+        className={cn(
+          "inline-flex size-8 items-center justify-center rounded-xl border transition-colors duration-150",
+          isActive
+            ? cn(accent.activeIconBg, accent.iconText, "border-transparent shadow-sm")
+            : "border-slate-200/60 bg-white text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-muted-foreground"
+        )}
+      >
+        <Icon className="size-4" />
+      </span>
+
+      {/* Labels */}
+      <span className="min-w-0 flex-1">
+        <span
+          className={cn(
+            "block truncate text-base font-bold",
+            isActive ? accent.activeText : "text-slate-700 dark:text-foreground/80"
+          )}
+        >
+          {item.label}
+        </span>
+        <span className="block truncate text-xs text-slate-400 dark:text-muted-foreground/70">
+          {item.description}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+// ─── DashboardSidebar ────────────────────────────────────────────────────────
 export function DashboardSidebar({ role }: { role: AppRole | null }) {
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
   const accent = getAccent(role);
-  let items: SidebarItem[] = rwItems;
 
-  if (role === "PENGURUS_MASJID") {
-    items = masjidItems;
-  } else if (role === "RT") {
-    items = rtItems;
-  } else if (role === "SUPERADMIN") {
-    items = superadminItems;
-  }
+  // Determine whether to use grouped or flat navigation
+  const isRW = role !== "PENGURUS_MASJID" && role !== "RT" && role !== "SUPERADMIN";
+  const isRT = role === "RT";
+  const isMasjid = role === "PENGURUS_MASJID";
+
+  let flatItems: SidebarItem[] = rwItems;
+  if (role === "PENGURUS_MASJID") flatItems = masjidItems;
+  else if (role === "RT") flatItems = rtItems;
+  else if (role === "SUPERADMIN") flatItems = superadminItems;
 
   const handleLogout = useCallback(() => {
     logout();
@@ -356,71 +519,55 @@ export function DashboardSidebar({ role }: { role: AppRole | null }) {
       <div className="h-px bg-slate-200/70 dark:bg-white/8" />
 
       {/* Navigation */}
-      <nav className="flex flex-col gap-1">
-        <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-muted-foreground/60">
-          Menu
-        </p>
-        {items.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-          const Icon = item.icon;
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left",
-                "transition-all duration-150",
-                isActive
-                  ? cn("shadow-sm", accent.activeBg)
-                  : "hover:bg-slate-100/70 dark:hover:bg-white/5"
-              )}
-            >
-              {/* Active indicator */}
-              {isActive && (
-                <span
-                  aria-hidden
-                  className={cn(
-                    "absolute left-0 top-[20%] h-[60%] w-1 rounded-r-full",
-                    accent.indicator
-                  )}
-                />
-              )}
-
-              {/* Icon */}
-              <span
-                className={cn(
-                  "inline-flex size-8 items-center justify-center rounded-xl border transition-colors duration-150",
-                  isActive
-                    ? cn(accent.activeIconBg, accent.iconText, "border-transparent shadow-sm")
-                    : "border-slate-200/60 bg-white text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-muted-foreground"
-                )}
-              >
-                <Icon className="size-4" />
-              </span>
-
-              {/* Labels */}
-              <span className="min-w-0 flex-1">
-                <span
-                  className={cn(
-                    "block truncate text-base font-bold",
-                    isActive
-                      ? accent.activeText
-                      : "text-slate-700 dark:text-foreground/80"
-                  )}
-                >
-                  {item.label}
-                </span>
-                <span className="block truncate text-xs text-slate-400 dark:text-muted-foreground/70">
-                  {item.description}
-                </span>
-              </span>
-            </Link>
-          );
-        })}
+      <nav className="flex flex-col gap-0.5">
+        {isRW ? (
+          // ── Grouped navigation for RW role ──
+          rwGroups.map((group, gi) => (
+            <div key={group.groupLabel} className={cn("flex flex-col gap-0.5", gi > 0 && "mt-3")}>
+              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-muted-foreground/60">
+                {group.groupLabel}
+              </p>
+              {group.items.map((item) => (
+                <NavItem key={item.href} item={item} pathname={pathname} accent={accent} />
+              ))}
+            </div>
+          ))
+        ) : isRT ? (
+          // ── Grouped navigation for RT role ──
+          rtGroups.map((group, gi) => (
+            <div key={group.groupLabel} className={cn("flex flex-col gap-0.5", gi > 0 && "mt-3")}>
+              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-muted-foreground/60">
+                {group.groupLabel}
+              </p>
+              {group.items.map((item) => (
+                <NavItem key={item.href} item={item} pathname={pathname} accent={accent} />
+              ))}
+            </div>
+          ))
+        ) : isMasjid ? (
+          // ── Grouped navigation for Masjid role ──
+          masjidGroups.map((group, gi) => (
+            <div key={group.groupLabel} className={cn("flex flex-col gap-0.5", gi > 0 && "mt-3")}>
+              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-muted-foreground/60">
+                {group.groupLabel}
+              </p>
+              {group.items.map((item) => (
+                <NavItem key={item.href} item={item} pathname={pathname} accent={accent} />
+              ))}
+            </div>
+          ))
+        ) : (
+          // ── Flat navigation for Superadmin ──
+          <>
+            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-muted-foreground/60">
+              Menu
+            </p>
+            {flatItems.map((item) => (
+              <NavItem key={item.href} item={item} pathname={pathname} accent={accent} />
+            ))}
+          </>
+        )}
       </nav>
-
-
 
       {/* Spacer */}
       <div className="flex-1" />
@@ -430,7 +577,6 @@ export function DashboardSidebar({ role }: { role: AppRole | null }) {
 
       {/* Footer utilities */}
       <div className="space-y-1">
-        {/* Logout button */}
         <button
           type="button"
           onClick={handleLogout}
@@ -441,9 +587,6 @@ export function DashboardSidebar({ role }: { role: AppRole | null }) {
           </span>
           <span className="font-medium">Keluar</span>
         </button>
-
-
-
       </div>
     </div>
   );

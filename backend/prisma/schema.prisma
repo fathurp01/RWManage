@@ -172,6 +172,12 @@ model Warga {
   id                  String            @id @default(uuid())
   blok_wilayah_id     String
   nama_kk             String
+  no_kk               String?
+  nik                 String?
+  tanggal_terbit_kk   DateTime?
+  tanggal_lahir       DateTime?
+  pendidikan          String?
+  pekerjaan           String?
   deleted_at          DateTime?
   
   blok_wilayah        BlokWilayah       @relation(fields: [blok_wilayah_id], references: [id])

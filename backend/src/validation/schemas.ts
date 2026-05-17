@@ -79,6 +79,12 @@ export const listPendingPengurusQuerySchema = z.object({
 export const createWargaSchema = z.object({
   blok_wilayah_id: uuidSchema,
   nama_kk: z.string().trim().min(2).max(150),
+  no_kk: z.string().trim().regex(/^\d{16}$/).optional(),
+  nik: z.string().trim().regex(/^\d{16}$/).optional(),
+  tanggal_terbit_kk: z.string().datetime().optional(),
+  tanggal_lahir: z.string().datetime().optional(),
+  pendidikan: z.enum(["TK", "SD", "SMP", "SMA", "DIPLOMA", "SARJANA", "LAINNYA"]).optional(),
+  pekerjaan: z.string().trim().max(100).optional(),
 });
 
 export const getIuranWargaQuerySchema = z.object({
@@ -96,11 +102,23 @@ export const getIuranRtQuerySchema = z.object({
 
 export const createRtWargaSchema = z.object({
   nama_kk: z.string().trim().min(2).max(150),
+  no_kk: z.string().trim().regex(/^\d{16}$/).optional(),
+  nik: z.string().trim().regex(/^\d{16}$/).optional(),
+  tanggal_terbit_kk: z.string().datetime().optional(),
+  tanggal_lahir: z.string().datetime().optional(),
+  pendidikan: z.enum(["TK", "SD", "SMP", "SMA", "DIPLOMA", "SARJANA", "LAINNYA"]).optional(),
+  pekerjaan: z.string().trim().max(100).optional(),
 });
 
 export const updateRtWargaSchema = z
   .object({
     nama_kk: z.string().trim().min(2).max(150).optional(),
+    no_kk: z.string().trim().regex(/^\d{16}$/).optional(),
+    nik: z.string().trim().regex(/^\d{16}$/).optional(),
+    tanggal_terbit_kk: z.string().datetime().optional(),
+    tanggal_lahir: z.string().datetime().optional(),
+    pendidikan: z.enum(["TK", "SD", "SMP", "SMA", "DIPLOMA", "SARJANA", "LAINNYA"]).optional(),
+    pekerjaan: z.string().trim().max(100).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "Minimal satu field harus dikirim untuk update.",
@@ -212,6 +230,12 @@ export const wargaParamsSchema = z.object({
 
 export const updateWargaSchema = z.object({
   nama_kk: z.string().min(1, "Nama KK tidak boleh kosong").optional(),
+  no_kk: z.string().trim().regex(/^\d{16}$/).optional(),
+  nik: z.string().trim().regex(/^\d{16}$/).optional(),
+  tanggal_terbit_kk: z.string().datetime().optional(),
+  tanggal_lahir: z.string().datetime().optional(),
+  pendidikan: z.enum(["TK", "SD", "SMP", "SMA", "DIPLOMA", "SARJANA", "LAINNYA"]).optional(),
+  pekerjaan: z.string().trim().max(100).optional(),
 }).refine((value) => Object.keys(value).length > 0, {
   message: "Minimal satu field harus dikirim untuk update warga.",
 });
@@ -544,14 +568,12 @@ export const cekKodeUnikQuerySchema = z.object({
   export const createBlokWilayahSchema = z.object({
     wilayah_rw_id: uuidSchema,
     nama_blok: z.string().trim().min(2).max(100),
-    ketua_rt: z.string().trim().min(2).max(150),
-    no_telepon: z.string().trim().min(8).max(20).optional(),
+    no_rt: z.string().trim().min(1).max(10).optional(),
   });
 
   export const updateBlokWilayahSchema = z.object({
     nama_blok: z.string().trim().min(2).max(100).optional(),
-    ketua_rt: z.string().trim().min(2).max(150).optional(),
-    no_telepon: z.string().trim().min(8).max(20).optional(),
+    no_rt: z.string().trim().min(1).max(10).optional(),
   }).refine((value) => Object.keys(value).length > 0, {
     message: "Minimal satu field harus dikirim untuk update.",
   });

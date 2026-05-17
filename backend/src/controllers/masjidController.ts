@@ -134,7 +134,11 @@ export const getMasjidList = async (
           select: { id: true }
         },
         pengurus_masjid: {
-          select: { id: true }
+          include: {
+            user: {
+              select: { nama: true }
+            }
+          }
         }
       },
       orderBy: { nama_masjid: "asc" },
@@ -331,7 +335,18 @@ export const deleteMasjid = async (
       return;
     }
 
-    await prisma.masjid.delete({ where: { id: masjid_id } });
+          // Check if there are any pengurus linked to this masjid
+      const hasPengurus = await prisma.pengurusMasjid.findFirst({
+        where: { masjid_id: masjid_id },
+        select: { id: true },
+      });
+      if (hasPengurus) {
+        res.status(409).json({
+          success: false,
+          message: "Masjid masih memiliki pengurus yang terdaftar. Harap hapus akun pengurus terlebih dahulu.",
+        });
+        return;
+      }
 
     res.status(200).json({
       success: true,

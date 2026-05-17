@@ -256,7 +256,12 @@ export const getWargaForRt = async (req: Request, res: Response): Promise<void> 
       select: {
         id: true,
         nama_kk: true,
-        
+        no_kk: true,
+        nik: true,
+        tanggal_terbit_kk: true,
+        tanggal_lahir: true,
+        pendidikan: true,
+        pekerjaan: true,
         blok_wilayah_id: true,
       },
       orderBy: { nama_kk: "asc" },
@@ -274,7 +279,7 @@ export const getWargaForRt = async (req: Request, res: Response): Promise<void> 
 
 export const createWargaForRt = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { nama_kk } = req.body as { nama_kk?: string };
+    const { nama_kk, no_kk, nik, tanggal_terbit_kk, tanggal_lahir, pekerjaan, pendidikan } = req.body as any;
 
     if (!req.user?.id) {
       res.status(401).json({ success: false, message: "User belum terautentikasi." });
@@ -307,7 +312,12 @@ export const createWargaForRt = async (req: Request, res: Response): Promise<voi
         data: {
           blok_wilayah_id: blok.id,
           nama_kk: nama_kk.trim(),
-          
+          no_kk: no_kk?.trim() || null,
+          nik: nik?.trim() || null,
+          tanggal_terbit_kk: tanggal_terbit_kk ? new Date(tanggal_terbit_kk) : null,
+          tanggal_lahir: tanggal_lahir ? new Date(tanggal_lahir) : null,
+          pendidikan: pendidikan || null,
+          pekerjaan: pekerjaan?.trim() || null,
         },
       });
 
@@ -417,6 +427,56 @@ export const createPerformaRondaForRt = async (req: Request, res: Response): Pro
     res.status(201).json({ success: true, message: "Data performa ronda RT berhasil ditambahkan.", data: created });
   } catch {
     res.status(500).json({ success: false, message: "Terjadi kesalahan saat membuat data performa ronda RT." });
+  }
+};
+
+export const updateWargaForRt = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const raw = (req.params as Record<string, unknown>)?.warga_id;
+    const warga_id = Array.isArray(raw) ? raw[0] : (raw as string | undefined);
+    if (!warga_id) {
+      res.status(400).json({ success: false, message: "warga_id harus diisi." });
+      return;
+    }
+
+    const existing = await prisma.warga.findUnique({ where: { id: warga_id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: "Warga tidak ditemukan." });
+      return;
+    }
+
+    const blok = await getRtBlockContext(req);
+    if (!blok || existing.blok_wilayah_id !== blok.id) {
+      res.status(403).json({ success: false, message: "Akses ditolak." });
+      return;
+    }
+
+    const { nama_kk, no_kk, nik, tanggal_terbit_kk, tanggal_lahir, pekerjaan, pendidikan } = req.body as any;
+
+    const updated = await prisma.warga.update({
+      where: { id: warga_id },
+      data: {
+        ...(nama_kk ? { nama_kk: nama_kk.trim() } : {}),
+        ...(no_kk !== undefined ? { no_kk: no_kk?.trim() || null } : {}),
+        ...(nik !== undefined ? { nik: nik?.trim() || null } : {}),
+        ...(tanggal_terbit_kk !== undefined ? { tanggal_terbit_kk: tanggal_terbit_kk ? new Date(tanggal_terbit_kk) : null } : {}),
+        ...(tanggal_lahir !== undefined ? { tanggal_lahir: tanggal_lahir ? new Date(tanggal_lahir) : null } : {}),
+        ...(pendidikan !== undefined ? { pendidikan: pendidikan || null } : {}),
+        ...(pekerjaan !== undefined ? { pekerjaan: pekerjaan?.trim() || null } : {}),
+      },
+    });
+
+    await recordAudit(req, {
+      aksi: AksiAudit.UPDATE,
+      entitas: "Warga",
+      entitas_id: warga_id,
+      data_lama: existing,
+      data_baru: updated,
+    });
+
+    res.status(200).json({ success: true, message: "Data warga RT berhasil diupdate.", data: updated });
+  } catch {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengupdate data warga RT." });
   }
 };
 

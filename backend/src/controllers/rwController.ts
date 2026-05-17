@@ -132,7 +132,7 @@ export const createWargaWithClient = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { blok_wilayah_id, nama_kk } = req.body as CreateWargaBody;
+    const { blok_wilayah_id, nama_kk, no_kk, nik, tanggal_terbit_kk, tanggal_lahir, pekerjaan, pendidikan } = req.body as any;
 
     if (!blok_wilayah_id || !nama_kk) {
       res.status(400).json({
@@ -196,8 +196,13 @@ export const createWargaWithClient = async (
       const warga = await tx.warga.create({
         data: {
           blok_wilayah_id,
-          nama_kk,
-          
+          nama_kk: nama_kk.trim(),
+          no_kk: no_kk?.trim() || null,
+          nik: nik?.trim() || null,
+          tanggal_terbit_kk: tanggal_terbit_kk ? new Date(tanggal_terbit_kk) : null,
+          tanggal_lahir: tanggal_lahir ? new Date(tanggal_lahir) : null,
+          pendidikan: pendidikan || null,
+          pekerjaan: pekerjaan?.trim() || null,
         },
       });
 
@@ -421,7 +426,7 @@ export const getWargaDetail = async (req: Request, res: Response): Promise<void>
 export const updateWarga = async (req: Request, res: Response): Promise<void> => {
   try {
     const { warga_id } = req.params as WargaIdParams;
-    const { nama_kk } = req.body as UpdateWargaBody; const tarif_iuran_bulanan = undefined;
+    const { nama_kk, no_kk, nik, tanggal_terbit_kk, tanggal_lahir, pekerjaan, pendidikan } = req.body as any; const tarif_iuran_bulanan = undefined;
 
     if (!warga_id) {
       res.status(400).json({
@@ -439,7 +444,7 @@ export const updateWarga = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    if (nama_kk === undefined && tarif_iuran_bulanan === undefined) {
+    if (nama_kk === undefined && tarif_iuran_bulanan === undefined && no_kk === undefined && nik === undefined && tanggal_terbit_kk === undefined && tanggal_lahir === undefined && pekerjaan === undefined && pendidikan === undefined) {
       res.status(400).json({
         success: false,
         message: "Minimal satu field harus dikirim untuk update warga.",
@@ -487,7 +492,12 @@ export const updateWarga = async (req: Request, res: Response): Promise<void> =>
 
     const dataToUpdate: {
       nama_kk?: string;
-      
+      no_kk?: string | null;
+      nik?: string | null;
+      tanggal_terbit_kk?: Date | null;
+      tanggal_lahir?: Date | null;
+      pekerjaan?: string | null;
+      pendidikan?: string | null;
       iuran_warga?: {
         updateMany: {
           where: {
@@ -503,6 +513,12 @@ export const updateWarga = async (req: Request, res: Response): Promise<void> =>
     if (nama_kk !== undefined) {
       dataToUpdate.nama_kk = nama_kk.trim();
     }
+    if (no_kk !== undefined) dataToUpdate.no_kk = no_kk?.trim() || null;
+    if (nik !== undefined) dataToUpdate.nik = nik?.trim() || null;
+    if (tanggal_terbit_kk !== undefined) dataToUpdate.tanggal_terbit_kk = tanggal_terbit_kk ? new Date(tanggal_terbit_kk) : null;
+    if (tanggal_lahir !== undefined) dataToUpdate.tanggal_lahir = tanggal_lahir ? new Date(tanggal_lahir) : null;
+    if (pekerjaan !== undefined) dataToUpdate.pekerjaan = pekerjaan?.trim() || null;
+    if (pendidikan !== undefined) dataToUpdate.pendidikan = pendidikan || null;
 
     if (tarif_iuran_bulanan !== undefined) {
       const parsedTarif = parsePositiveNumber(tarif_iuran_bulanan);
@@ -1690,6 +1706,12 @@ export const getDataPenduduk = async (req: Request, res: Response): Promise<void
           select: {
             id: true,
             nama_kk: true,
+            no_kk: true,
+            nik: true,
+            tanggal_terbit_kk: true,
+            tanggal_lahir: true,
+            pendidikan: true,
+            pekerjaan: true,
             anggota_keluarga: {
               where: { deleted_at: null },
               select: {
@@ -1757,3 +1779,7 @@ export const getDataPenduduk = async (req: Request, res: Response): Promise<void
     });
   }
 };
+// trigger restart
+
+
+// test
