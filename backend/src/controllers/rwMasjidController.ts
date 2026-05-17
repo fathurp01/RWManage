@@ -132,6 +132,11 @@ export const listRwMasjid = async (req: Request, res: Response): Promise<void> =
           },
         },
         pengurus_masjid: {
+          where: {
+            user: {
+              status_akun: "APPROVED",
+            },
+          },
           select: {
             id: true,
             user: {

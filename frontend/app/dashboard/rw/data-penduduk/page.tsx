@@ -18,6 +18,7 @@ import {
   Home,
   GitBranch,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Search,
   MapPin,
@@ -298,6 +299,7 @@ export default function DataPendudukPage() {
   const [blokOptions, setBlokOptions] = useState<{ id: string; nama: string }[]>([]);
   const [rtOptions, setRtOptions] = useState<string[]>([]);
   const [expandedKK, setExpandedKK] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadData = async () => {
     try {
@@ -370,11 +372,17 @@ export default function DataPendudukPage() {
     }
 
     setFilteredData(result);
+    setCurrentPage(1);
   }, [search, filterBlok, filterRt, data]);
 
   const toggleExpand = (kkId: string) => {
     setExpandedKK(expandedKK === kkId ? null : kkId);
   };
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -529,7 +537,12 @@ export default function DataPendudukPage() {
           </h2>
           {!loading && (
             <span className="text-sm text-slate-500 tabular-nums">
-              {filteredData.length} KK ditampilkan
+              {filteredData.length > 0
+                ? `Menampilkan ${startIndex + 1}-${Math.min(
+                    startIndex + itemsPerPage,
+                    filteredData.length
+                  )} dari ${filteredData.length} KK`
+                : "0 KK"}
             </span>
           )}
         </div>
@@ -559,14 +572,50 @@ export default function DataPendudukPage() {
         ) : (
           /* List */
           <div className="flex flex-col gap-3">
-            {filteredData.map((kk) => (
-              <KKCard
-                key={kk.id}
-                kk={kk}
-                isExpanded={expandedKK === kk.id}
-                onToggle={() => toggleExpand(kk.id)}
-              />
-            ))}
+            <div className="flex flex-col gap-3">
+              {paginatedData.map((kk) => (
+                <KKCard
+                  key={kk.id}
+                  kk={kk}
+                  isExpanded={expandedKK === kk.id}
+                  onToggle={() => toggleExpand(kk.id)}
+                />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {!loading && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-2 px-1 py-1.5 border-t border-slate-100 pt-4">
+                <p className="text-sm text-slate-500 font-medium">
+                  Halaman <span className="font-bold text-violet-600">{currentPage}</span> dari{" "}
+                  <span className="font-bold text-slate-800">{totalPages}</span>
+                </p>
+                
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="h-9 px-3 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 disabled:pointer-events-none transition-all"
+                  >
+                    <ChevronLeft className="size-4 mr-1 shrink-0" />
+                    Sebelumnya
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="h-9 px-3 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 disabled:pointer-events-none transition-all"
+                  >
+                    Berikutnya
+                    <ChevronRight className="size-4 ml-1 shrink-0" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>

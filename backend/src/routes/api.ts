@@ -169,6 +169,10 @@ import {
   getBlokWilayahList,
   updateBlokWilayah,
   deleteBlokWilayah,
+  listRwRtAccounts,
+  createRwRtAccount,
+  updateRwRtAccount,
+  deleteRwRtAccount,
 } from "../controllers/blokWilayahController";
 import {
   createMasjid,
@@ -176,6 +180,10 @@ import {
   getMasjidDetail,
   updateMasjid,
   deleteMasjid,
+  listRwPengurusMasjid,
+  createRwPengurusMasjid,
+  updateRwPengurusMasjid,
+  deleteRwPengurusMasjid,
 } from "../controllers/masjidController";
 import {
   getDashboardOverview,
@@ -295,7 +303,7 @@ router.post("/auth/register", authRateLimit, validateBody(registerSchema), regis
 router.post("/auth/login", authRateLimit, validateBody(loginSchema), login);
 router.patch(
   "/auth/approve-pengurus",
-  authRateLimit,
+  rwActionRateLimit,
   verifyToken,
   checkRole(["RW"]),
   checkApproval,
@@ -304,7 +312,7 @@ router.patch(
 );
 router.get(
   "/auth/pending-pengurus",
-  authRateLimit,
+  rwActionRateLimit,
   verifyToken,
   checkRole(["RW"]),
   checkApproval,
@@ -313,7 +321,7 @@ router.get(
 );
 router.get(
   "/auth/pending-rt",
-  authRateLimit,
+  rwActionRateLimit,
   verifyToken,
   checkRole(["RW"]),
   checkApproval,
@@ -322,7 +330,7 @@ router.get(
 );
 router.patch(
   "/auth/approve-rt",
-  authRateLimit,
+  rwActionRateLimit,
   verifyToken,
   checkRole(["RW"]),
   checkApproval,
@@ -736,6 +744,40 @@ router.delete(
   checkApproval,
   validateParams(blokWilayahParamsSchema),
   deleteBlokWilayah
+);
+
+// ==================== KETUA RT CRUD ROUTES ====================
+router.get(
+  "/rw/rt-accounts",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  listRwRtAccounts
+);
+router.post(
+  "/rw/rt-accounts",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  createRwRtAccount
+);
+router.patch(
+  "/rw/rt-accounts/:user_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  updateRwRtAccount
+);
+router.delete(
+  "/rw/rt-accounts/:user_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  deleteRwRtAccount
 );
 
 // ==================== IURAN ROUTES ====================
@@ -1278,6 +1320,49 @@ router.patch(
   validateParams(rwMasjidParamsSchema),
   validateBody(updateRwMasjidSchema),
   updateRwMasjid
+);
+router.delete(
+  "/rw/masjid/:masjid_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(rwMasjidParamsSchema),
+  deleteMasjid
+);
+
+// ==================== RW PENGURUS MASJID ROUTES ====================
+router.get(
+  "/rw/pengurus-masjid",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  listRwPengurusMasjid
+);
+router.post(
+  "/rw/pengurus-masjid",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  createRwPengurusMasjid
+);
+router.patch(
+  "/rw/pengurus-masjid/:user_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  updateRwPengurusMasjid
+);
+router.delete(
+  "/rw/pengurus-masjid/:user_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  deleteRwPengurusMasjid
 );
 
 // ==================== MASJID (FULL CRUD) ROUTES ====================

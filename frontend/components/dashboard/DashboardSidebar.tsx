@@ -67,7 +67,7 @@ const rwGroups: SidebarGroup[] = [
       {
         href: "/dashboard/rw/data-penduduk",
         label: "Data Penduduk",
-        description: "Lihat data seluruh penduduk di RW",
+        description: "Lihat data penduduk di RW",
         icon: Users,
       },
       {
@@ -79,7 +79,7 @@ const rwGroups: SidebarGroup[] = [
       {
         href: "/dashboard/rw/blok-wilayah",
         label: "Data Blok Wilayah",
-        description: "Kelola Blok Wilayah",
+        description: "Kelola RT dan Blok Wilayah",
         icon: Map,
       },
     ],
@@ -139,18 +139,8 @@ const rwGroups: SidebarGroup[] = [
   {
     groupLabel: "Administrasi, Pelaporan & Transparansi",
     items: [
-      {
-        href: "/dashboard/rw/persetujuan-rt",
-        label: "Persetujuan RT",
-        description: "Persetujuan pendaftaran akun RT",
-        icon: CheckSquare,
-      },
-      {
-        href: "/dashboard/rw/approval",
-        label: "Persetujuan Masjid",
-        description: "Setujui atau tolak pengurus masjid",
-        icon: ShieldCheck,
-      },
+
+
       {
         href: "/dashboard/rw/reports",
         label: "Laporan RW",

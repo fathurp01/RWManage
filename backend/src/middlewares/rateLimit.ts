@@ -19,7 +19,7 @@ export const createLimiter = (
 
 export const authRateLimit = createLimiter(
   15 * 60 * 1000,
-  10,
+  30,
   "Terlalu banyak percobaan autentikasi. Coba lagi nanti."
 );
 
