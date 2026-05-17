@@ -96,12 +96,12 @@ const rwGroups: SidebarGroup[] = [
       {
         href: "/dashboard/rw/iuran-khusus",
         label: "Iuran Khusus",
-        description: "Input pemasukan non-RT",
+        description: "Catat pemasukan non-RT",
         icon: Wallet,
       },
       {
         href: "/dashboard/rw/pengaturan-iuran",
-        label: "Pengaturan Iuran",
+        label: "Pengaturan Iuran RT",
         description: "Atur nominal & split iuran",
         icon: Settings,
       },
@@ -185,7 +185,7 @@ const masjidGroups: SidebarGroup[] = [
       {
         href: "/dashboard/masjid/input",
         label: "Catat ZIS Baru",
-        description: "Input transaksi zakat dan infaq",
+        description: "Catat transaksi zakat dan infaq",
         icon: SquarePen,
       },
       {

@@ -203,7 +203,7 @@ export default function BlokWilayahPage() {
       const res = await api.get<RtListResponse>(url);
       setRtList(res.data.data || []);
     } catch (error) {
-      console.error(error);
+      console.error("fetchRts error:", getApiError(error).message);
       toast.error(getApiError(error).message);
     } finally {
       setIsLoadingRt(false);
@@ -242,7 +242,7 @@ export default function BlokWilayahPage() {
       const res = await api.get<PendingRTResponse>(url);
       setPendingList(res.data.data || []);
     } catch (error) {
-      console.error(error);
+      console.error("fetchPending error:", getApiError(error).message);
     } finally {
       setIsLoadingPending(false);
     }
@@ -537,7 +537,7 @@ export default function BlokWilayahPage() {
       {/* ── Header ── */}
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30">
+          <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30">
             <Map className="size-6" />
           </span>
           <div>
@@ -737,62 +737,62 @@ export default function BlokWilayahPage() {
           </div>
         </div>
 
-      {/* ── Form Tambah (collapsible) ── */}
-      {showAddForm && (
-        <div className="rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 to-violet-50/60 p-6 shadow-sm">
-          <div className="flex items-center gap-2.5 mb-5">
-            <span className="inline-flex size-9 items-center justify-center rounded-xl bg-indigo-100">
-              <Plus className="size-5 text-indigo-600" />
-            </span>
-            <h2 className="text-base font-bold text-indigo-800">Tambah Blok Wilayah Baru</h2>
-          </div>
-          <form className="space-y-4" onSubmit={handleCreateSubmit}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="create-blok" className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-                  <Map className="size-4 text-indigo-500" />
-                  Nama Blok
-                </Label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-3.5 text-slate-500 font-semibold text-sm select-none">Blok</span>
+        {/* ── Form Tambah (collapsible) ── */}
+        {showAddForm && (
+          <div className="rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 to-violet-50/60 p-6 shadow-sm">
+            <div className="flex items-center gap-2.5 mb-5">
+              <span className="inline-flex size-9 items-center justify-center rounded-xl bg-indigo-100">
+                <Plus className="size-5 text-indigo-600" />
+              </span>
+              <h2 className="text-base font-bold text-indigo-800">Tambah Blok Wilayah Baru</h2>
+            </div>
+            <form className="space-y-4" onSubmit={handleCreateSubmit}>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-blok" className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                    <Map className="size-4 text-indigo-500" />
+                    Nama Blok
+                  </Label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3.5 text-slate-500 font-semibold text-sm select-none">Blok</span>
+                    <Input
+                      id="create-blok"
+                      value={form.nama_blok}
+                      onChange={(e) => setForm((prev) => ({ ...prev, nama_blok: e.target.value }))}
+                      placeholder="Contoh: A, Flamboyan"
+                      disabled={isSubmitting}
+                      className="h-11 rounded-xl text-sm pl-12"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-rt" className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                    <GitBranch className="size-4 text-indigo-500" />
+                    Nomor RT
+                  </Label>
                   <Input
-                    id="create-blok"
-                    value={form.nama_blok}
-                    onChange={(e) => setForm((prev) => ({ ...prev, nama_blok: e.target.value }))}
-                    placeholder="Contoh: A, Flamboyan"
+                    id="create-rt"
+                    value={form.no_rt}
+                    onChange={(e) => setForm((prev) => ({ ...prev, no_rt: e.target.value }))}
+                    placeholder="Contoh: 001, 002"
                     disabled={isSubmitting}
-                    className="h-11 rounded-xl text-sm pl-12"
+                    className="h-11 rounded-xl text-sm"
                   />
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="create-rt" className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-                  <GitBranch className="size-4 text-indigo-500" />
-                  Nomor RT
-                </Label>
-                <Input
-                  id="create-rt"
-                  value={form.no_rt}
-                  onChange={(e) => setForm((prev) => ({ ...prev, no_rt: e.target.value }))}
-                  placeholder="Contoh: 001, 002"
-                  disabled={isSubmitting}
-                  className="h-11 rounded-xl text-sm"
-                />
+              <div className="flex gap-3 justify-end pt-1">
+                <Button type="button" variant="outline" onClick={() => setShowAddForm(false)}
+                  className="h-11 px-5 rounded-xl text-sm font-semibold border-slate-200">
+                  Batal
+                </Button>
+                <Button type="submit" disabled={isSubmitting}
+                  className="h-11 px-6 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold shadow-sm text-sm">
+                  {isSubmitting ? <><Loader2 className="size-4 mr-2 animate-spin" /> Menyimpan...</> : <><Plus className="size-4 mr-2" /> Simpan Blok</>}
+                </Button>
               </div>
-            </div>
-            <div className="flex gap-3 justify-end pt-1">
-              <Button type="button" variant="outline" onClick={() => setShowAddForm(false)}
-                className="h-11 px-5 rounded-xl text-sm font-semibold border-slate-200">
-                Batal
-              </Button>
-              <Button type="submit" disabled={isSubmitting}
-                className="h-11 px-6 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold shadow-sm text-sm">
-                {isSubmitting ? <><Loader2 className="size-4 mr-2 animate-spin" /> Menyimpan...</> : <><Plus className="size-4 mr-2" /> Simpan Blok</>}
-              </Button>
-            </div>
-          </form>
-        </div>
-      )}
+            </form>
+          </div>
+        )}
 
         {/* Filter Blok Wilayah di bawah label Daftar Blok Wilayah */}
         <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm space-y-3">
@@ -1015,113 +1015,113 @@ export default function BlokWilayahPage() {
           </div>
         </div>
 
-      {/* ── Form Tambah Ketua RT (collapsible) ── */}
-      {showAddRtForm && (
-        <div className="rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 to-violet-50/60 p-6 shadow-sm">
-          {/* Form header */}
-          <div className="flex items-center gap-2.5 mb-5">
-            <span className="inline-flex size-9 items-center justify-center rounded-xl bg-indigo-100">
-              <UserPlus className="size-5 text-indigo-600" />
-            </span>
-            <h2 className="text-base font-bold text-indigo-800">Tambah Ketua RT Baru</h2>
+        {/* ── Form Tambah Ketua RT (collapsible) ── */}
+        {showAddRtForm && (
+          <div className="rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 to-violet-50/60 p-6 shadow-sm">
+            {/* Form header */}
+            <div className="flex items-center gap-2.5 mb-5">
+              <span className="inline-flex size-9 items-center justify-center rounded-xl bg-indigo-100">
+                <UserPlus className="size-5 text-indigo-600" />
+              </span>
+              <h2 className="text-base font-bold text-indigo-800">Tambah Ketua RT Baru</h2>
+            </div>
+
+            <form onSubmit={handleCreateRtSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">Nama Lengkap</Label>
+                <Input
+                  placeholder="Contoh: Bapak Taufik"
+                  value={createRtForm.nama}
+                  onChange={(e) => setCreateRtForm((prev) => ({ ...prev, nama: e.target.value }))}
+                  className="h-11 rounded-xl text-sm bg-white"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">Email</Label>
+                <Input
+                  type="email"
+                  placeholder="Contoh: taufik@mail.com"
+                  value={createRtForm.email}
+                  onChange={(e) => setCreateRtForm((prev) => ({ ...prev, email: e.target.value }))}
+                  className="h-11 rounded-xl text-sm bg-white"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">Nomor HP</Label>
+                <Input
+                  placeholder="Contoh: 081234567890"
+                  value={createRtForm.no_hp}
+                  onChange={(e) => setCreateRtForm((prev) => ({ ...prev, no_hp: e.target.value }))}
+                  className="h-11 rounded-xl text-sm bg-white"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">Password</Label>
+                <Input
+                  type="password"
+                  placeholder="Masukkan password akun"
+                  value={createRtForm.password}
+                  onChange={(e) => setCreateRtForm((prev) => ({ ...prev, password: e.target.value }))}
+                  className="h-11 rounded-xl text-sm bg-white"
+                />
+              </div>
+
+              <div className="space-y-1.5 md:col-span-2">
+                <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">Blok Wilayah (RT)</Label>
+                <Select
+                  value={createRtForm.blok_wilayah_id}
+                  onValueChange={(value) => setCreateRtForm((prev) => ({ ...prev, blok_wilayah_id: value }))}
+                >
+                  <SelectTrigger className="!h-11 !rounded-xl w-full text-sm bg-white">
+                    <SelectValue placeholder="Pilih blok wilayah (RT) yang akan dipimpin" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100">
+                    {blokList.map((b) => {
+                      const isOccupied = occupiedBlokIds.has(b.id);
+                      return (
+                        <SelectItem
+                          key={b.id}
+                          value={b.id}
+                          disabled={isOccupied}
+                          className="!text-sm !py-2 !px-3 !rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="flex items-center justify-between w-full">
+                            <span>{b.nama_blok} {b.no_rt ? `(RT ${b.no_rt.padStart(3, "0")})` : ""}</span>
+                            {isOccupied && <span className="ml-2 text-[10px] bg-slate-100 text-slate-400 font-semibold px-1.5 py-0.5 rounded">RT Aktif</span>}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="md:col-span-2 flex justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowAddRtForm(false);
+                    setCreateRtForm(initialRtForm);
+                  }}
+                  className="h-11 px-5 rounded-xl font-bold transition-all text-sm text-slate-600"
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmittingRt}
+                  className="h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all text-sm flex items-center gap-2 shadow-md shadow-indigo-200"
+                >
+                  {isSubmittingRt ? <><Loader2 className="size-4 mr-2 animate-spin" /> Menambahkan...</> : <><Plus className="size-4" /> Tambah Ketua RT</>}
+                </Button>
+              </div>
+            </form>
           </div>
-
-          <form onSubmit={handleCreateRtSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">Nama Lengkap</Label>
-              <Input
-                placeholder="Contoh: Bapak Taufik"
-                value={createRtForm.nama}
-                onChange={(e) => setCreateRtForm((prev) => ({ ...prev, nama: e.target.value }))}
-                className="h-11 rounded-xl text-sm bg-white"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">Email</Label>
-              <Input
-                type="email"
-                placeholder="Contoh: taufik@mail.com"
-                value={createRtForm.email}
-                onChange={(e) => setCreateRtForm((prev) => ({ ...prev, email: e.target.value }))}
-                className="h-11 rounded-xl text-sm bg-white"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">Nomor HP</Label>
-              <Input
-                placeholder="Contoh: 081234567890"
-                value={createRtForm.no_hp}
-                onChange={(e) => setCreateRtForm((prev) => ({ ...prev, no_hp: e.target.value }))}
-                className="h-11 rounded-xl text-sm bg-white"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">Password</Label>
-              <Input
-                type="password"
-                placeholder="Masukkan password akun"
-                value={createRtForm.password}
-                onChange={(e) => setCreateRtForm((prev) => ({ ...prev, password: e.target.value }))}
-                className="h-11 rounded-xl text-sm bg-white"
-              />
-            </div>
-
-            <div className="space-y-1.5 md:col-span-2">
-              <Label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">Blok Wilayah (RT)</Label>
-              <Select
-                value={createRtForm.blok_wilayah_id}
-                onValueChange={(value) => setCreateRtForm((prev) => ({ ...prev, blok_wilayah_id: value }))}
-              >
-                <SelectTrigger className="!h-11 !rounded-xl w-full text-sm bg-white">
-                  <SelectValue placeholder="Pilih blok wilayah (RT) yang akan dipimpin" />
-                </SelectTrigger>
-                <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100">
-                  {blokList.map((b) => {
-                    const isOccupied = occupiedBlokIds.has(b.id);
-                    return (
-                      <SelectItem
-                        key={b.id}
-                        value={b.id}
-                        disabled={isOccupied}
-                        className="!text-sm !py-2 !px-3 !rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <span className="flex items-center justify-between w-full">
-                          <span>{b.nama_blok} {b.no_rt ? `(RT ${b.no_rt.padStart(3, "0")})` : ""}</span>
-                          {isOccupied && <span className="ml-2 text-[10px] bg-slate-100 text-slate-400 font-semibold px-1.5 py-0.5 rounded">RT Aktif</span>}
-                        </span>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="md:col-span-2 flex justify-end gap-3 pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setShowAddRtForm(false);
-                  setCreateRtForm(initialRtForm);
-                }}
-                className="h-11 px-5 rounded-xl font-bold transition-all text-sm text-slate-600"
-              >
-                Batal
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmittingRt}
-                className="h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all text-sm flex items-center gap-2 shadow-md shadow-indigo-200"
-              >
-                {isSubmittingRt ? <><Loader2 className="size-4 mr-2 animate-spin" /> Menambahkan...</> : <><Plus className="size-4" /> Tambah Ketua RT</>}
-              </Button>
-            </div>
-          </form>
-        </div>
-      )}
+        )}
 
         {/* ── Filter & Search Ketua RT ── */}
         <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm space-y-3">

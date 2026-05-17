@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useCallback, useEffect, useState } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { api, getApiError, type FieldErrors } from "@/lib/axios";
@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2, Wallet, ArrowLeft, FileText, TrendingUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Wallet, ArrowLeft, FileText, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 interface KasItem {
@@ -68,6 +68,25 @@ export default function IuranKhususRwPage() {
   const [items, setItems] = useState<KasItem[]>([]);
   const [summary, setSummary] = useState({ total_masuk: 0, total_keluar: 0, saldo: 0 });
   const [nominalTotal, setNominalTotal] = useState(0);
+  const [createFileName, setCreateFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [items.length]);
+
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return items.slice(start, end);
+  }, [items, currentPage, pageSize]);
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(items.length / pageSize));
+  }, [items.length, pageSize]);
 
   const loadData = useCallback(async () => {
     if (!wilayahRwId) {
@@ -118,6 +137,7 @@ export default function IuranKhususRwPage() {
 
       try {
         const payload = new FormData();
+        payload.append("wilayah_rw_id", wilayahRwId);
         payload.append("jenis_transaksi", "MASUK");
         if (tanggal) {
           payload.append("tanggal", new Date(`${tanggal}T00:00:00.000Z`).toISOString());
@@ -137,6 +157,10 @@ export default function IuranKhususRwPage() {
 
         toast.success("Iuran khusus berhasil disimpan.");
         await loadData();
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        setCreateFileName("");
         return { message: "", fieldErrors: {} };
       } catch (error) {
         const apiError = getApiError(error);
@@ -253,7 +277,7 @@ export default function IuranKhususRwPage() {
           </CardTitle>
           <CardDescription>Catat pemasukan dari sewa fasum, donatur, atau sumber lain di luar RT.</CardDescription>
         </CardHeader>
-        <CardContent className="pt-5">
+        <CardContent>
           <form action={createAction} className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="tanggal" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Tanggal</Label>
@@ -293,7 +317,30 @@ export default function IuranKhususRwPage() {
 
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="bukti_foto" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Foto Bukti (opsional)</Label>
-              <Input id="bukti_foto" name="bukti_foto" type="file" accept="image/*" disabled={isCreating} className="cursor-pointer file:cursor-pointer" />
+              <div className="relative flex items-center h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 px-3.5 py-2 text-sm transition-all duration-200 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25">
+                <input
+                  id="bukti_foto"
+                  name="bukti_foto"
+                  type="file"
+                  accept="image/*"
+                  disabled={isCreating}
+                  ref={fileInputRef}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setCreateFileName(file ? file.name : "");
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:pointer-events-none"
+                />
+                <div className="flex items-center gap-2.5 w-full pointer-events-none select-none">
+                  <span className="font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors">
+                    Choose File
+                  </span>
+                  <span className="text-slate-300 dark:text-slate-600 font-light">|</span>
+                  <span className="text-slate-400 dark:text-slate-500 truncate flex-1">
+                    {createFileName || "No file chosen"}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {createState.message ? <p className="sm:col-span-2 text-sm text-destructive">{createState.message}</p> : null}
@@ -313,41 +360,106 @@ export default function IuranKhususRwPage() {
           </CardTitle>
           <CardDescription>Daftar transaksi yang sudah dicatat pada menu ini.</CardDescription>
         </CardHeader>
-        <CardContent className="pt-5">
+        <CardContent>
           {loading ? (
             <div className="py-8 text-center text-sm text-slate-500 dark:text-muted-foreground">Memuat data...</div>
           ) : items.length === 0 ? (
             <div className="py-8 text-center text-sm text-slate-500 dark:text-muted-foreground">Belum ada iuran khusus yang tercatat.</div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-white/8">
-              <table className="w-full text-left">
-                <thead className="bg-slate-50/80 dark:bg-white/3">
-                  <tr>
-                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Tanggal</th>
-                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Keterangan</th>
-                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground text-right">Nominal</th>
-                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => (
-                    <tr key={item.id} className="border-t border-slate-100 dark:border-white/8 hover:bg-slate-50/60 dark:hover:bg-white/3 transition-colors">
-                      <td className="px-4 py-3.5 text-sm text-slate-500 dark:text-muted-foreground whitespace-nowrap">{formatDate(item.tanggal)}</td>
-                      <td className="px-4 py-3.5">
-                        <p className="font-semibold text-sm text-slate-900 dark:text-foreground">{item.keterangan}</p>
-                        <code className="text-[10px] text-slate-400 dark:text-muted-foreground/60">{item.kode_unik}</code>
-                      </td>
-                      <td className="px-4 py-3.5 text-right font-bold tabular-nums text-slate-900 dark:text-foreground whitespace-nowrap">{formatRupiah(item.nominal)}</td>
-                      <td className="px-4 py-3.5 text-right">
-                        <div className="inline-flex items-center gap-1.5">
-                          <EditKasDialog item={item} onSaved={loadData} />
-                          <DeleteKasDialog itemId={item.id} onDeleted={loadData} />
-                        </div>
-                      </td>
+            <div className="space-y-4">
+              <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-white/8">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50/80 dark:bg-white/3">
+                    <tr>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Tanggal</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Keterangan</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground text-right">Nominal</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground text-right">Aksi</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {paginatedItems.map((item) => (
+                      <tr key={item.id} className="border-t border-slate-100 dark:border-white/8 hover:bg-slate-50/60 dark:hover:bg-white/3 transition-colors">
+                        <td className="px-4 py-3.5 text-sm text-slate-500 dark:text-muted-foreground whitespace-nowrap">{formatDate(item.tanggal)}</td>
+                        <td className="px-4 py-3.5">
+                          <p className="font-semibold text-sm text-slate-900 dark:text-foreground">{item.keterangan}</p>
+                          <code className="text-[10px] text-slate-400 dark:text-muted-foreground/60">{item.kode_unik}</code>
+                        </td>
+                        <td className="px-4 py-3.5 text-right font-bold tabular-nums text-slate-900 dark:text-foreground whitespace-nowrap">{formatRupiah(item.nominal)}</td>
+                        <td className="px-4 py-3.5 text-right">
+                          <div className="inline-flex items-center gap-1.5">
+                            <EditKasDialog item={item} onSaved={loadData} />
+                            <DeleteKasDialog itemId={item.id} onDeleted={loadData} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {items.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 dark:border-white/8">
+                  {/* Info text */}
+                  <div className="text-sm text-slate-500 dark:text-muted-foreground select-none">
+                    Menampilkan <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.min(items.length, (currentPage - 1) * pageSize + 1)}</span> - <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.min(items.length, currentPage * pageSize)}</span> dari <span className="font-semibold text-slate-700 dark:text-slate-200">{items.length}</span> transaksi
+                  </div>
+
+                  {/* Controls */}
+                  <div className="flex items-center gap-4">
+                    {/* Page limit selector */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-slate-500 dark:text-muted-foreground whitespace-nowrap">Baris per halaman:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="h-8 rounded-lg border border-input bg-white dark:bg-input/20 px-2 py-1 text-xs text-foreground outline-none transition-all duration-200 focus-visible:border-ring"
+                      >
+                        {[10, 20, 50, 100].map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Navigation arrows */}
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-8 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+                        onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1 || loading}
+                      >
+                        <ChevronLeft className="size-4" />
+                        <span className="sr-only">Halaman Sebelumnya</span>
+                      </Button>
+
+                      <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 select-none min-w-[50px] text-center">
+                        {currentPage} / {totalPages}
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-8 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+                        onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages || loading}
+                      >
+                        <ChevronRight className="size-4" />
+                        <span className="sr-only">Halaman Selanjutnya</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -358,6 +470,17 @@ export default function IuranKhususRwPage() {
 
 function EditKasDialog({ item, onSaved }: { item: KasItem; onSaved: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
+  const [editFileName, setEditFileName] = useState<string>("");
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setEditFileName("");
+      if (editFileInputRef.current) {
+        editFileInputRef.current.value = "";
+      }
+    }
+  }, [open]);
 
   const [editState, editAction, isEditing] = useActionState<ActionState, FormData>(
     async (_previousState, formData) => {
@@ -446,7 +569,30 @@ function EditKasDialog({ item, onSaved }: { item: KasItem; onSaved: () => Promis
 
           <div className="space-y-1.5">
             <Label htmlFor={`foto-${item.id}`}>Ganti Foto Bukti (opsional)</Label>
-            <Input id={`foto-${item.id}`} name="bukti_foto" type="file" accept="image/*" disabled={isEditing} className="cursor-pointer file:cursor-pointer" />
+            <div className="relative flex items-center h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 px-3.5 py-2 text-sm transition-all duration-200 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25">
+              <input
+                id={`foto-${item.id}`}
+                name="bukti_foto"
+                type="file"
+                accept="image/*"
+                disabled={isEditing}
+                ref={editFileInputRef}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  setEditFileName(file ? file.name : "");
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:pointer-events-none"
+              />
+              <div className="flex items-center gap-2.5 w-full pointer-events-none select-none">
+                <span className="font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors">
+                  Choose File
+                </span>
+                <span className="text-slate-300 dark:text-slate-600 font-light">|</span>
+                <span className="text-slate-400 dark:text-slate-500 truncate flex-1">
+                  {editFileName || "No file chosen"}
+                </span>
+              </div>
+            </div>
           </div>
 
           {editState.message ? <p className="text-sm text-destructive">{editState.message}</p> : null}

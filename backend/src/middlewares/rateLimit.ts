@@ -5,9 +5,13 @@ export const createLimiter = (
   limit: number,
   message: string
 ) => {
+  // Increase rate limiting limits dynamically in development mode to prevent local dev blocks
+  const isDev = process.env.NODE_ENV === "development" || !process.env.NODE_ENV;
+  const actualLimit = isDev ? limit * 30 : limit;
+
   return rateLimit({
     windowMs,
-    limit,
+    limit: actualLimit,
     standardHeaders: true,
     legacyHeaders: false,
     message: {

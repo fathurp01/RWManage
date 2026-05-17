@@ -6,8 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import Link from "next/link";
 import { Settings, Save, AlertCircle, Calculator, Download, History, ArrowRightLeft } from "lucide-react";
 import { api, getApiError } from "@/lib/axios";
 
@@ -57,7 +55,14 @@ const formatPercent = (value: number | string | null | undefined) => {
   return `${numericValue}%`;
 };
 
-const formatDateTime = (value: string) => new Date(value).toLocaleString("id-ID");
+const formatDateTime = (value: string) =>
+  new Date(value).toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 export default function PengaturanIuranPage() {
   const [loading, setLoading] = useState(true);
@@ -113,14 +118,11 @@ export default function PengaturanIuranPage() {
       toast.error("Belum ada histori untuk diekspor.");
       return;
     }
-
     const escapeCsv = (value: unknown) => {
       const text = value === null || value === undefined ? "" : String(value);
       return `"${text.replaceAll('"', '""')}"`;
     };
-
     const headers = ["Waktu", "Diubah Oleh", "Keterangan", "Nominal Lama", "Nominal Baru", "Kas RT Lama", "Kas RT Baru", "Kas RW Lama", "Kas RW Baru", "Perubahan"];
-
     const rows = history.map((item) => [
       formatDateTime(item.created_at),
       item.user?.nama || item.user?.email || "-",
@@ -131,15 +133,9 @@ export default function PengaturanIuranPage() {
       formatPercent(item.data_baru?.persen_rt),
       formatPercent(item.data_lama?.persen_rw),
       formatPercent(item.data_baru?.persen_rw),
-      item.perubahan
-        .map((change) => `${change.label}: ${change.lama ?? "-"} → ${change.baru ?? "-"}`)
-        .join("; "),
+      item.perubahan.map((c) => `${c.label}: ${c.lama ?? "-"} → ${c.baru ?? "-"}`).join("; "),
     ]);
-
-    const csv = [headers, ...rows]
-      .map((row) => row.map(escapeCsv).join(","))
-      .join("\n");
-
+    const csv = [headers, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -155,7 +151,6 @@ export default function PengaturanIuranPage() {
       toast.error("Total persentase harus 100%");
       return;
     }
-
     try {
       setSaving(true);
       const res = await api.post("/rw/pengaturan-iuran", {
@@ -163,9 +158,9 @@ export default function PengaturanIuranPage() {
         persen_rt: Number(persenRT),
         persen_rw: Number(persenRW),
       });
-
       if (res.data.success) {
         toast.success("Pengaturan berhasil disimpan.");
+        await loadHistory();
       } else {
         toast.error(res.data.message || "Gagal menyimpan pengaturan.");
       }
@@ -176,6 +171,9 @@ export default function PengaturanIuranPage() {
       setSaving(false);
     }
   };
+
+  const nominalNum = Number(nominal) || 0;
+  const totalValid = persenRT + persenRW === 100;
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -190,30 +188,11 @@ export default function PengaturanIuranPage() {
               Pengaturan Iuran
             </h1>
             <p className="text-sm text-slate-500 dark:text-muted-foreground">
-              Nominal iuran dan pembagian otomatis ke Kas RT dan Kas RW
+              Nominal iuran bulanan dan pembagian otomatis ke Kas RT dan Kas RW
             </p>
           </div>
         </div>
       </header>
-
-      <Card>
-        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle>Kebijakan Iuran Wilayah</CardTitle>
-          <CardDescription>
-            Nominal ini berlaku sama untuk setiap kepala keluarga di seluruh RT. Detail per warga tetap dilihat di menu Data Penduduk.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-500 dark:text-muted-foreground max-w-lg">
-            Pembagian kas dipisahkan jelas menjadi dua kolom: bagian Kas RT dan bagian Kas RW.
-          </p>
-          <Link href="/dashboard/rw/data-penduduk">
-            <Button variant="outline" className="gap-2 shrink-0">
-              Buka Data Penduduk
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
 
       {loading ? (
         <Card>
@@ -222,23 +201,27 @@ export default function PengaturanIuranPage() {
           </CardContent>
         </Card>
       ) : (
-        <form onSubmit={handleSave}>
+        <form onSubmit={handleSave} className="flex flex-col gap-6">
+          {/* Settings Form */}
           <Card>
             <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
               <CardTitle className="flex items-center gap-2">
                 <Calculator className="size-4 text-violet-500" />
                 Form Pengaturan Iuran
               </CardTitle>
-              <CardDescription>Standarisasi iuran per kepala keluarga untuk seluruh RT di wilayah RW</CardDescription>
+              <CardDescription>
+                Standarisasi iuran per kepala keluarga untuk seluruh RT di wilayah RW
+              </CardDescription>
             </CardHeader>
             <CardContent className="pt-5 space-y-5">
+
               {/* Nominal */}
               <div className="space-y-1.5">
                 <Label htmlFor="nominal" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">
                   Nominal Iuran Bulanan (Rp)
                 </Label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">Rp</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 select-none">Rp</span>
                   <Input
                     id="nominal"
                     type="number"
@@ -246,6 +229,8 @@ export default function PengaturanIuranPage() {
                     value={nominal}
                     onChange={(e) => setNominal(e.target.value)}
                     required
+                    min={1000}
+                    step={1000}
                     className="pl-10"
                   />
                 </div>
@@ -261,11 +246,14 @@ export default function PengaturanIuranPage() {
                     <div className="size-2 rounded-full bg-emerald-500" />
                     Porsi Kas RT (%)
                   </Label>
-                  <p className="text-xs text-emerald-700/70 dark:text-emerald-300/70">Bagian nominal iuran yang masuk ke kas RT.</p>
+                  <p className="text-xs text-emerald-700/70 dark:text-emerald-300/70">
+                    Bagian nominal iuran yang masuk ke kas RT.
+                  </p>
                   <Input
                     id="persenRT"
                     type="number"
-                    max="100"
+                    min={0}
+                    max={100}
                     value={persenRT}
                     onChange={(e) => {
                       const val = Math.min(100, Math.max(0, Number(e.target.value)));
@@ -282,11 +270,14 @@ export default function PengaturanIuranPage() {
                     <div className="size-2 rounded-full bg-violet-500" />
                     Porsi Kas RW (%)
                   </Label>
-                  <p className="text-xs text-violet-700/70 dark:text-violet-300/70">Bagian nominal iuran yang masuk ke kas RW.</p>
+                  <p className="text-xs text-violet-700/70 dark:text-violet-300/70">
+                    Bagian nominal iuran yang masuk ke kas RW.
+                  </p>
                   <Input
                     id="persenRW"
                     type="number"
-                    max="100"
+                    min={0}
+                    max={100}
                     value={persenRW}
                     onChange={(e) => {
                       const val = Math.min(100, Math.max(0, Number(e.target.value)));
@@ -299,36 +290,45 @@ export default function PengaturanIuranPage() {
                 </div>
               </div>
 
-              {(persenRT + persenRW !== 100) && (
+              {/* Validation warning */}
+              {!totalValid && (
                 <div className="flex items-center gap-2 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
                   <AlertCircle className="size-4 shrink-0" />
-                  <span className="text-sm font-semibold">Total persentase harus 100%! Saat ini: {persenRT + persenRW}%</span>
+                  <span className="text-sm font-semibold">
+                    Total persentase harus 100%! Saat ini: {persenRT + persenRW}%
+                  </span>
                 </div>
               )}
 
               {/* Simulasi Pembagian */}
-              <div className="rounded-2xl border border-slate-100 dark:border-white/8 bg-slate-50/60 dark:bg-white/3 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Simulasi Pembagian Per Warga</p>
-                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 dark:bg-white/8 rounded px-2 py-0.5">AUTO SPLIT</span>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-muted-foreground mb-0.5">RT akan menerima:</p>
-                    <p className="text-lg font-extrabold tabular-nums text-emerald-600 dark:text-emerald-400">
-                      Rp {((Number(nominal) * persenRT) / 100).toLocaleString("id-ID")}
+              {nominalNum > 0 && totalValid && (
+                <div className="rounded-2xl border border-slate-100 dark:border-white/8 bg-slate-50/60 dark:bg-white/3 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                      Simulasi Pembagian Per Warga
                     </p>
+                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 dark:bg-white/8 rounded px-2 py-0.5">
+                      AUTO SPLIT
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-muted-foreground mb-0.5">RW akan menerima:</p>
-                    <p className="text-lg font-extrabold tabular-nums text-violet-600 dark:text-violet-400">
-                      Rp {((Number(nominal) * persenRW) / 100).toLocaleString("id-ID")}
-                    </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-muted-foreground mb-0.5">RT akan menerima:</p>
+                      <p className="text-lg font-extrabold tabular-nums text-emerald-600 dark:text-emerald-400">
+                        {formatCurrency(Math.round((nominalNum * persenRT) / 100))}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-muted-foreground mb-0.5">RW akan menerima:</p>
+                      <p className="text-lg font-extrabold tabular-nums text-violet-600 dark:text-violet-400">
+                        {formatCurrency(Math.round((nominalNum * persenRW) / 100))}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Catatan */}
+              {/* Note */}
               <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 p-4">
                 <div className="flex items-start gap-3">
                   <ArrowRightLeft className="mt-0.5 size-4 text-violet-500 shrink-0" />
@@ -341,10 +341,10 @@ export default function PengaturanIuranPage() {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 variant="rw"
-                disabled={saving || (persenRT + persenRW !== 100)}
+                disabled={saving || !totalValid}
                 className="w-full gap-2"
               >
                 {saving ? (
@@ -355,7 +355,7 @@ export default function PengaturanIuranPage() {
                 ) : (
                   <>
                     <Save className="size-4" />
-                    Simpan & Terapkan Kebijakan
+                    Simpan &amp; Terapkan Kebijakan
                   </>
                 )}
               </Button>
@@ -377,7 +377,14 @@ export default function PengaturanIuranPage() {
                 Menampilkan kapan perubahan dilakukan, siapa yang mengubah, dan nilai sebelum-sesudahnya.
               </CardDescription>
             </div>
-            <Button type="button" variant="outline" size="sm" className="gap-2 shrink-0" onClick={exportHistory} disabled={historyLoading || history.length === 0}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2 shrink-0"
+              onClick={exportHistory}
+              disabled={historyLoading || history.length === 0}
+            >
               <Download className="size-4" />
               Export CSV
             </Button>
@@ -386,67 +393,60 @@ export default function PengaturanIuranPage() {
         <CardContent className="pt-5">
           {historyLoading ? (
             <div className="text-sm text-slate-500 dark:text-muted-foreground">Memuat histori...</div>
+          ) : history.length === 0 ? (
+            <div className="py-8 text-center text-sm text-slate-500 dark:text-muted-foreground">
+              Belum ada histori perubahan pengaturan iuran.
+            </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-white/8">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50/80 dark:bg-white/3">
-                    <TableHead className="font-semibold">Waktu</TableHead>
-                    <TableHead className="font-semibold">Diubah Oleh</TableHead>
-                    <TableHead className="font-semibold">Nominal</TableHead>
-                    <TableHead className="font-semibold">Kas RT</TableHead>
-                    <TableHead className="font-semibold">Kas RW</TableHead>
-                    <TableHead className="font-semibold">Detail Perubahan</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {history.map((item) => (
-                    <TableRow key={item.id} className="hover:bg-slate-50/60 dark:hover:bg-white/3">
-                      <TableCell className="align-top whitespace-nowrap text-sm text-slate-500 dark:text-muted-foreground">{formatDateTime(item.created_at)}</TableCell>
-                      <TableCell className="align-top">
-                        <div className="font-semibold text-sm text-slate-900 dark:text-foreground">{item.user?.nama || "-"}</div>
-                        <div className="text-xs text-slate-500 dark:text-muted-foreground">{item.user?.email || "-"}</div>
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <div className="text-xs text-slate-500 dark:text-muted-foreground">{formatCurrency(item.data_lama?.nominal_iuran)}</div>
-                        <div className="font-semibold text-sm text-slate-900 dark:text-foreground">→ {formatCurrency(item.data_baru?.nominal_iuran)}</div>
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <div className="text-xs text-slate-500 dark:text-muted-foreground">{formatPercent(item.data_lama?.persen_rt)}</div>
-                        <div className="font-semibold text-sm text-emerald-600 dark:text-emerald-400">→ {formatPercent(item.data_baru?.persen_rt)}</div>
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <div className="text-xs text-slate-500 dark:text-muted-foreground">{formatPercent(item.data_lama?.persen_rw)}</div>
-                        <div className="font-semibold text-sm text-violet-600 dark:text-violet-400">→ {formatPercent(item.data_baru?.persen_rw)}</div>
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <div className="space-y-1">
-                          {item.keterangan ? <p className="text-sm text-slate-700 dark:text-slate-300">{item.keterangan}</p> : null}
-                          {item.perubahan.length > 0 ? (
-                            <ul className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
-                              {item.perubahan.map((change) => (
-                                <li key={change.field}>
-                                  <span className="font-semibold text-slate-800 dark:text-foreground">{change.label}:</span>{" "}
-                                  {String(change.lama ?? "-")} → {String(change.baru ?? "-")}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="text-xs text-slate-400">Tidak ada perubahan nilai terdeteksi.</p>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {history.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="py-10 text-center text-sm text-slate-500 dark:text-muted-foreground">
-                        Belum ada histori perubahan pengaturan iuran.
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
+            <div className="flex flex-col gap-3">
+              {history.map((item, idx) => (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-slate-100 dark:border-white/8 bg-slate-50/40 dark:bg-white/3 p-4 space-y-3"
+                >
+                  {/* Header row */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground">
+                      Perubahan #{history.length - idx}
+                      {item.user ? (
+                        <span className="font-normal">
+                          {" "}— oleh <span className="font-semibold text-slate-700 dark:text-slate-300">{item.user.nama || item.user.email}</span>
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="text-xs text-slate-400">{formatDateTime(item.created_at)}</p>
+                  </div>
+
+                  {/* Changed values */}
+                  {item.perubahan.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {item.perubahan.map((change) => {
+                        const isNominal = change.field === "nominal_iuran";
+                        const lamaStr = isNominal ? formatCurrency(Number(change.lama)) : formatPercent(change.lama);
+                        const baruStr = isNominal ? formatCurrency(Number(change.baru)) : formatPercent(change.baru);
+                        return (
+                          <div key={change.field} className="rounded-xl bg-white dark:bg-card border border-slate-100 dark:border-white/8 p-3">
+                            <p className="text-xs text-slate-400 mb-1">{change.label}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm text-slate-400 line-through tabular-nums">{lamaStr}</span>
+                              <span className="text-slate-300 dark:text-slate-600">→</span>
+                              <span className="text-sm font-bold text-slate-800 dark:text-foreground tabular-nums">{baruStr}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400">Tidak ada perubahan nilai yang terdeteksi.</p>
+                  )}
+
+                  {item.keterangan && (
+                    <p className="text-xs italic text-slate-400 border-t border-slate-100 dark:border-white/8 pt-2">
+                      Catatan: {item.keterangan}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </CardContent>

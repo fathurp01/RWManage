@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useCallback, useEffect, useMemo, useState } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api, getApiError, type FieldErrors } from "@/lib/axios";
 import { useAuth } from "@/context/AuthContext";
@@ -32,7 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Pencil, Trash2, BookOpenText, TrendingUp, TrendingDown, Wallet, Search, Plus } from "lucide-react";
+import { Pencil, Trash2, BookOpenText, TrendingUp, TrendingDown, Wallet, Search, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface KasItem {
   id: string;
@@ -116,6 +116,25 @@ export default function KasRwDashboardPage() {
     saldo: 0,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [createFileName, setCreateFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [kasItems.length, activeSearch]);
+
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return kasItems.slice(start, end);
+  }, [kasItems, currentPage, pageSize]);
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(kasItems.length / pageSize));
+  }, [kasItems.length, pageSize]);
 
   const fetchKas = useCallback(
     async (search: string) => {
@@ -198,7 +217,7 @@ export default function KasRwDashboardPage() {
         }
         payload.append("keterangan", keterangan);
         payload.append("nominal", nominal);
-        
+
         if (buktiUrl) {
           payload.append("bukti_url", buktiUrl);
         }
@@ -216,6 +235,10 @@ export default function KasRwDashboardPage() {
 
         toast.success("Transaksi kas berhasil ditambahkan.");
         await fetchKas(activeSearch);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        setCreateFileName("");
 
         return { message: "", fieldErrors: {} };
       } catch (error) {
@@ -344,7 +367,7 @@ export default function KasRwDashboardPage() {
           </CardTitle>
           <CardDescription>Catat kas masuk dan kas keluar dengan bukti transaksi.</CardDescription>
         </CardHeader>
-        <CardContent className="pt-5">
+        <CardContent>
           <form action={createAction} className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="jenis_transaksi" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Jenis Transaksi</Label>
@@ -405,15 +428,29 @@ export default function KasRwDashboardPage() {
 
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="bukti_foto" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Upload Foto Bukti (opsional)</Label>
-              <div className="flex items-center gap-3">
-                <Input
+              <div className="relative flex items-center h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 px-3.5 py-2 text-sm transition-all duration-200 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25">
+                <input
                   id="bukti_foto"
                   name="bukti_foto"
                   type="file"
                   accept="image/*"
                   disabled={disabled}
-                  className="cursor-pointer file:cursor-pointer"
+                  ref={fileInputRef}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setCreateFileName(file ? file.name : "");
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:pointer-events-none"
                 />
+                <div className="flex items-center gap-2.5 w-full pointer-events-none select-none">
+                  <span className="font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors">
+                    Choose File
+                  </span>
+                  <span className="text-slate-300 dark:text-slate-600 font-light">|</span>
+                  <span className="text-slate-400 dark:text-slate-500 truncate flex-1">
+                    {createFileName || "No file chosen"}
+                  </span>
+                </div>
               </div>
               <p className="text-[10px] text-slate-400">Pilih salah satu: Link atau Foto. Foto akan diprioritaskan.</p>
             </div>
@@ -438,7 +475,7 @@ export default function KasRwDashboardPage() {
           </CardTitle>
           <CardDescription>Cari dan kelola transaksi yang sudah tercatat.</CardDescription>
         </CardHeader>
-        <CardContent className="pt-5 space-y-4">
+        <CardContent className="space-y-4">
           <form action={filterAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-1.5">
               <Label htmlFor="search" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Cari Transaksi</Label>
@@ -471,14 +508,14 @@ export default function KasRwDashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {kasItems.length === 0 ? (
+                {paginatedItems.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="py-10 text-center text-sm text-slate-500 dark:text-muted-foreground">
                       {isLoading ? "Memuat data kas..." : "Belum ada transaksi untuk filter ini."}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  kasItems.map((item) => (
+                  paginatedItems.map((item) => (
                     <TableRow key={item.id} className="hover:bg-slate-50/70 dark:hover:bg-white/3">
                       <TableCell className="text-sm text-slate-600 dark:text-muted-foreground whitespace-nowrap">
                         {formatDate(item.tanggal)}
@@ -534,6 +571,69 @@ export default function KasRwDashboardPage() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination Controls */}
+          {kasItems.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 dark:border-white/8">
+              {/* Info text */}
+              <div className="text-sm text-slate-500 dark:text-muted-foreground select-none">
+                Menampilkan <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.min(kasItems.length, (currentPage - 1) * pageSize + 1)}</span> - <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.min(kasItems.length, currentPage * pageSize)}</span> dari <span className="font-semibold text-slate-700 dark:text-slate-200">{kasItems.length}</span> transaksi
+              </div>
+
+              {/* Controls */}
+              <div className="flex items-center gap-4">
+                {/* Page limit selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-slate-500 dark:text-muted-foreground whitespace-nowrap">Baris per halaman:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="h-8 rounded-lg border border-input bg-white dark:bg-input/20 px-2 py-1 text-xs text-foreground outline-none transition-all duration-200 focus-visible:border-ring"
+                  >
+                    {[10, 20, 50, 100].map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Navigation arrows */}
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-8 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1 || isLoading}
+                  >
+                    <ChevronLeft className="size-4" />
+                    <span className="sr-only">Halaman Sebelumnya</span>
+                  </Button>
+
+                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 select-none min-w-[50px] text-center">
+                    {currentPage} / {totalPages}
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-8 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages || isLoading}
+                  >
+                    <ChevronRight className="size-4" />
+                    <span className="sr-only">Halaman Selanjutnya</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </main>
@@ -550,6 +650,17 @@ function EditKasDialog({
   disabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [editFileName, setEditFileName] = useState<string>("");
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setEditFileName("");
+      if (editFileInputRef.current) {
+        editFileInputRef.current.value = "";
+      }
+    }
+  }, [open]);
 
   const [editState, editAction, isEditing] = useActionState<ActionState, FormData>(
     async (_previousState, formData) => {
@@ -577,7 +688,7 @@ function EditKasDialog({
         }
         payload.append("keterangan", keterangan);
         payload.append("nominal", nominal);
-        
+
         if (buktiUrl) {
           payload.append("bukti_url", buktiUrl);
         }
@@ -672,13 +783,30 @@ function EditKasDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor={`foto-${item.id}`}>Ganti Foto Bukti (opsional)</Label>
-            <Input
-              id={`foto-${item.id}`}
-              name="bukti_foto"
-              type="file"
-              accept="image/*"
-              disabled={isEditing}
-            />
+            <div className="relative flex items-center h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 px-3.5 py-2 text-sm transition-all duration-200 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25">
+              <input
+                id={`foto-${item.id}`}
+                name="bukti_foto"
+                type="file"
+                accept="image/*"
+                disabled={isEditing}
+                ref={editFileInputRef}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  setEditFileName(file ? file.name : "");
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:pointer-events-none"
+              />
+              <div className="flex items-center gap-2.5 w-full pointer-events-none select-none">
+                <span className="font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors">
+                  Choose File
+                </span>
+                <span className="text-slate-300 dark:text-slate-600 font-light">|</span>
+                <span className="text-slate-400 dark:text-slate-500 truncate flex-1">
+                  {editFileName || "No file chosen"}
+                </span>
+              </div>
+            </div>
             {item.bukti_foto_url && (
               <p className="text-[10px] text-emerald-600 font-medium">Sudah ada foto terunggah.</p>
             )}

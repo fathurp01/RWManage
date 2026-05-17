@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getApiError } from "@/lib/axios";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -29,6 +29,17 @@ export default function RtInsidenPage() {
   const [pelaporNama, setPelaporNama] = useState("");
   const [pelaporNoHp, setPelaporNoHp] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!modalOpen) {
+      setFileName("");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }, [modalOpen]);
 
   // Detail status update state
   const [updateStatus, setUpdateStatus] = useState<RtStatusInsiden>("LAPORAN");
@@ -370,7 +381,28 @@ export default function RtInsidenPage() {
             {!isEdit && (
               <div className="space-y-2">
                 <Label>Foto Bukti (Opsional)</Label>
-                <Input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+                <div className="relative flex items-center h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 px-3.5 py-2 text-sm transition-all duration-200 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={(e) => {
+                      const selectedFile = e.target.files?.[0] ?? null;
+                      setFile(selectedFile);
+                      setFileName(selectedFile ? selectedFile.name : "");
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <div className="flex items-center gap-2.5 w-full pointer-events-none select-none">
+                    <span className="font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors">
+                      Choose File
+                    </span>
+                    <span className="text-slate-300 dark:text-slate-600 font-light">|</span>
+                    <span className="text-slate-400 dark:text-slate-500 truncate flex-1">
+                      {fileName || "No file chosen"}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>

@@ -620,7 +620,7 @@ export default function RwMasjidManagementPage() {
       {/* ── Header ── */}
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30">
+          <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30">
             <Building2 className="size-6" />
           </span>
           <div>

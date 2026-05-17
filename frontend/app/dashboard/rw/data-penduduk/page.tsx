@@ -54,6 +54,8 @@ interface KepalaKeluarga {
   blok_wilayah_id: string;
   nama_blok: string;
   no_rt: number;
+  no_kk?: string;
+  tanggal_terbit_kk?: string;
   nik?: string;
   tanggal_lahir?: string;
   pekerjaan?: string;
@@ -333,7 +335,9 @@ export default function DataPendudukPage() {
         // Extract unique RT numbers
         const uniqueRts = Array.from(
           new Set(blokData.map((blok) => blok.no_rt))
-        ).sort((a, b) => a - b);
+        )
+          .sort((a, b) => Number(a) - Number(b))
+          .map((rt) => rt.toString());
         setRtOptions(uniqueRts);
       }
     } catch (err) {
@@ -390,7 +394,7 @@ export default function DataPendudukPage() {
       {/* ── Header ── */}
       <header className="flex flex-col gap-1">
         <div className="flex items-center gap-3">
-          <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-purple-600 text-white shadow-sm shadow-violet-500/30">
+          <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-purple-600 text-white shadow-sm shadow-violet-500/30">
             <Users className="size-6" />
           </span>
           <div>
@@ -464,11 +468,10 @@ export default function DataPendudukPage() {
           </div>
           {/* Filter blok */}
           <Select value={filterBlok} onValueChange={setFilterBlok}>
-            <SelectTrigger className={`!h-11 !rounded-xl text-sm !w-auto min-w-[150px] font-medium transition-all ${
-              filterBlok !== "all"
-                ? "!bg-violet-50 !border-violet-400 !text-violet-700 shadow-sm shadow-violet-100"
-                : "!bg-white !border-slate-200 !text-slate-600 hover:!border-violet-300 hover:!bg-violet-50/50"
-            }`}>
+            <SelectTrigger className={`!h-11 !rounded-xl text-sm !w-auto min-w-[150px] font-medium transition-all ${filterBlok !== "all"
+              ? "!bg-violet-50 !border-violet-400 !text-violet-700 shadow-sm shadow-violet-100"
+              : "!bg-white !border-slate-200 !text-slate-600 hover:!border-violet-300 hover:!bg-violet-50/50"
+              }`}>
               <MapPin className={`size-4 mr-1 shrink-0 ${filterBlok !== "all" ? "text-violet-500" : "text-slate-400"}`} />
               <SelectValue placeholder="Semua Blok" />
             </SelectTrigger>
@@ -485,11 +488,10 @@ export default function DataPendudukPage() {
           </Select>
           {/* Filter RT */}
           <Select value={filterRt} onValueChange={setFilterRt}>
-            <SelectTrigger className={`!h-11 !rounded-xl text-sm !w-auto min-w-[140px] font-medium transition-all ${
-              filterRt !== "all"
-                ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm shadow-indigo-100"
-                : "!bg-white !border-slate-200 !text-slate-600 hover:!border-indigo-300 hover:!bg-indigo-50/50"
-            }`}>
+            <SelectTrigger className={`!h-11 !rounded-xl text-sm !w-auto min-w-[140px] font-medium transition-all ${filterRt !== "all"
+              ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm shadow-indigo-100"
+              : "!bg-white !border-slate-200 !text-slate-600 hover:!border-indigo-300 hover:!bg-indigo-50/50"
+              }`}>
               <GitBranch className={`size-4 mr-1 shrink-0 ${filterRt !== "all" ? "text-indigo-500" : "text-slate-400"}`} />
               <SelectValue placeholder="Semua RT" />
             </SelectTrigger>
@@ -533,15 +535,15 @@ export default function DataPendudukPage() {
         {/* Header section */}
         <div className="flex items-center justify-between px-1">
           <h2 className="text-base font-bold text-slate-800">
-            Daftar Kepala Keluarga
+            Daftar Kepala Keluarga Mampu
           </h2>
           {!loading && (
             <span className="text-sm text-slate-500 tabular-nums">
               {filteredData.length > 0
                 ? `Menampilkan ${startIndex + 1}-${Math.min(
-                    startIndex + itemsPerPage,
-                    filteredData.length
-                  )} dari ${filteredData.length} KK`
+                  startIndex + itemsPerPage,
+                  filteredData.length
+                )} dari ${filteredData.length} KK`
                 : "0 KK"}
             </span>
           )}
@@ -590,7 +592,7 @@ export default function DataPendudukPage() {
                   Halaman <span className="font-bold text-violet-600">{currentPage}</span> dari{" "}
                   <span className="font-bold text-slate-800">{totalPages}</span>
                 </p>
-                
+
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -602,7 +604,7 @@ export default function DataPendudukPage() {
                     <ChevronLeft className="size-4 mr-1 shrink-0" />
                     Sebelumnya
                   </Button>
-                  
+
                   <Button
                     variant="outline"
                     size="sm"
