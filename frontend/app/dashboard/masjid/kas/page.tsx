@@ -39,6 +39,8 @@ import {
   Plus,
   Search,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
   TrendingDown,
   TrendingUp,
   Wallet,
@@ -133,6 +135,22 @@ export default function KasMasjidDashboardPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const totalPages = Math.ceil(kasItems.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedKasItems = useMemo(() => {
+    return kasItems.slice(startIndex, startIndex + itemsPerPage);
+  }, [kasItems, currentPage, itemsPerPage, startIndex]);
+
+  useEffect(() => {
+    if (currentPage > 1 && currentPage > totalPages) {
+      setCurrentPage(totalPages || 1);
+    }
+  }, [kasItems.length, itemsPerPage, totalPages, currentPage]);
+
   const fetchKasMasjid = useCallback(
     async (search: string, startDate: string, endDate: string) => {
       if (!masjidId) {
@@ -217,6 +235,7 @@ export default function KasMasjidDashboardPage() {
 
         toast.success("Transaksi kas masjid berhasil ditambahkan.");
         await fetchKasMasjid(activeSearch, activeStartDate, activeEndDate);
+        setCurrentPage(1);
 
         return { message: "", fieldErrors: {} };
       } catch (error) {
@@ -239,6 +258,7 @@ export default function KasMasjidDashboardPage() {
       setActiveEndDate(endDate);
 
       await fetchKasMasjid(search, startDate, endDate);
+      setCurrentPage(1);
       return { message: "", fieldErrors: {} };
     },
     initialState
@@ -473,7 +493,7 @@ export default function KasMasjidDashboardPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  kasItems.map((item) => (
+                  paginatedKasItems.map((item) => (
                     <TableRow key={item.id} className="hover:bg-slate-50/70 dark:hover:bg-white/3">
                       <TableCell className="text-sm text-slate-600 dark:text-muted-foreground whitespace-nowrap">
                         {formatDate(item.tanggal)}
@@ -519,6 +539,60 @@ export default function KasMasjidDashboardPage() {
             </Table>
           </div>
         </CardContent>
+
+        {/* Pagination / Footer */}
+        {kasItems.length > 0 && (
+          <div className="border-t border-slate-100 dark:border-white/8 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-white/3">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-slate-500 dark:text-muted-foreground whitespace-nowrap">
+                Menampilkan
+              </span>
+              <select
+                className="h-8 rounded-lg border border-input bg-white dark:bg-card px-2 text-sm focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+              >
+                {[10, 20, 50, 100].map((val) => (
+                  <option key={val} value={val}>
+                    {val}
+                  </option>
+                ))}
+              </select>
+              <span className="text-sm text-slate-500 dark:text-muted-foreground whitespace-nowrap">
+                dari {kasItems.length} data
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1 pl-2.5"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="size-4" />
+                <span className="hidden sm:inline">Sebelumnya</span>
+              </Button>
+              <div className="px-2 text-sm font-medium text-slate-600 dark:text-foreground/80">
+                {currentPage} / {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1 pr-2.5"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <span className="hidden sm:inline">Selanjutnya</span>
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     </main>
   );
