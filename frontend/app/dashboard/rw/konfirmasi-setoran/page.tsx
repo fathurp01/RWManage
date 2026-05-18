@@ -183,9 +183,9 @@ export default function KonfirmasiSetoranPage() {
                     <div className="p-4.5 space-y-3.5">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-xs font-bold text-violet-600 uppercase tracking-widest mb-0.5">Dari Unit RT</p>
+                          <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-0.5">Dari Unit RT</p>
                           <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-[15px]">
-                            <MapPin className="size-4 text-violet-500 shrink-0" />
+                            <MapPin className="size-4 text-indigo-500 shrink-0" />
                             {item.blok_wilayah.nama_blok} · RT {item.blok_wilayah.no_rt ?? "-"}
                           </h3>
                         </div>
@@ -217,7 +217,7 @@ export default function KonfirmasiSetoranPage() {
                             href={item.bukti_url}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-[13px] font-bold text-slate-700 hover:text-violet-600 transition-colors bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs"
+                            className="inline-flex items-center gap-1.5 text-[13px] font-bold text-slate-700 hover:text-indigo-600 transition-colors bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs"
                           >
                             <Receipt className="size-3.5 text-slate-500" /> Lihat Bukti
                           </a>
@@ -227,7 +227,8 @@ export default function KonfirmasiSetoranPage() {
                         onClick={() => handleApprove(item.id)}
                         disabled={processing === item.id}
                         size="sm"
-                        className="bg-violet-600 hover:bg-violet-750 text-white rounded-lg shadow-xs transition-all h-[34px] px-3.5 gap-1 font-bold text-[13px]"
+                        variant="rw"
+                        className="h-[34px] px-3.5 gap-1 font-bold text-[13px]"
                       >
                         {processing === item.id ? (
                           <div className="size-3 animate-spin rounded-full border border-white border-t-transparent" />
