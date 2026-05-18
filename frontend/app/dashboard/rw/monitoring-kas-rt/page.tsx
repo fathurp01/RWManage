@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { api, getApiError } from "@/lib/axios";
 import { toast } from "sonner";
-import { Building2, Wallet, TrendingUp, ArrowRightLeft } from "lucide-react";
+import { Building2, Wallet, TrendingUp, ArrowRightLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface KasRTSummary {
   blok_wilayah_id: string;
@@ -18,6 +19,10 @@ interface KasRTSummary {
 export default function MonitoringKasRTPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<KasRTSummary[]>([]);
+
+  // Pagination states (limit 6 items per page)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 6;
 
   useEffect(() => {
     loadData();
@@ -42,6 +47,13 @@ export default function MonitoringKasRTPage() {
   const totalMasukSemuaRT = data.reduce((acc, curr) => acc + curr.total_masuk, 0);
   const totalKeluarSemuaRT = data.reduce((acc, curr) => acc + curr.total_keluar, 0);
   const rataRataKepatuhan = data.length > 0 ? data.reduce((acc, curr) => acc + curr.persentase_bayar, 0) / data.length : 0;
+
+  const totalItems = data.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const activePage = Math.min(currentPage, totalPages);
+  const startIndex = (activePage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = data.slice(startIndex, endIndex);
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -158,9 +170,31 @@ export default function MonitoringKasRTPage() {
                   <p className="text-sm text-slate-500 mt-0.5">Berdasarkan data rincian transaksi real-time yang diinput oleh masing-masing RT.</p>
                 </div>
               </div>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-violet-50 text-violet-700 border border-violet-100">
-                {data.length} RT Terdata
-              </span>
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl shrink-0">
+                  Menampilkan {totalItems > 0 ? startIndex + 1 : 0} - {Math.min(endIndex, totalItems)} dari {totalItems} RT
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={activePage === 1}
+                    className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
+                  >
+                    <ChevronLeft className="size-5 stroke-[2.5px]" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={activePage === totalPages}
+                    className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
+                  >
+                    <ChevronRight className="size-5 stroke-[2.5px]" />
+                  </Button>
+                </div>
+              </div>
             </div>
 
             {/* Panel Body */}
@@ -177,14 +211,14 @@ export default function MonitoringKasRTPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {data.length === 0 ? (
+                    {paginatedData.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="py-12 text-center text-sm font-medium text-slate-400">
                           Belum ada data kas RT yang tercatat di wilayah Anda.
                         </td>
                       </tr>
                     ) : (
-                      data.map((item) => (
+                      paginatedData.map((item) => (
                         <tr
                           key={item.blok_wilayah_id}
                           className="hover:bg-slate-50/50 transition-colors duration-150"
