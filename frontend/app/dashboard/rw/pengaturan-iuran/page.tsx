@@ -253,7 +253,7 @@ export default function PengaturanIuranPage() {
               </span>
               <div>
                 <h2 className="text-base font-bold text-slate-800">Nominal Iuran Bulanan Warga</h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-sm text-slate-500 mt-1">
                   Besaran iuran wajib per bulan berdasarkan kategori ekonomi keluarga. Lansia dapat dibebaskan dengan nominal <strong>Rp 0</strong>.
                 </p>
               </div>
@@ -266,7 +266,7 @@ export default function PengaturanIuranPage() {
                 <div className="space-y-2 p-4 rounded-2xl bg-slate-50 border border-slate-200/70">
                   <p className="text-sm font-semibold text-slate-700">Keluarga Mampu</p>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 select-none pointer-events-none">Rp</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 select-none pointer-events-none">Rp</span>
                     <Input
                       id="nominal"
                       type="number"
@@ -279,14 +279,14 @@ export default function PengaturanIuranPage() {
                       className="pl-8 h-11 rounded-xl text-sm font-semibold"
                     />
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">Tarif bulanan standar warga mampu.</p>
+                  <p className="text-sm text-slate-500 mt-1.5">Tarif bulanan standar warga mampu.</p>
                 </div>
 
                 {/* Nominal Kurang Mampu */}
                 <div className="space-y-2 p-4 rounded-2xl bg-amber-50/60 border border-amber-200/50">
                   <p className="text-sm font-semibold text-amber-700">Keluarga Kurang Mampu</p>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-amber-500/80 select-none pointer-events-none">Rp</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-amber-500/80 select-none pointer-events-none">Rp</span>
                     <Input
                       id="nominalKurangMampu"
                       type="number"
@@ -299,14 +299,14 @@ export default function PengaturanIuranPage() {
                       className="pl-8 h-11 rounded-xl text-sm font-semibold border-amber-200 focus-visible:ring-amber-400"
                     />
                   </div>
-                  <p className="text-xs text-amber-700/60 mt-1">Tarif bersubsidi untuk warga tidak mampu.</p>
+                  <p className="text-sm text-amber-600/80 mt-1.5">Tarif bersubsidi untuk warga tidak mampu.</p>
                 </div>
 
                 {/* Nominal Lansia */}
                 <div className="space-y-2 p-4 rounded-2xl bg-sky-50/60 border border-sky-200/50">
                   <p className="text-sm font-semibold text-sky-700">Keluarga Lansia</p>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-sky-500/80 select-none pointer-events-none">Rp</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-sky-500/80 select-none pointer-events-none">Rp</span>
                     <Input
                       id="nominalLansia"
                       type="number"
@@ -319,7 +319,7 @@ export default function PengaturanIuranPage() {
                       className="pl-8 h-11 rounded-xl text-sm font-semibold border-sky-200 focus-visible:ring-sky-400"
                     />
                   </div>
-                  <p className="text-xs text-sky-700/60 mt-1">Isi Rp 0 untuk membebaskan iuran lansia.</p>
+                  <p className="text-sm text-sky-600/80 mt-1.5">Isi Rp 0 untuk membebaskan iuran lansia.</p>
                 </div>
               </div>
             </div>
@@ -334,7 +334,7 @@ export default function PengaturanIuranPage() {
               </span>
               <div>
                 <h2 className="text-base font-bold text-slate-800">Pembagian Alokasi Persentase Kas</h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-sm text-slate-500 mt-1">
                   Rasio pembagian dana iuran antara Kas RT and Kas RW. <strong>Total harus berjumlah tepat 100%.</strong>
                 </p>
               </div>
@@ -349,7 +349,7 @@ export default function PengaturanIuranPage() {
                     <div className="size-2.5 rounded-full bg-emerald-500 shrink-0" />
                     <p className="text-sm font-semibold text-emerald-700">Porsi Kas RT (%)</p>
                   </div>
-                  <p className="text-xs text-emerald-600/80 mt-1">Bagian nominal iuran yang masuk ke kas RT.</p>
+                  <p className="text-sm text-emerald-600/80 mt-1.5">Bagian nominal iuran yang masuk ke kas RT.</p>
                   <Input
                     id="persenRT"
                     type="number"
@@ -372,7 +372,7 @@ export default function PengaturanIuranPage() {
                     <div className="size-2.5 rounded-full bg-violet-500 shrink-0" />
                     <p className="text-sm font-semibold text-violet-700">Porsi Kas RW (%)</p>
                   </div>
-                  <p className="text-xs text-violet-600/80 mt-1">Bagian nominal iuran yang masuk ke kas RW.</p>
+                  <p className="text-sm text-violet-600/80 mt-1.5">Bagian nominal iuran yang masuk ke kas RW.</p>
                   <Input
                     id="persenRW"
                     type="number"
@@ -404,58 +404,57 @@ export default function PengaturanIuranPage() {
               {totalValid && (
                 <div className="rounded-2xl border border-slate-200/70 bg-slate-50/60 p-4">
                   <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-slate-200/70">
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                    <p className="text-sm font-bold text-slate-700">
                       Simulasi Alokasi Iuran Berjenjang
                     </p>
-                    <span className="text-[10px] font-bold text-violet-600 bg-violet-50 rounded-lg px-2.5 py-1 border border-violet-100">
+                    <span className="text-xs font-bold text-violet-600 bg-violet-50 rounded-lg px-2.5 py-1 border border-violet-100">
                       RT {persenRT}% | RW {persenRW}%
                     </span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {/* Simulasi Mampu */}
-                    <div className="p-3 rounded-xl border border-slate-200/70 bg-white">
-                      <p className="text-xs font-bold text-slate-700 mb-2">1. Keluarga Mampu ({formatCurrency(nominalNum)})</p>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-3.5 rounded-xl border border-slate-200/70 bg-white">
+                      <p className="text-sm font-bold text-slate-700 mb-2">Keluarga Mampu ({formatCurrency(nominalNum)})</p>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
                         <div>
                           <p className="text-slate-500">Kas RT:</p>
-                          <p className="font-bold text-emerald-600">{formatCurrency(Math.round((nominalNum * persenRT) / 100))}</p>
+                          <p className="font-bold text-sm text-emerald-600">{formatCurrency(Math.round((nominalNum * persenRT) / 100))}</p>
                         </div>
                         <div>
                           <p className="text-slate-500">Kas RW:</p>
-                          <p className="font-bold text-violet-600">{formatCurrency(Math.round((nominalNum * persenRW) / 100))}</p>
+                          <p className="font-bold text-sm text-violet-600">{formatCurrency(Math.round((nominalNum * persenRW) / 100))}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Simulasi Kurang Mampu */}
-                    <div className="p-3 rounded-xl border border-amber-100 bg-white">
-                      <p className="text-xs font-bold text-amber-700 mb-2">2. Kurang Mampu ({formatCurrency(nominalKMNum)})</p>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-3.5 rounded-xl border border-amber-100 bg-white">
+                      <p className="text-sm font-bold text-amber-700 mb-2">Keluarga Kurang Mampu ({formatCurrency(nominalKMNum)})</p>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
                         <div>
                           <p className="text-slate-500">Kas RT:</p>
-                          <p className="font-bold text-emerald-600">{formatCurrency(Math.round((nominalKMNum * persenRT) / 100))}</p>
+                          <p className="font-bold text-sm text-emerald-600">{formatCurrency(Math.round((nominalKMNum * persenRT) / 100))}</p>
                         </div>
                         <div>
                           <p className="text-slate-500">Kas RW:</p>
-                          <p className="font-bold text-violet-600">{formatCurrency(Math.round((nominalKMNum * persenRW) / 100))}</p>
+                          <p className="font-bold text-sm text-violet-600">{formatCurrency(Math.round((nominalKMNum * persenRW) / 100))}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Simulasi Lansia */}
-                    <div className="p-3 rounded-xl border border-sky-100 bg-white">
-                      <p className="text-xs font-bold text-sky-700 mb-2">3. Lansia ({formatCurrency(nominalLansiaNum)})</p>
+                    <div className="p-3.5 rounded-xl border border-sky-100 bg-white">
+                      <p className="text-sm font-bold text-sky-700 mb-2">Keluarga Lansia ({formatCurrency(nominalLansiaNum)})</p>
                       {nominalLansiaNum === 0 ? (
-                        <p className="text-xs font-bold text-emerald-500 italic mt-1">Rp 0 — Bebas Iuran Bulanan</p>
+                        <p className="text-sm font-bold text-emerald-500 italic mt-1.5">Rp 0 — Bebas Iuran Bulanan</p>
                       ) : (
-                        <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
                           <div>
                             <p className="text-slate-500">Kas RT:</p>
-                            <p className="font-bold text-emerald-600">{formatCurrency(Math.round((nominalLansiaNum * persenRT) / 100))}</p>
+                            <p className="font-bold text-sm text-emerald-600">{formatCurrency(Math.round((nominalLansiaNum * persenRT) / 100))}</p>
                           </div>
                           <div>
                             <p className="text-slate-500">Kas RW:</p>
-                            <p className="font-bold text-violet-600">{formatCurrency(Math.round((nominalLansiaNum * persenRW) / 100))}</p>
+                            <p className="font-bold text-sm text-violet-600">{formatCurrency(Math.round((nominalLansiaNum * persenRW) / 100))}</p>
                           </div>
                         </div>
                       )}
@@ -474,7 +473,7 @@ export default function PengaturanIuranPage() {
               </span>
               <div>
                 <h3 className="text-sm font-bold text-slate-800">Sistem Iuran Berjenjang</h3>
-                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                <p className="text-sm text-slate-500 mt-1 leading-relaxed">
                   Sistem akan mencocokkan status warga (Mampu, Kurang Mampu, atau Lansia) secara otomatis pada saat penagihan bulanan dibuat berdasarkan nominal di atas.
                 </p>
               </div>
@@ -546,164 +545,164 @@ export default function PengaturanIuranPage() {
             </div>
           ) : (
             <>
-            <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-slate-50/70 border-b border-slate-100">
-                  <tr>
-                    <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Waktu</th>
-                    <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Diubah Oleh</th>
-                    <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Detail Perubahan</th>
-                    <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Catatan</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {currentHistoryItems.map((item, idx) => (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-slate-50/50 transition-colors duration-150"
-                    >
-                      {/* Waktu */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-xs font-bold text-slate-800">
-                          Perubahan #{history.length - (indexOfFirstHistoryItem + idx)}
-                        </div>
-                        <div className="text-xs text-slate-400 font-medium mt-0.5">
-                          {formatDateTime(item.created_at)}
-                        </div>
-                      </td>
-
-                      {/* Diubah Oleh */}
-                      <td className="px-6 py-4">
-                        {item.user ? (
-                          <div>
-                            <span className="block text-xs font-bold text-slate-700">
-                              {item.user.nama || item.user.email}
-                            </span>
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 mt-1">
-                              {item.user.role}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400 italic">—</span>
-                        )}
-                      </td>
-
-                      {/* Detail Perubahan */}
-                      <td className="px-6 py-4">
-                        {item.perubahan.length > 0 ? (
-                          <div className="flex flex-col gap-1.5 max-w-sm">
-                            {item.perubahan.map((change) => {
-                              const isNominal = ["nominal_iuran", "nominal_iuran_kurang_mampu", "nominal_iuran_lansia"].includes(change.field);
-                              const lamaStr = isNominal ? formatCurrency(Number(change.lama)) : formatPercent(change.lama);
-                              const baruStr = isNominal ? formatCurrency(Number(change.baru)) : formatPercent(change.baru);
-                              return (
-                                <div
-                                  key={change.field}
-                                  className="flex items-center gap-2 text-xs"
-                                >
-                                  <span className="font-semibold text-slate-500 w-[140px] shrink-0">
-                                    {change.label}:
-                                  </span>
-                                  <div className="flex items-center gap-1.5 font-medium">
-                                    <span className="text-slate-400 line-through text-xs tabular-nums">
-                                      {lamaStr}
-                                    </span>
-                                    <span className="text-slate-300">→</span>
-                                    <span className="font-bold text-violet-600 dark:text-violet-400 tabular-nums">
-                                      {baruStr}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400 italic">
-                            Tidak ada perubahan nilai
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Catatan / Keterangan */}
-                      <td className="px-6 py-4 max-w-xs">
-                        {item.keterangan ? (
-                          <p className="text-xs text-slate-600 italic leading-relaxed break-words">
-                            "{item.keterangan}"
-                          </p>
-                        ) : (
-                          <span className="text-xs text-slate-300 italic">—</span>
-                        )}
-                      </td>
+              <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead className="bg-slate-50/70 border-b border-slate-100">
+                    <tr>
+                      <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Waktu</th>
+                      <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Diubah Oleh</th>
+                      <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Detail Perubahan</th>
+                      <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Catatan</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {currentHistoryItems.map((item, idx) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/50 transition-colors duration-150"
+                      >
+                        {/* Waktu */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-bold text-slate-800">
+                            Perubahan #{history.length - (indexOfFirstHistoryItem + idx)}
+                          </div>
+                          <div className="text-xs text-slate-400 font-medium mt-1">
+                            {formatDateTime(item.created_at)}
+                          </div>
+                        </td>
 
-            {/* Pagination Controls */}
-            {history.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 mt-4">
-                {/* Info text */}
-                <div className="text-xs font-semibold text-slate-500 select-none">
-                  Menampilkan <span className="font-bold text-slate-700">{indexOfFirstHistoryItem + 1}</span> - <span className="font-bold text-slate-700">{Math.min(history.length, activeHistoryPage * historyItemsPerPage)}</span> dari <span className="font-bold text-slate-700">{history.length}</span> histori
-                </div>
+                        {/* Diubah Oleh */}
+                        <td className="px-6 py-4">
+                          {item.user ? (
+                            <div>
+                              <span className="block text-sm font-bold text-slate-700">
+                                {item.user.nama || item.user.email}
+                              </span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 mt-1">
+                                {item.user.role}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-slate-400 italic">—</span>
+                          )}
+                        </td>
 
-                {/* Controls */}
-                <div className="flex items-center gap-4">
-                  {/* Page limit selector */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Baris per halaman:</span>
-                    <select
-                      value={historyItemsPerPage}
-                      onChange={(e) => {
-                        setHistoryItemsPerPage(Number(e.target.value));
-                        setHistoryPage(1);
-                      }}
-                      className="h-8 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 outline-none transition-all duration-200 focus-visible:border-violet-400 focus-visible:ring-1 focus-visible:ring-violet-400"
-                    >
-                      {[10, 20, 50, 100].map((size) => (
-                        <option key={size} value={size}>
-                          {size}
-                        </option>
-                      ))}
-                    </select>
+                        {/* Detail Perubahan */}
+                        <td className="px-6 py-4">
+                          {item.perubahan.length > 0 ? (
+                            <div className="flex flex-col gap-1.5 max-w-sm">
+                              {item.perubahan.map((change) => {
+                                const isNominal = ["nominal_iuran", "nominal_iuran_kurang_mampu", "nominal_iuran_lansia"].includes(change.field);
+                                const lamaStr = isNominal ? formatCurrency(Number(change.lama)) : formatPercent(change.lama);
+                                const baruStr = isNominal ? formatCurrency(Number(change.baru)) : formatPercent(change.baru);
+                                return (
+                                  <div
+                                    key={change.field}
+                                    className="flex items-center gap-2 text-sm"
+                                  >
+                                    <span className="font-semibold text-slate-500 w-[140px] shrink-0">
+                                      {change.label}:
+                                    </span>
+                                    <div className="flex items-center gap-1.5 font-medium">
+                                      <span className="text-slate-400 line-through text-sm tabular-nums">
+                                        {lamaStr}
+                                      </span>
+                                      <span className="text-slate-300">→</span>
+                                      <span className="font-bold text-violet-600 dark:text-violet-400 tabular-nums">
+                                        {baruStr}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-slate-400 italic">
+                              Tidak ada perubahan nilai
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Catatan / Keterangan */}
+                        <td className="px-6 py-4 max-w-xs">
+                          {item.keterangan ? (
+                            <p className="text-sm text-slate-600 italic leading-relaxed break-words">
+                              "{item.keterangan}"
+                            </p>
+                          ) : (
+                            <span className="text-sm text-slate-300 italic">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {history.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 mt-4">
+                  {/* Info text */}
+                  <div className="text-sm font-semibold text-slate-500 select-none">
+                    Menampilkan <span className="font-bold text-slate-700">{indexOfFirstHistoryItem + 1}</span> - <span className="font-bold text-slate-700">{Math.min(history.length, activeHistoryPage * historyItemsPerPage)}</span> dari <span className="font-bold text-slate-700">{history.length}</span> histori
                   </div>
 
-                  {/* Navigation arrows */}
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-8 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors"
-                      onClick={() => setHistoryPage((prev) => Math.max(1, prev - 1))}
-                      disabled={activeHistoryPage === 1}
-                    >
-                      <ChevronLeft className="size-4 text-slate-600" />
-                      <span className="sr-only">Halaman Sebelumnya</span>
-                    </Button>
-
-                    <div className="text-xs font-bold text-slate-700 select-none min-w-[50px] text-center">
-                      {activeHistoryPage} / {totalHistoryPages}
+                  {/* Controls */}
+                  <div className="flex items-center gap-4">
+                    {/* Page limit selector */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-500 whitespace-nowrap">Baris per halaman:</span>
+                      <select
+                        value={historyItemsPerPage}
+                        onChange={(e) => {
+                          setHistoryItemsPerPage(Number(e.target.value));
+                          setHistoryPage(1);
+                        }}
+                        className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-sm font-semibold text-slate-700 outline-none transition-all duration-200 focus-visible:border-violet-400 focus-visible:ring-1 focus-visible:ring-violet-400"
+                      >
+                        {[10, 20, 50, 100].map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-8 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors"
-                      onClick={() => setHistoryPage((prev) => Math.min(totalHistoryPages, prev + 1))}
-                      disabled={activeHistoryPage === totalHistoryPages}
-                    >
-                      <ChevronRight className="size-4 text-slate-600" />
-                      <span className="sr-only">Halaman Selanjutnya</span>
-                    </Button>
+                    {/* Navigation arrows */}
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-9 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                        onClick={() => setHistoryPage((prev) => Math.max(1, prev - 1))}
+                        disabled={activeHistoryPage === 1}
+                      >
+                        <ChevronLeft className="size-4 text-slate-600" />
+                        <span className="sr-only">Halaman Sebelumnya</span>
+                      </Button>
+
+                      <div className="text-sm font-bold text-slate-700 select-none min-w-[50px] text-center">
+                        {activeHistoryPage} / {totalHistoryPages}
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-9 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                        onClick={() => setHistoryPage((prev) => Math.min(totalHistoryPages, prev + 1))}
+                        disabled={activeHistoryPage === totalHistoryPages}
+                      >
+                        <ChevronRight className="size-4 text-slate-600" />
+                        <span className="sr-only">Halaman Selanjutnya</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              )}
+            </>
+          )}
         </div>
       </div>
     </main>
