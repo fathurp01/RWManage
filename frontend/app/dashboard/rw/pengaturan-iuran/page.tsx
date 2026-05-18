@@ -226,7 +226,7 @@ export default function PengaturanIuranPage() {
           </span>
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
-              Pengaturan Iuran
+              Pengaturan Iuran RT
             </h1>
             <p className="text-sm text-slate-500 dark:text-muted-foreground">
               Nominal iuran berjenjang bulanan berdasarkan kategori keluarga (Mampu, Kurang Mampu, Lansia)

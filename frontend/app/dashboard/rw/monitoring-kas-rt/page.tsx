@@ -74,16 +74,16 @@ export default function MonitoringKasRTPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Card 1: Total Saldo */}
             <div className="rounded-3xl border border-violet-200/60 bg-linear-to-br from-violet-50/50 to-purple-50/20 p-5 shadow-xs relative overflow-hidden">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex size-9 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
-                  <Wallet className="size-4.5" />
+              <div className="flex items-center gap-3.5">
+                <span className="inline-flex size-10 items-center justify-center rounded-xl bg-violet-100 text-violet-600 shrink-0">
+                  <Wallet className="size-5" />
                 </span>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-violet-600">Total Saldo Gabungan RT</p>
-                  <h3 className="text-xl font-extrabold text-slate-900 mt-1 tabular-nums">
+                  <p className="text-xs font-bold uppercase tracking-wider text-violet-600">Total Saldo Gabungan RT</p>
+                  <h3 className="text-2xl font-extrabold text-slate-900 mt-1 tabular-nums">
                     Rp {totalSaldoSemuaRT.toLocaleString("id-ID")}
                   </h3>
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     Akumulasi kas aktif dari {data.length} unit RT.
                   </p>
                 </div>
@@ -92,22 +92,22 @@ export default function MonitoringKasRTPage() {
 
             {/* Card 2: Cash Flow (Arus Kas) */}
             <div className="rounded-3xl border border-slate-200/70 bg-slate-50/50 p-5 shadow-xs">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex size-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-                  <TrendingUp className="size-4.5" />
+              <div className="flex items-center gap-3.5">
+                <span className="inline-flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 shrink-0">
+                  <TrendingUp className="size-5" />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Akumulasi Arus Kas RT</p>
-                  <div className="mt-1.5 grid grid-cols-2 gap-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Akumulasi Arus Kas RT</p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
                     <div>
-                      <span className="block text-[9px] font-semibold text-slate-400 uppercase">Kas Masuk</span>
-                      <span className="text-xs font-extrabold text-emerald-600 tabular-nums">
+                      <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kas Masuk</span>
+                      <span className="text-sm font-extrabold text-emerald-600 tabular-nums mt-0.5 block">
                         +Rp {totalMasukSemuaRT.toLocaleString("id-ID")}
                       </span>
                     </div>
                     <div>
-                      <span className="block text-[9px] font-semibold text-slate-400 uppercase">Kas Keluar</span>
-                      <span className="text-xs font-extrabold text-rose-500 tabular-nums">
+                      <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kas Keluar</span>
+                      <span className="text-sm font-extrabold text-rose-500 tabular-nums mt-0.5 block">
                         -Rp {totalKeluarSemuaRT.toLocaleString("id-ID")}
                       </span>
                     </div>
@@ -118,17 +118,17 @@ export default function MonitoringKasRTPage() {
 
             {/* Card 3: Rata-rata Kepatuhan */}
             <div className="rounded-3xl border border-amber-200/60 bg-linear-to-br from-amber-50/40 to-yellow-50/10 p-5 shadow-xs">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex size-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
-                  <ArrowRightLeft className="size-4.5" />
+              <div className="flex items-center gap-3.5">
+                <span className="inline-flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 shrink-0">
+                  <ArrowRightLeft className="size-5" />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Rata-Rata Kepatuhan Warga</p>
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <span className="text-xl font-extrabold text-slate-900 tabular-nums">
+                  <p className="text-xs font-bold uppercase tracking-wider text-amber-700">Rata-Rata Kepatuhan Warga</p>
+                  <div className="flex items-baseline gap-2 mt-1.5">
+                    <span className="text-2xl font-extrabold text-slate-900 tabular-nums">
                       {rataRataKepatuhan.toFixed(1)}%
                     </span>
-                    <span className="text-[10px] text-slate-500 font-medium">Pembayaran Iuran</span>
+                    <span className="text-xs text-slate-500 font-medium">Pembayaran Iuran</span>
                   </div>
                   {/* Progress bar */}
                   <div className="w-full h-1.5 bg-amber-100 rounded-full overflow-hidden mt-1.5">
@@ -152,7 +152,7 @@ export default function MonitoringKasRTPage() {
                 </span>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Daftar Saldo &amp; Kepatuhan Kas RT</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Berdasarkan data rincian transaksi real-time yang diinput oleh masing-masing RT.</p>
+                  <p className="text-sm text-slate-500 mt-0.5">Berdasarkan data rincian transaksi real-time yang diinput oleh masing-masing RT.</p>
                 </div>
               </div>
               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-violet-50 text-violet-700 border border-violet-100">
@@ -166,11 +166,11 @@ export default function MonitoringKasRTPage() {
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-slate-50/70 border-b border-slate-100">
                     <tr>
-                      <th className="px-6 py-3.5 text-[11px] font-bold uppercase tracking-widest text-slate-500">Unit RT / Blok</th>
-                      <th className="px-6 py-3.5 text-[11px] font-bold uppercase tracking-widest text-slate-500 text-center">Kepatuhan Warga</th>
-                      <th className="px-6 py-3.5 text-[11px] font-bold uppercase tracking-widest text-slate-500 text-right">Total Masuk</th>
-                      <th className="px-6 py-3.5 text-[11px] font-bold uppercase tracking-widest text-slate-500 text-right">Total Keluar</th>
-                      <th className="px-6 py-3.5 text-[11px] font-bold uppercase tracking-widest text-slate-500 text-right">Saldo Akhir</th>
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Unit RT / Blok</th>
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">Kepatuhan Warga</th>
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Total Masuk</th>
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Total Keluar</th>
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Saldo Akhir</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -189,7 +189,7 @@ export default function MonitoringKasRTPage() {
                           {/* Unit RT / Blok */}
                           <td className="px-6 py-4">
                             <p className="font-bold text-sm text-slate-800">{item.nama_blok}</p>
-                            <p className="text-xs text-slate-400 font-medium mt-0.5">Unit RT {item.no_rt ?? "-"}</p>
+                            <p className="text-xs text-slate-500 font-medium mt-1">Unit RT {item.no_rt ?? "-"}</p>
                           </td>
 
                           {/* Kepatuhan */}

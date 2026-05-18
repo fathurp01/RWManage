@@ -95,7 +95,7 @@ const rwGroups: SidebarGroup[] = [
       },
       {
         href: "/dashboard/rw/iuran-khusus",
-        label: "Iuran Khusus",
+        label: "Iuran Khusus RW",
         description: "Catat pemasukan non-RT",
         icon: Wallet,
       },
