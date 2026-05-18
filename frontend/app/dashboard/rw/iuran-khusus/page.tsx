@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Pencil, Trash2, Wallet, ArrowLeft, FileText, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface KasItem {
   id: string;
@@ -64,6 +65,7 @@ const formatDate = (value: string): string => {
 export default function IuranKhususRwPage() {
   const { user } = useAuth();
   const wilayahRwId = user?.wilayah_rw_id ?? "";
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(/\/api\/?$/, "");
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<KasItem[]>([]);
   const [summary, setSummary] = useState({ total_masuk: 0, total_keluar: 0, saldo: 0 });
@@ -367,35 +369,66 @@ export default function IuranKhususRwPage() {
             <div className="py-8 text-center text-sm text-slate-500 dark:text-muted-foreground">Belum ada iuran khusus yang tercatat.</div>
           ) : (
             <div className="space-y-4">
-              <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-white/8">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50/80 dark:bg-white/3">
-                    <tr>
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Tanggal</th>
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Keterangan</th>
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground text-right">Nominal</th>
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground text-right">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="rounded-2xl border border-slate-100 dark:border-white/8 overflow-hidden bg-white dark:bg-card">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-slate-50/80 dark:bg-white/3">
+                      <TableHead className="font-semibold text-xs">Tanggal</TableHead>
+                      <TableHead className="font-semibold text-xs">Keterangan</TableHead>
+                      <TableHead className="font-semibold text-xs text-right">Nominal</TableHead>
+                      <TableHead className="font-semibold text-xs text-right">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {paginatedItems.map((item) => (
-                      <tr key={item.id} className="border-t border-slate-100 dark:border-white/8 hover:bg-slate-50/60 dark:hover:bg-white/3 transition-colors">
-                        <td className="px-4 py-3.5 text-sm text-slate-500 dark:text-muted-foreground whitespace-nowrap">{formatDate(item.tanggal)}</td>
-                        <td className="px-4 py-3.5">
+                      <TableRow key={item.id} className="hover:bg-slate-50/60 dark:hover:bg-white/3 transition-colors">
+                        <TableCell className="text-sm text-slate-500 dark:text-muted-foreground whitespace-nowrap">
+                          {formatDate(item.tanggal)}
+                        </TableCell>
+                        <TableCell>
                           <p className="font-semibold text-sm text-slate-900 dark:text-foreground">{item.keterangan}</p>
-                          <code className="text-[10px] text-slate-400 dark:text-muted-foreground/60">{item.kode_unik}</code>
-                        </td>
-                        <td className="px-4 py-3.5 text-right font-bold tabular-nums text-slate-900 dark:text-foreground whitespace-nowrap">{formatRupiah(item.nominal)}</td>
-                        <td className="px-4 py-3.5 text-right">
-                          <div className="inline-flex items-center gap-1.5">
+                          <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                            <code className="text-xs text-slate-500 dark:text-muted-foreground bg-slate-100 dark:bg-white/8 px-2 py-0.5 rounded-md">
+                              {item.kode_unik}
+                            </code>
+                            {item.bukti_foto_url ? (
+                              <a
+                                href={`${baseUrl}${item.bukti_foto_url}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+                              >
+                                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                Lihat Foto Bukti →
+                              </a>
+                            ) : item.bukti_url ? (
+                              <a
+                                href={item.bukti_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+                              >
+                                <span className="size-1.5 rounded-full bg-indigo-500" />
+                                Lihat Link Bukti →
+                              </a>
+                            ) : (
+                              <span className="text-xs text-slate-400 dark:text-muted-foreground">Tanpa bukti</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-bold tabular-nums text-slate-900 dark:text-foreground whitespace-nowrap text-sm">
+                          {formatRupiah(item.nominal)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="inline-flex items-center justify-end gap-1.5">
                             <EditKasDialog item={item} onSaved={loadData} />
                             <DeleteKasDialog itemId={item.id} onDeleted={loadData} />
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
 
               {/* Pagination Controls */}
