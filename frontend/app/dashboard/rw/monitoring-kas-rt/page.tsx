@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { api, getApiError } from "@/lib/axios";
 import { toast } from "sonner";
-import { Building2, Wallet, TrendingUp, ArrowRightLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { Building2, Wallet, TrendingUp, ArrowRightLeft, ChevronLeft, ChevronRight, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface KasRTSummary {
@@ -61,7 +61,7 @@ export default function MonitoringKasRTPage() {
       <header className="flex flex-col gap-1">
         <div className="flex items-center gap-3">
           <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-purple-600 text-white shadow-sm shadow-violet-500/30">
-            <Building2 className="size-5" />
+            <Receipt className="size-5" />
           </span>
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { api, getApiError } from "@/lib/axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, CheckCircle2, Clock, MapPin, Receipt, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShieldCheck, CheckCircle2, Clock, MapPin, Receipt, ArrowRight, ChevronLeft, ChevronRight, BadgeCheck } from "lucide-react";
 
 interface SetoranItem {
   id: string;
@@ -70,7 +70,7 @@ export default function KonfirmasiSetoranPage() {
   // Pagination Logic for Pending items (Left Side)
   const totalPages = Math.ceil(pendingSetoran.length / itemsPerPage);
   const activePage = currentPage > totalPages ? Math.max(1, totalPages) : currentPage;
-  
+
   const indexOfLastItem = activePage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = pendingSetoran.slice(indexOfFirstItem, indexOfLastItem);
@@ -89,7 +89,7 @@ export default function KonfirmasiSetoranPage() {
       <header className="flex flex-col gap-1">
         <div className="flex items-center gap-3">
           <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-purple-600 text-white shadow-sm shadow-violet-500/30">
-            <ShieldCheck className="size-5" />
+            <BadgeCheck className="size-5" />
           </span>
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
@@ -119,7 +119,7 @@ export default function KonfirmasiSetoranPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
+
           {/* ── KIRI: Perlu Konfirmasi ── */}
           <div className="space-y-4">
             <div className="flex items-center justify-between min-h-8">

@@ -226,7 +226,7 @@ export default function IuranKhususRwPage() {
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-purple-600 text-white shadow-sm shadow-violet-500/30">
-            <Plus className="size-5" />
+            <Wallet className="size-5" />
           </span>
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
