@@ -363,23 +363,23 @@ export default function IuranKhususRwPage() {
           </CardTitle>
           <CardDescription className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Daftar transaksi yang sudah dicatat pada menu ini.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {loading ? (
             <div className="py-8 text-center text-sm text-slate-500 dark:text-muted-foreground">Memuat data...</div>
           ) : items.length === 0 ? (
             <div className="py-8 text-center text-sm text-slate-500 dark:text-muted-foreground">Belum ada iuran khusus yang tercatat.</div>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-slate-100 dark:border-white/8 overflow-hidden bg-white dark:bg-card">
+              <div className="rounded-2xl border border-slate-100 dark:border-white/8 overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-slate-50/80 dark:bg-white/3">
-                      <TableHead className="font-semibold text-xs">Tanggal</TableHead>
-                      <TableHead className="font-semibold text-xs">Jenis</TableHead>
-                      <TableHead className="font-semibold text-xs">Keterangan</TableHead>
-                      <TableHead className="font-semibold text-xs">Nominal</TableHead>
-                      <TableHead className="font-semibold text-xs hidden md:table-cell">Kode Unik</TableHead>
-                      <TableHead className="font-semibold text-xs text-right">Aksi</TableHead>
+                      <TableHead className="font-semibold">Tanggal</TableHead>
+                      <TableHead className="font-semibold">Jenis</TableHead>
+                      <TableHead className="font-semibold">Keterangan</TableHead>
+                      <TableHead className="font-semibold">Nominal</TableHead>
+                      <TableHead className="font-semibold hidden md:table-cell">Kode Unik</TableHead>
+                      <TableHead className="text-right font-semibold">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -421,7 +421,7 @@ export default function IuranKhususRwPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="font-bold tabular-nums text-slate-900 dark:text-foreground whitespace-nowrap text-sm">
+                        <TableCell className="font-bold tabular-nums text-slate-900 dark:text-foreground whitespace-nowrap">
                           {formatRupiah(item.nominal)}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
@@ -429,7 +429,7 @@ export default function IuranKhususRwPage() {
                             {item.kode_unik}
                           </code>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell>
                           <div className="flex justify-end gap-1.5">
                             <EditKasDialog item={item} onSaved={loadData} />
                             <DeleteKasDialog itemId={item.id} onDeleted={loadData} />
