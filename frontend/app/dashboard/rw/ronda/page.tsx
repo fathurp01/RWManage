@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { getApiError } from "@/lib/axios";
 import { Badge } from "@/components/ui/badge";
 import { performaRondaClient, type RwMonitoringRondaData } from "@/lib/api/performaRonda";
-import { Calendar, ShieldCheck, Clock, Users, ShieldAlert, Award, AlertTriangle, ArrowUpDown, BellRing, Sparkles, Filter, CheckCircle2, Search, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, ShieldCheck, Clock, Users, ShieldAlert, Award, AlertTriangle, ArrowUpDown, BellRing, Sparkles, Filter, CheckCircle2, Search, RotateCcw, ChevronLeft, ChevronRight, Building2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -484,10 +484,13 @@ export default function RwMonitoringRondaPage() {
                             <AccordionTrigger className="px-6 py-4.5 hover:no-underline hover:bg-slate-50/50 transition-colors">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full pr-4 gap-4">
                                 <div className="flex items-center gap-4">
-                                  <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${isAlert ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-600"
-                                    }`}>
-                                    RT
-                                  </div>
+                                  <span className={`inline-flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                                    isAlert
+                                      ? "bg-red-50 text-red-600"
+                                      : "bg-violet-50 text-violet-600"
+                                  }`}>
+                                    <Building2 className="size-4" />
+                                  </span>
                                   <div className="text-left">
                                     <div className="flex items-center gap-2">
                                       {/* Teks RT disamakan dengan ukuran text-base font-bold agar lebih terbaca legang */}
