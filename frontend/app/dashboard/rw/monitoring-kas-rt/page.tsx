@@ -73,12 +73,10 @@ export default function MonitoringKasRTPage() {
           {/* ── Panel Ringkasan Kas (3 Card Grid) ── */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Card 1: Total Saldo */}
-            <div className="rounded-3xl border border-violet-200/60 bg-linear-to-br from-violet-50/50 to-purple-50/20 p-5 shadow-xs relative overflow-hidden">
-              <div className="flex items-center gap-3.5">
-                <span className="inline-flex size-10 items-center justify-center rounded-xl bg-violet-100 text-violet-600 shrink-0">
-                  <Wallet className="size-5" />
-                </span>
-                <div>
+            <div className="relative overflow-hidden rounded-3xl border border-violet-100 bg-white dark:bg-card shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-violet-500 to-purple-600 rounded-t-3xl" />
+              <div className="p-5 pt-6 flex items-center justify-between gap-4">
+                <div className="min-w-0">
                   <p className="text-xs font-bold uppercase tracking-wider text-violet-600">Total Saldo Gabungan RT</p>
                   <h3 className="text-2xl font-extrabold text-slate-900 mt-1 tabular-nums">
                     Rp {totalSaldoSemuaRT.toLocaleString("id-ID")}
@@ -87,15 +85,16 @@ export default function MonitoringKasRTPage() {
                     Akumulasi kas aktif dari {data.length} unit RT.
                   </p>
                 </div>
+                <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400 shrink-0">
+                  <Wallet className="size-5" />
+                </span>
               </div>
             </div>
 
             {/* Card 2: Cash Flow (Arus Kas) */}
-            <div className="rounded-3xl border border-slate-200/70 bg-slate-50/50 p-5 shadow-xs">
-              <div className="flex items-center gap-3.5">
-                <span className="inline-flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 shrink-0">
-                  <TrendingUp className="size-5" />
-                </span>
+            <div className="relative overflow-hidden rounded-3xl border border-slate-200/70 bg-white dark:bg-card shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-slate-400 to-slate-500 rounded-t-3xl" />
+              <div className="p-5 pt-6 flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Akumulasi Arus Kas RT</p>
                   <div className="mt-2 grid grid-cols-2 gap-2">
@@ -113,15 +112,16 @@ export default function MonitoringKasRTPage() {
                     </div>
                   </div>
                 </div>
+                <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-600 dark:bg-slate-950/40 dark:text-slate-400 shrink-0">
+                  <TrendingUp className="size-5" />
+                </span>
               </div>
             </div>
 
             {/* Card 3: Rata-rata Kepatuhan */}
-            <div className="rounded-3xl border border-amber-200/60 bg-linear-to-br from-amber-50/40 to-yellow-50/10 p-5 shadow-xs">
-              <div className="flex items-center gap-3.5">
-                <span className="inline-flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 shrink-0">
-                  <ArrowRightLeft className="size-5" />
-                </span>
+            <div className="relative overflow-hidden rounded-3xl border border-amber-200/60 bg-white dark:bg-card shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-amber-500 to-amber-600 rounded-t-3xl" />
+              <div className="p-5 pt-6 flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold uppercase tracking-wider text-amber-700">Rata-Rata Kepatuhan Warga</p>
                   <div className="flex items-baseline gap-2 mt-1.5">
@@ -131,13 +131,16 @@ export default function MonitoringKasRTPage() {
                     <span className="text-xs text-slate-500 font-medium">Pembayaran Iuran</span>
                   </div>
                   {/* Progress bar */}
-                  <div className="w-full h-1.5 bg-amber-100 rounded-full overflow-hidden mt-1.5">
+                  <div className="w-full h-1.5 bg-amber-100 rounded-full overflow-hidden mt-2">
                     <div
                       className="h-full rounded-full bg-amber-500"
                       style={{ width: `${rataRataKepatuhan}%` }}
                     />
                   </div>
                 </div>
+                <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 shrink-0">
+                  <ArrowRightLeft className="size-5" />
+                </span>
               </div>
             </div>
           </div>
