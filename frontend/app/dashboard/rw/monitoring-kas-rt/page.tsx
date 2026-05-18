@@ -89,7 +89,7 @@ export default function MonitoringKasRTPage() {
               <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-violet-500 to-purple-600 rounded-t-3xl" />
               <div className="p-5 pt-6 flex items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-wider text-violet-600">Total Saldo Gabungan RT</p>
+                  <p className="text-[13px] font-bold uppercase tracking-wider text-violet-600">Total Saldo Gabungan RT</p>
                   <h3 className="text-2xl font-extrabold text-slate-900 mt-1 tabular-nums">
                     Rp {totalSaldoSemuaRT.toLocaleString("id-ID")}
                   </h3>
@@ -108,16 +108,16 @@ export default function MonitoringKasRTPage() {
               <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-slate-400 to-slate-500 rounded-t-3xl" />
               <div className="p-5 pt-6 flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Akumulasi Arus Kas RT</p>
+                  <p className="text-[13px] font-bold uppercase tracking-wider text-slate-500">Akumulasi Arus Kas RT</p>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <div>
-                      <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kas Masuk</span>
+                      <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Kas Masuk</span>
                       <span className="text-sm font-extrabold text-emerald-600 tabular-nums mt-0.5 block">
                         +Rp {totalMasukSemuaRT.toLocaleString("id-ID")}
                       </span>
                     </div>
                     <div>
-                      <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kas Keluar</span>
+                      <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Kas Keluar</span>
                       <span className="text-sm font-extrabold text-rose-500 tabular-nums mt-0.5 block">
                         -Rp {totalKeluarSemuaRT.toLocaleString("id-ID")}
                       </span>
@@ -135,7 +135,7 @@ export default function MonitoringKasRTPage() {
               <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-amber-500 to-amber-600 rounded-t-3xl" />
               <div className="p-5 pt-6 flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-wider text-amber-700">Rata-Rata Kepatuhan Warga</p>
+                  <p className="text-[13px] font-bold uppercase tracking-wider text-amber-700">Rata-Rata Kepatuhan Warga</p>
                   <div className="flex items-baseline gap-2 mt-1.5">
                     <span className="text-2xl font-extrabold text-slate-900 tabular-nums">
                       {rataRataKepatuhan.toFixed(1)}%
