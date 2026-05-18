@@ -204,13 +204,12 @@ export default function ManajemenRondaPage() {
                     </div>
                   )}
 
-                  <div className="rounded-xl border overflow-hidden">
+                  <div className="rounded-2xl border border-slate-200 dark:border-white/8 overflow-hidden">
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-slate-50 dark:bg-slate-900">
-                          <TableHead>Nama Petugas</TableHead>
-                          <TableHead>Status Saat Ini</TableHead>
-                          <TableHead>Tandai Kehadiran</TableHead>
+                        <TableRow className="bg-slate-50/70 dark:bg-slate-900/40">
+                          <TableHead className="font-bold text-xs text-slate-700 dark:text-slate-300 py-3">Nama Petugas</TableHead>
+                          <TableHead className="font-bold text-xs text-slate-700 dark:text-slate-300 py-3">Pencatatan Kehadiran (1-Klik)</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -218,28 +217,47 @@ export default function ManajemenRondaPage() {
                           const pData = presensiData.find(p => p.nama_petugas === petugas.nama_petugas);
                           const currentStatus = pData?.status_hadir || "BELUM_DICATAT";
                           return (
-                            <TableRow key={petugas.id}>
-                              <TableCell className="font-medium">{petugas.nama_petugas}</TableCell>
-                              <TableCell>
-                                <Badge variant={
-                                  currentStatus === "HADIR" ? "success" : 
-                                  currentStatus === "ALFA" ? "destructive" : 
-                                  currentStatus === "BELUM_DICATAT" ? "outline" : "secondary"
-                                }>
-                                  {currentStatus}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
+                            <TableRow key={petugas.id} className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50/10 transition-colors">
+                              <TableCell className="font-semibold text-slate-900 dark:text-foreground py-4">
                                 <div className="flex items-center gap-2">
-                                  <Button size="sm" variant="outline" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200" onClick={() => handleMarkPresence(petugas.nama_petugas, "HADIR")}>
-                                    Hadir
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200" onClick={() => handleMarkPresence(petugas.nama_petugas, "IZIN")}>
-                                    Izin
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200" onClick={() => handleMarkPresence(petugas.nama_petugas, "ALFA")}>
-                                    Tidak Hadir
-                                  </Button>
+                                  <span>{petugas.nama_petugas}</span>
+                                  {currentStatus === "BELUM_DICATAT" && (
+                                    <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-200 py-0.5 px-1.5 rounded-md font-semibold">Belum Absen</Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-2.5">
+                                <div className="flex items-center rounded-xl border border-slate-200 dark:border-white/8 p-0.5 bg-slate-50 dark:bg-slate-950/40 w-fit gap-0.5 shadow-xs">
+                                  <button
+                                    onClick={() => handleMarkPresence(petugas.nama_petugas, "HADIR")}
+                                    className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer ${
+                                      currentStatus === "HADIR"
+                                        ? "bg-emerald-500 text-white shadow-xs"
+                                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5"
+                                    }`}
+                                  >
+                                    🟢 Hadir
+                                  </button>
+                                  <button
+                                    onClick={() => handleMarkPresence(petugas.nama_petugas, "IZIN")}
+                                    className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer ${
+                                      currentStatus === "IZIN"
+                                        ? "bg-amber-500 text-white shadow-xs"
+                                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5"
+                                    }`}
+                                  >
+                                    🟡 Izin
+                                  </button>
+                                  <button
+                                    onClick={() => handleMarkPresence(petugas.nama_petugas, "ALFA")}
+                                    className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer ${
+                                      currentStatus === "ALFA"
+                                        ? "bg-rose-500 text-white shadow-xs"
+                                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5"
+                                    }`}
+                                  >
+                                    🔴 Alfa
+                                  </button>
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -247,7 +265,9 @@ export default function ManajemenRondaPage() {
                         })}
                         {jadwalForSelectedDay.find(j => j.id === activeJadwalId)?.petugas?.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={3} className="text-center py-4 text-slate-500">Belum ada petugas yang ditugaskan pada jadwal ini.</TableCell>
+                            <TableCell colSpan={2} className="text-center py-6 text-slate-500 dark:text-muted-foreground text-xs italic">
+                              Belum ada petugas yang ditugaskan pada jadwal ini.
+                            </TableCell>
                           </TableRow>
                         )}
                       </TableBody>

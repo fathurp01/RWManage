@@ -1170,7 +1170,7 @@ export const getMonitoringRonda = async (req: Request, res: Response): Promise<v
 
     const { tanggal_mulai, tanggal_akhir } = req.query as { tanggal_mulai?: string; tanggal_akhir?: string };
 
-    // Get all jadwal for blocks in this RW
+    // Get all jadwal for blocks in this RW, including presensi and petugas
     const jadwals = await prisma.jadwalRonda.findMany({
       where: {
         blok_wilayah: { wilayah_rw_id: rwWilayah.id },
@@ -1179,12 +1179,18 @@ export const getMonitoringRonda = async (req: Request, res: Response): Promise<v
       include: {
         blok_wilayah: { select: { id: true, nama_blok: true, no_rt: true } },
         petugas: true,
-        _count: { select: { presensi: true } },
+        presensi: {
+          select: {
+            status_hadir: true,
+            tanggal: true,
+            nama_petugas: true,
+          },
+        },
       },
       orderBy: { hari_minggu: 'asc' },
     });
 
-    // Optionally aggregate presensi counts in date range
+    // Optionally aggregate presensi counts in date range for overall summary
     const presensiWhere: any = {
       jadwal_ronda: { blok_wilayah: { wilayah_rw_id: rwWilayah.id } },
     };
@@ -1196,16 +1202,91 @@ export const getMonitoringRonda = async (req: Request, res: Response): Promise<v
     const statusCounts: Record<string, number> = { HADIR: 0, IZIN: 0, LIBUR: 0, ALFA: 0 };
     presensis.forEach((p) => { statusCounts[p.status_hadir] = (statusCounts[p.status_hadir] || 0) + 1; });
 
-    // Group jadwals by blok
-    const grouped: Record<string, any> = {};
-    jadwals.forEach((j) => {
-      const b = j.blok_wilayah;
-      const key = b.id;
-      if (!grouped[key]) grouped[key] = { blok_id: b.id, nama_blok: b.nama_blok, no_rt: b.no_rt, jadwal: [] };
-      grouped[key].jadwal.push(j);
+    // Aligned to Indonesia timezone (GMT+7)
+    const localTime = new Date(new Date().getTime() + 7 * 60 * 60 * 1000);
+    const todayDayOfWeek = localTime.getUTCDay(); // 0-6 (Sunday=0, Monday=1, etc.)
+    const todayStr = localTime.toISOString().split('T')[0]; // "YYYY-MM-DD"
+
+    const processedJadwals = jadwals.map((j) => {
+      // Calculate presence stats for this schedule
+      const stats = { HADIR: 0, IZIN: 0, LIBUR: 0, ALFA: 0 };
+      j.presensi.forEach((p) => {
+        if (stats[p.status_hadir] !== undefined) {
+          stats[p.status_hadir]++;
+        }
+      });
+
+      const totalPresensi = stats.HADIR + stats.IZIN + stats.ALFA;
+      const persentase_kehadiran = totalPresensi > 0
+        ? Math.round((stats.HADIR / totalPresensi) * 100)
+        : null;
+
+      let status_keaktifan = "belum_ada";
+      if (persentase_kehadiran !== null) {
+        if (persentase_kehadiran > 75) {
+          status_keaktifan = "aktif";
+        } else if (persentase_kehadiran >= 40) {
+          status_keaktifan = "kurang_aktif";
+        } else {
+          status_keaktifan = "tidak_aktif";
+        }
+      }
+
+      // Early Warning System (EWS): empty guard today
+      const isToday = j.hari_minggu === todayDayOfWeek;
+      const todayPresensi = j.presensi.filter(p => {
+        try {
+          return new Date(p.tanggal).toISOString().split('T')[0] === todayStr;
+        } catch {
+          return false;
+        }
+      });
+
+      // Empty tonight if schedule is for today, presensi is logged today, and ALL logged statuses are IZIN or ALFA
+      const is_kosong_malam_ini = isToday &&
+        todayPresensi.length > 0 &&
+        todayPresensi.every(p => p.status_hadir === 'IZIN' || p.status_hadir === 'ALFA');
+
+      // Exclude full presensi array to save payload size, but keep stats
+      const { presensi, ...rest } = j;
+
+      return {
+        ...rest,
+        stats,
+        persentase_kehadiran,
+        status_keaktifan,
+        is_kosong_malam_ini,
+      };
     });
 
-    res.status(200).json({ success: true, message: 'Monitoring ronda RW berhasil diambil.', data: { summary: { total_jadwal: jadwals.length, presensi: statusCounts }, blok_data: Object.values(grouped) } });
+    // Group jadwals by blok
+    const grouped: Record<string, any> = {};
+    processedJadwals.forEach((j) => {
+      const b = j.blok_wilayah;
+      const key = b.id;
+      if (!grouped[key]) {
+        grouped[key] = {
+          blok_id: b.id,
+          nama_blok: b.nama_blok,
+          no_rt: b.no_rt,
+          jadwal: [],
+          is_any_kosong_malam_ini: false
+        };
+      }
+      grouped[key].jadwal.push(j);
+      if (j.is_kosong_malam_ini) {
+        grouped[key].is_any_kosong_malam_ini = true;
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Monitoring ronda RW berhasil diambil.',
+      data: {
+        summary: { total_jadwal: jadwals.length, presensi: statusCounts },
+        blok_data: Object.values(grouped)
+      }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Terjadi kesalahan saat mengambil monitoring ronda RW.' });

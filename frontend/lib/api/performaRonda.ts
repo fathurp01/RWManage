@@ -35,6 +35,7 @@ export interface RwMonitoringRondaBlok {
   nama_blok: string;
   no_rt: string;
   jadwal: any[];
+  is_any_kosong_malam_ini?: boolean;
 }
 
 export interface RwMonitoringRondaData {
@@ -45,6 +46,16 @@ export interface RwMonitoringRondaData {
 export const performaRondaClient = {
   async getMonitoringRw(params?: { tanggal_mulai?: string; tanggal_akhir?: string }): Promise<RwMonitoringRondaData> {
     const res = await api.get<{ data: RwMonitoringRondaData }>("/rw/monitoring-ronda", { params });
+    return res.data.data;
+  },
+
+  async getDetailRondaBlok(blokId: string): Promise<{ jadwals: any[]; presensi: any[] }> {
+    const res = await api.get<{ data: { jadwals: any[]; presensi: any[] } }>(`/rw/monitoring-ronda/blok/${blokId}`);
+    return res.data.data;
+  },
+
+  async getPresensiSummary(params?: { tanggal_mulai?: string; tanggal_akhir?: string }): Promise<Record<string, { HADIR: number; IZIN: number; LIBUR: number; ALFA: number }>> {
+    const res = await api.get<{ data: Record<string, { HADIR: number; IZIN: number; LIBUR: number; ALFA: number }> }>("/rw/monitoring-ronda/presensi", { params });
     return res.data.data;
   },
 
