@@ -104,6 +104,7 @@ import {
   closeLaporanInsiden,
   deleteLaporanInsiden,
   exportLaporanPdf,
+  exportGroupedLaporanPdf,
   getMonitoringInsidenRw,
 } from "../controllers/laporanInsidenController";
 import {
@@ -662,6 +663,14 @@ router.delete(
   checkApproval,
   validateParams(laporanInsidenParamsSchema),
   deleteLaporanInsiden
+);
+router.get(
+  "/rw/laporan-insiden/export-pdf-grouped",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  exportGroupedLaporanPdf
 );
 router.get(
   "/rw/laporan-insiden/:laporan_id/export-pdf",

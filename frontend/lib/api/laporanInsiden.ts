@@ -14,8 +14,10 @@ export interface LaporanInsidenRecord {
   foto_bukti_url: string | null;
   status: StatusInsiden;
   tindakan_diambil: string | null;
+  ditindaklanjuti_tanggal?: string | null;
   created_at: string;
-  blok_wilayah?: { nama_blok: string };
+  updated_at?: string;
+  blok_wilayah?: { nama_blok: string; no_rt?: string | null };
 }
 
 export interface CreateLaporanPayload {
@@ -68,6 +70,14 @@ export const laporanInsidenClient = {
 
   async exportPdf(laporan_id: string): Promise<Blob> {
     const res = await api.get(`/rw/laporan-insiden/${laporan_id}/export-pdf`, {
+      responseType: 'blob'
+    });
+    return res.data;
+  },
+
+  async exportPdfGrouped(params?: { ids?: string }): Promise<Blob> {
+    const res = await api.get("/rw/laporan-insiden/export-pdf-grouped", {
+      params,
       responseType: 'blob'
     });
     return res.data;

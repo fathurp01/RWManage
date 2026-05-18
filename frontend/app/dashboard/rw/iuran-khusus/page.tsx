@@ -239,7 +239,7 @@ export default function IuranKhususRwPage() {
         </div>
         <div className="shrink-0">
           <Link href="/dashboard/rw/kas">
-            <Button variant="outline" className="gap-2">
+            <Button className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300 rounded-xl h-11 px-5 font-bold">
               <ArrowLeft className="size-4" />
               Buku Kas RW
             </Button>
