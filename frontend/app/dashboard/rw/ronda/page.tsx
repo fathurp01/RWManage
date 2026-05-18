@@ -37,8 +37,13 @@ export default function RwMonitoringRondaPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1));
   const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
 
-  // Active Main Tab
-  const [activeTab, setActiveTab] = useState<string>("monitoring");
+  // Pagination States for Rapor Bulanan
+  const [raporCurrentPage, setRaporCurrentPage] = useState<number>(1);
+
+  useEffect(() => {
+    setRaporCurrentPage(1);
+  }, [selectedMonth, selectedYear]);
+
 
   const load = useCallback(async () => {
     try {
@@ -179,6 +184,15 @@ export default function RwMonitoringRondaPage() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedBloks = filteredAndSortedBloks.slice(startIndex, endIndex);
 
+  // Pagination for Rapor Bulanan RT
+  const sortedRaporBloks = [...(data?.blok_data || [])].sort((a, b) => a.no_rt.localeCompare(b.no_rt));
+  const totalRaporItems = sortedRaporBloks.length;
+  const totalRaporPages = Math.ceil(totalRaporItems / itemsPerPage) || 1;
+  const activeRaporPage = Math.min(raporCurrentPage, totalRaporPages);
+  const startRaporIndex = (activeRaporPage - 1) * itemsPerPage;
+  const endRaporIndex = startRaporIndex + itemsPerPage;
+  const paginatedRaporBloks = sortedRaporBloks.slice(startRaporIndex, endRaporIndex);
+
   const handleReprimand = (no_rt: string, nama_blok: string) => {
     toast.success(`Surat Teguran Elektronik berhasil dikirim kepada Ketua RT ${no_rt} - ${nama_blok}!`, {
       description: "Ketua RT akan menerima notifikasi segera untuk mengevaluasi warganya.",
@@ -206,27 +220,33 @@ export default function RwMonitoringRondaPage() {
           </div>
         </div>
 
-        {/* Selectors dengan tinggi h-11 agar seragam dengan Blok Wilayah */}
-        <div className="flex items-center gap-2">
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[130px] h-11 rounded-xl border-slate-200/70 bg-white text-sm font-semibold">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="!rounded-xl !p-1.5 shadow-lg border border-slate-100">
-              {monthNames.map(m => (
-                <SelectItem key={m.value} value={m.value} className="!text-sm !py-2 !px-3 !rounded-lg">{m.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-[90px] h-11 rounded-xl border-slate-200/70 bg-white text-sm font-semibold">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="!rounded-xl !p-1.5 shadow-lg border border-slate-100">
-              <SelectItem value="2026" className="!text-sm !py-2 !px-3 !rounded-lg">2026</SelectItem>
-              <SelectItem value="2027" className="!text-sm !py-2 !px-3 !rounded-lg">2027</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Selectors Periode Laporan Premium & Menonjol */}
+        <div className="flex items-center gap-3 bg-gradient-to-r from-slate-50 to-indigo-50/30 border border-indigo-100/80 p-1.5 rounded-2xl shadow-xs">
+          <div className="flex items-center gap-2 pl-2 text-indigo-600 dark:text-indigo-400">
+            <Calendar className="size-4.5 stroke-[2.2px]" />
+            <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline-block">Periode:</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[155px] h-11 rounded-xl border-slate-200 bg-white text-[14px] font-bold text-slate-800 shadow-2xs hover:bg-slate-50 hover:border-indigo-300 transition-all focus:ring-2 focus:ring-indigo-500/20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="!rounded-xl !p-1.5 shadow-lg border border-slate-100">
+                {monthNames.map(m => (
+                  <SelectItem key={m.value} value={m.value} className="!text-sm !py-2.5 !px-3.5 !rounded-lg font-medium">{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-[105px] h-11 rounded-xl border-slate-200 bg-white text-[14px] font-bold text-slate-800 shadow-2xs hover:bg-slate-50 hover:border-indigo-300 transition-all focus:ring-2 focus:ring-indigo-500/20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="!rounded-xl !p-1.5 shadow-lg border border-slate-100">
+                <SelectItem value="2026" className="!text-sm !py-2.5 !px-3.5 !rounded-lg font-medium">2026</SelectItem>
+                <SelectItem value="2027" className="!text-sm !py-2.5 !px-3.5 !rounded-lg font-medium">2027</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </header>
 
@@ -273,477 +293,525 @@ export default function RwMonitoringRondaPage() {
         </div>
       ) : (
         <>
-          {/* ── Main Tabbed Content ── */}
-          <Tabs defaultValue="monitoring" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="bg-slate-50 border border-slate-100 p-1.5 rounded-2xl w-fit">
-              <TabsTrigger value="monitoring" className="rounded-xl text-sm font-bold gap-1.5 py-2.5 px-4 data-[state=active]:bg-white data-[state=active]:shadow-xs">
-                <ShieldCheck className="size-4" /> Pemantauan Ronda
-              </TabsTrigger>
-              <TabsTrigger value="performance" className="rounded-xl text-sm font-bold gap-1.5 py-2.5 px-4 data-[state=active]:bg-white data-[state=active]:shadow-xs">
-                <Award className="size-4" /> Rapor Kinerja Ronda RT Bulan {monthNames.find(m => m.value === selectedMonth)?.label}
-              </TabsTrigger>
-            </TabsList>
+          {/* ── Panel Ringkasan (Summary Cards yang Indah & Nyaman Dibaca) ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+            {/* Total Jadwal Aktif */}
+            <div className="rounded-3xl border border-violet-100 border-t-4 border-t-violet-500 bg-white p-5 shadow-xs relative overflow-hidden flex items-center justify-between dark:bg-slate-950 dark:border-violet-950 dark:border-t-violet-500">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Jadwal Aktif</p>
+                <h3 className="text-2xl font-black text-violet-600 dark:text-violet-400 mt-1.5 tabular-nums">
+                  {data?.summary.total_jadwal || 0}
+                </h3>
+              </div>
+              <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-500 dark:bg-violet-950 dark:text-violet-400">
+                <Calendar className="size-5.5" />
+              </span>
+            </div>
 
-            <TabsContent value="monitoring" className="space-y-6 pt-0">
-              {/* ── Panel Ringkasan (Summary Cards yang Indah & Nyaman Dibaca) ── */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-                {/* Total Jadwal Aktif */}
-                <div className="rounded-3xl border border-violet-100 border-t-4 border-t-violet-500 bg-white p-5 shadow-xs relative overflow-hidden flex items-center justify-between dark:bg-slate-950 dark:border-violet-950 dark:border-t-violet-500">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Jadwal Aktif</p>
-                    <h3 className="text-2xl font-black text-violet-600 dark:text-violet-400 mt-1.5 tabular-nums">
-                      {data?.summary.total_jadwal || 0}
-                    </h3>
-                  </div>
-                  <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-500 dark:bg-violet-950 dark:text-violet-400">
-                    <Calendar className="size-5.5" />
-                  </span>
-                </div>
+            {/* Total Kehadiran */}
+            <div className="rounded-3xl border border-emerald-100 border-t-4 border-t-emerald-500 bg-white p-5 shadow-xs relative overflow-hidden flex items-center justify-between dark:bg-slate-950 dark:border-emerald-950 dark:border-t-emerald-500">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Hadir Patroli</p>
+                <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1.5 tabular-nums">
+                  {data?.summary.presensi.HADIR || 0}
+                </h3>
+              </div>
+              <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-500 dark:bg-emerald-950 dark:text-emerald-400">
+                <ShieldCheck className="size-5.5" />
+              </span>
+            </div>
 
-                {/* Total Kehadiran */}
-                <div className="rounded-3xl border border-emerald-100 border-t-4 border-t-emerald-500 bg-white p-5 shadow-xs relative overflow-hidden flex items-center justify-between dark:bg-slate-950 dark:border-emerald-950 dark:border-t-emerald-500">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Hadir Patroli</p>
-                    <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1.5 tabular-nums">
-                      {data?.summary.presensi.HADIR || 0}
-                    </h3>
-                  </div>
-                  <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-500 dark:bg-emerald-950 dark:text-emerald-400">
-                    <ShieldCheck className="size-5.5" />
-                  </span>
-                </div>
+            {/* Izin / Sakit */}
+            <div className="rounded-3xl border border-amber-100 border-t-4 border-t-amber-500 bg-white p-5 shadow-xs relative overflow-hidden flex items-center justify-between dark:bg-slate-950 dark:border-amber-950 dark:border-t-amber-500">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Izin / Sakit</p>
+                <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1.5 tabular-nums">
+                  {data?.summary.presensi.IZIN || 0}
+                </h3>
+              </div>
+              <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                <Clock className="size-5.5" />
+              </span>
+            </div>
 
-                {/* Izin / Sakit */}
-                <div className="rounded-3xl border border-amber-100 border-t-4 border-t-amber-500 bg-white p-5 shadow-xs relative overflow-hidden flex items-center justify-between dark:bg-slate-950 dark:border-amber-950 dark:border-t-amber-500">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Izin / Sakit</p>
-                    <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1.5 tabular-nums">
-                      {data?.summary.presensi.IZIN || 0}
-                    </h3>
-                  </div>
-                  <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-500 dark:bg-amber-950 dark:text-amber-400">
-                    <Clock className="size-5.5" />
-                  </span>
-                </div>
+            {/* Alfa */}
+            <div className="rounded-3xl border border-rose-100 border-t-4 border-t-rose-500 bg-white p-5 shadow-xs relative overflow-hidden flex items-center justify-between dark:bg-slate-950 dark:border-rose-950 dark:border-t-rose-500">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Alfa (Vakum)</p>
+                <h3 className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1.5 tabular-nums">
+                  {data?.summary.presensi.ALFA || 0}
+                </h3>
+              </div>
+              <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-500 dark:bg-rose-950 dark:text-rose-400">
+                <AlertTriangle className="size-5.5" />
+              </span>
+            </div>
+          </div>
 
-                {/* Alfa */}
-                <div className="rounded-3xl border border-rose-100 border-t-4 border-t-rose-500 bg-white p-5 shadow-xs relative overflow-hidden flex items-center justify-between dark:bg-slate-950 dark:border-rose-950 dark:border-t-rose-500">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Alfa (Vakum)</p>
-                    <h3 className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1.5 tabular-nums">
-                      {data?.summary.presensi.ALFA || 0}
-                    </h3>
-                  </div>
-                  <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-500 dark:bg-rose-950 dark:text-rose-400">
-                    <AlertTriangle className="size-5.5" />
-                  </span>
-                </div>
+          {/* ── Filter Panel (Persis Saringan Masjid - Horizontal & Premium) ── */}
+          <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm space-y-3">
+            <p className="text-sm font-bold text-slate-700 flex items-center gap-2">
+              <Search className="size-4 text-indigo-500" />
+              Cari & Saring Jadwal Ronda
+            </p>
+            <div className="flex flex-col xl:flex-row gap-3">
+              {/* Search Input (Mendominasi kiri) */}
+              <div className="relative flex-1 min-w-0">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                <Input
+                  placeholder="Cari nama petugas..."
+                  value={searchOfficer}
+                  onChange={(e) => setSearchOfficer(e.target.value)}
+                  className="pl-10 h-11 rounded-xl text-base w-full bg-white border-slate-200"
+                />
               </div>
 
-              {/* ── Filter Panel (Persis Saringan Masjid - Horizontal & Premium) ── */}
-              <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm space-y-3">
-                <p className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                  <Search className="size-4 text-indigo-500" />
-                  Cari & Saring Jadwal Ronda
-                </p>
-                <div className="flex flex-col xl:flex-row gap-3">
-                  {/* Search Input (Mendominasi kiri) */}
-                  <div className="relative flex-1 min-w-0">
-                    <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-                    <Input
-                      placeholder="Cari nama petugas..."
-                      value={searchOfficer}
-                      onChange={(e) => setSearchOfficer(e.target.value)}
-                      className="pl-10 h-11 rounded-xl text-base w-full bg-white border-slate-200"
-                    />
-                  </div>
+              {/* Filter Wilayah RT */}
+              <Select value={filterRt} onValueChange={setFilterRt}>
+                <SelectTrigger className={`!h-11 !rounded-xl text-sm !w-auto min-w-[160px] font-medium transition-all ${filterRt !== "all"
+                  ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm"
+                  : "!bg-white !border-slate-200 !text-slate-600 hover:!border-indigo-300"
+                  }`}>
+                  <Users className={`size-4 mr-1 shrink-0 ${filterRt !== "all" ? "text-indigo-500" : "text-slate-400"}`} />
+                  <SelectValue placeholder="Semua RT" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100">
+                  <SelectItem value="all" className="!text-sm !py-2 !px-3 !rounded-lg">Semua RT</SelectItem>
+                  {data?.blok_data.map(b => (
+                    <SelectItem key={b.blok_id} value={b.blok_id} className="!text-sm !py-2 !px-3 !rounded-lg">
+                      RT {b.no_rt.toString().padStart(3, '0')} - {b.nama_blok}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-                  {/* Filter Wilayah RT */}
-                  <Select value={filterRt} onValueChange={setFilterRt}>
-                    <SelectTrigger className={`!h-11 !rounded-xl text-sm !w-auto min-w-[160px] font-medium transition-all ${filterRt !== "all"
-                      ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm"
-                      : "!bg-white !border-slate-200 !text-slate-600 hover:!border-indigo-300"
-                      }`}>
-                      <Users className={`size-4 mr-1 shrink-0 ${filterRt !== "all" ? "text-indigo-500" : "text-slate-400"}`} />
-                      <SelectValue placeholder="Semua RT" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100">
-                      <SelectItem value="all" className="!text-sm !py-2 !px-3 !rounded-lg">Semua RT</SelectItem>
-                      {data?.blok_data.map(b => (
-                        <SelectItem key={b.blok_id} value={b.blok_id} className="!text-sm !py-2 !px-3 !rounded-lg">
-                          RT {b.no_rt.toString().padStart(3, '0')} - {b.nama_blok}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              {/* Filter Status Keaktifan */}
+              <Select value={filterKeaktifan} onValueChange={setFilterKeaktifan}>
+                <SelectTrigger className={`!h-11 !rounded-xl text-sm !w-auto min-w-[160px] font-medium transition-all ${filterKeaktifan !== "all"
+                  ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm"
+                  : "!bg-white !border-slate-200 !text-slate-600 hover:!border-indigo-300"
+                  }`}>
+                  <ShieldCheck className={`size-4 mr-1 shrink-0 ${filterKeaktifan !== "all" ? "text-indigo-500" : "text-slate-400"}`} />
+                  <SelectValue placeholder="Semua Status" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100">
+                  <SelectItem value="all" className="!text-sm !py-2 !px-3 !rounded-lg">Semua Status</SelectItem>
+                  <SelectItem value="aktif" className="!text-sm !py-2 !px-3 !rounded-lg">Ronda Aktif</SelectItem>
+                  <SelectItem value="kurang_aktif" className="!text-sm !py-2 !px-3 !rounded-lg">Kurang Aktif</SelectItem>
+                  <SelectItem value="tidak_aktif" className="!text-sm !py-2 !px-3 !rounded-lg">Tidak Aktif</SelectItem>
+                </SelectContent>
+              </Select>
 
-                  {/* Filter Status Keaktifan */}
-                  <Select value={filterKeaktifan} onValueChange={setFilterKeaktifan}>
-                    <SelectTrigger className={`!h-11 !rounded-xl text-sm !w-auto min-w-[160px] font-medium transition-all ${filterKeaktifan !== "all"
-                      ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm"
-                      : "!bg-white !border-slate-200 !text-slate-600 hover:!border-indigo-300"
-                      }`}>
-                      <ShieldCheck className={`size-4 mr-1 shrink-0 ${filterKeaktifan !== "all" ? "text-indigo-500" : "text-slate-400"}`} />
-                      <SelectValue placeholder="Semua Status" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100">
-                      <SelectItem value="all" className="!text-sm !py-2 !px-3 !rounded-lg">Semua Status</SelectItem>
-                      <SelectItem value="aktif" className="!text-sm !py-2 !px-3 !rounded-lg">🟢 Aktif Prima</SelectItem>
-                      <SelectItem value="kurang_aktif" className="!text-sm !py-2 !px-3 !rounded-lg">🟡 Kurang Aktif</SelectItem>
-                      <SelectItem value="tidak_aktif" className="!text-sm !py-2 !px-3 !rounded-lg">🔴 Tidak Aktif</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {/* Urutkan Berdasarkan */}
+              <Select value={sortOption} onValueChange={setSortOption}>
+                <SelectTrigger className={`!h-11 !rounded-xl text-sm !w-auto min-w-[185px] font-medium transition-all ${sortOption !== "default"
+                  ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm"
+                  : "!bg-white !border-slate-200 !text-slate-600 hover:!border-indigo-300"
+                  }`}>
+                  <ArrowUpDown className={`size-4 mr-1 shrink-0 ${sortOption !== "default" ? "text-indigo-500" : "text-slate-400"}`} />
+                  <SelectValue placeholder="Urutkan" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100">
+                  <SelectItem value="default" className="!text-sm !py-2 !px-3 !rounded-lg">No RT (Default)</SelectItem>
+                  <SelectItem value="alfa_desc" className="!text-sm !py-2 !px-3 !rounded-lg">Tingkat Alfa Tertinggi</SelectItem>
+                  <SelectItem value="attendance_asc" className="!text-sm !py-2 !px-3 !rounded-lg">Kehadiran Terendah</SelectItem>
+                </SelectContent>
+              </Select>
 
-                  {/* Urutkan Berdasarkan */}
-                  <Select value={sortOption} onValueChange={setSortOption}>
-                    <SelectTrigger className={`!h-11 !rounded-xl text-sm !w-auto min-w-[185px] font-medium transition-all ${sortOption !== "default"
-                      ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm"
-                      : "!bg-white !border-slate-200 !text-slate-600 hover:!border-indigo-300"
-                      }`}>
-                      <ArrowUpDown className={`size-4 mr-1 shrink-0 ${sortOption !== "default" ? "text-indigo-500" : "text-slate-400"}`} />
-                      <SelectValue placeholder="Urutkan" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100">
-                      <SelectItem value="default" className="!text-sm !py-2 !px-3 !rounded-lg">No RT (Default)</SelectItem>
-                      <SelectItem value="alfa_desc" className="!text-sm !py-2 !px-3 !rounded-lg">⚠️ Tingkat Alfa Tertinggi</SelectItem>
-                      <SelectItem value="attendance_asc" className="!text-sm !py-2 !px-3 !rounded-lg">📉 Kehadiran Terendah</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {/* Reset Button (Sama dengan Reset Masjid) */}
+              {isFiltering && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setFilterRt("all");
+                    setFilterKeaktifan("all");
+                    setSearchOfficer("");
+                    setSortOption("default");
+                  }}
+                  className="h-11 px-4 rounded-xl text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100 hover:border-rose-300 shrink-0 font-semibold shadow-xs transition-all flex items-center gap-1.5"
+                >
+                  <RotateCcw className="size-4" />
+                  Reset
+                </Button>
+              )}
+            </div>
+          </div>
 
-                  {/* Reset Button (Sama dengan Reset Masjid) */}
-                  {isFiltering && (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setFilterRt("all");
-                        setFilterKeaktifan("all");
-                        setSearchOfficer("");
-                        setSortOption("default");
-                      }}
-                      className="h-11 px-4 rounded-xl text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100 hover:border-rose-300 shrink-0 font-semibold shadow-xs transition-all flex items-center gap-1.5"
-                    >
-                      <RotateCcw className="size-4" />
-                      Reset
-                    </Button>
-                  )}
+          {/* ── Container List persis Monitoring Kas RT ── */}
+          <div className="rounded-3xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between gap-4 px-6 py-5 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex size-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600 border border-violet-100">
+                  <ShieldCheck className="size-5" />
+                </span>
+                <div>
+                  <h2 className="text-base font-bold text-slate-800">Daftar Jadwal Ronda Seluruh RT</h2>
+                  <p className="text-sm text-slate-500 mt-0.5">Pantau keaktifan patroli dan penjagaan dari setiap blok wilayah.</p>
                 </div>
               </div>
-
-              {/* ── Container List persis Monitoring Kas RT ── */}
-              <div className="rounded-3xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between gap-4 px-6 py-5 border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex size-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600 border border-violet-100">
-                      <ShieldCheck className="size-5" />
-                    </span>
-                    <div>
-                      <h2 className="text-base font-bold text-slate-800">Daftar Jadwal Ronda Seluruh RT</h2>
-                      <p className="text-xs text-slate-500 mt-0.5">Pantau keaktifan patroli dan penjagaan dari setiap blok wilayah.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl shrink-0">
-                      Menampilkan {totalItems > 0 ? startIndex + 1 : 0} - {Math.min(endIndex, totalItems)} dari {totalItems} RT
-                    </span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={activePage === 1}
-                        className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
-                      >
-                        <ChevronLeft className="size-5 stroke-[2.5px]" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={activePage === totalPages}
-                        className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
-                      >
-                        <ChevronRight className="size-5 stroke-[2.5px]" />
-                      </Button>
-                    </div>
-                  </div>
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl shrink-0">
+                  Menampilkan {totalItems > 0 ? startIndex + 1 : 0} - {Math.min(endIndex, totalItems)} dari {totalItems} RT
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={activePage === 1}
+                    className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
+                  >
+                    <ChevronLeft className="size-5 stroke-[2.5px]" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={activePage === totalPages}
+                    className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
+                  >
+                    <ChevronRight className="size-5 stroke-[2.5px]" />
+                  </Button>
                 </div>
+              </div>
+            </div>
 
-                <div className="p-0">
-                  {totalItems === 0 ? (
-                    <div className="py-16 text-center text-sm font-medium text-slate-400">
-                      Tidak ada data yang cocok dengan pencarian Anda.
-                    </div>
-                  ) : (
-                    <Accordion type="multiple" value={expandedBloks} onValueChange={handleAccordionChange} className="w-full">
-                      {paginatedBloks.map((blok) => {
-                        const stats = getBlockStats(blok);
-                        const isAlert = blok.is_any_kosong_malam_ini;
+            <div className="p-0">
+              {totalItems === 0 ? (
+                <div className="py-16 text-center text-sm font-medium text-slate-400">
+                  Tidak ada data yang cocok dengan pencarian Anda.
+                </div>
+              ) : (
+                <Accordion type="multiple" value={expandedBloks} onValueChange={handleAccordionChange} className="w-full">
+                  {paginatedBloks.map((blok) => {
+                    const stats = getBlockStats(blok);
+                    const isAlert = blok.is_any_kosong_malam_ini;
 
-                        return (
-                          <AccordionItem value={blok.blok_id} key={blok.blok_id} className={`border-b border-slate-200 last:border-b-0 ${isAlert ? "bg-red-50/20" : ""}`}>
-                            <AccordionTrigger className="px-6 py-4.5 hover:no-underline hover:bg-slate-50/50 transition-colors">
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full pr-4 gap-4">
-                                <div className="flex items-center gap-4">
-                                  <span className={`inline-flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
-                                    isAlert
-                                      ? "bg-red-50 text-red-600"
-                                      : "bg-violet-50 text-violet-600"
-                                  }`}>
-                                    <Building2 className="size-4" />
-                                  </span>
-                                  <div className="text-left">
-                                    <div className="flex items-center gap-2">
-                                      {/* Teks RT disamakan dengan ukuran text-base font-bold agar lebih terbaca legang */}
-                                      <h3 className="text-base font-bold text-slate-900">
-                                        RT {blok.no_rt.toString().padStart(3, '0')} <span className="font-semibold text-slate-400 text-sm ml-1.5">{blok.nama_blok}</span>
-                                      </h3>
-                                      {isAlert && (
-                                        <Badge className="bg-red-500 text-white text-[9px] uppercase px-1.5 py-0.5 border-0">Kosong Malam Ini</Badge>
-                                      )}
-                                    </div>
-                                    {/* Deskripsi dinaikkan ke text-sm */}
-                                    <p className="text-sm text-slate-400 mt-1 font-medium">
-                                      {blok.jadwal.length} Jadwal Aktif • {stats.attendanceRate}% Kehadiran Warga
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="text-left sm:text-right shrink-0">
-                                  {stats.statusKinerja === "RAWAN" ? (
-                                    <span className="inline-flex items-center gap-1.5 bg-red-100 text-red-700 px-3 py-1.5 rounded-md font-bold text-xs">
-                                      <AlertTriangle className="size-3.5" /> Tidak Aktif
-                                    </span>
-                                  ) : stats.statusKinerja === "PERHATIAN" ? (
-                                    <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-md font-bold text-xs">
-                                      <Clock className="size-3.5" /> Perlu Perhatian
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-md font-bold text-xs">
-                                      <ShieldCheck className="size-3.5" /> Ronda Aktif
-                                    </span>
+                    return (
+                      <AccordionItem value={blok.blok_id} key={blok.blok_id} className={`border-b border-slate-200 last:border-b-0 ${isAlert ? "bg-red-50/20" : ""}`}>
+                        <AccordionTrigger className="px-6 py-4.5 hover:no-underline hover:bg-slate-50/50 transition-colors">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full pr-4 gap-4">
+                            <div className="flex items-center gap-4">
+                              <span className={`inline-flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors ${isAlert
+                                ? "bg-red-50 text-red-600"
+                                : "bg-violet-50 text-violet-600"
+                                }`}>
+                                <Building2 className="size-4" />
+                              </span>
+                              <div className="text-left">
+                                <div className="flex items-center gap-2">
+                                  {/* Teks RT disamakan dengan ukuran text-base font-bold agar lebih terbaca legang */}
+                                  <h3 className="text-base font-bold text-slate-900">
+                                    RT {blok.no_rt.toString().padStart(3, '0')} <span className="font-semibold text-slate-400 text-sm ml-1.5">{blok.nama_blok}</span>
+                                  </h3>
+                                  {isAlert && (
+                                    <Badge className="bg-red-500 text-white text-[9px] uppercase px-1.5 py-0.5 border-0">Kosong Malam Ini</Badge>
                                   )}
                                 </div>
+                                {/* Deskripsi dinaikkan ke text-sm */}
+                                <p className="text-sm text-slate-400 mt-1 font-medium">
+                                  {blok.jadwal.length} Jadwal Aktif • {stats.attendanceRate}% Kehadiran Warga
+                                </p>
                               </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="p-6 bg-slate-50/50">
-                              <Tabs defaultValue="jadwal" className="w-full">
-                                <TabsList className="bg-white border border-slate-200 mb-4 rounded-xl p-0.5 w-fit">
-                                  <TabsTrigger value="jadwal" className="text-sm font-bold rounded-lg py-2 px-4">Jadwal 7 Hari</TabsTrigger>
-                                  <TabsTrigger value="presensi" className="text-sm font-bold rounded-lg py-2 px-4">Riwayat Kehadiran</TabsTrigger>
-                                </TabsList>
+                            </div>
 
-                                <TabsContent value="jadwal" className="pt-0">
-                                  {/* Kalender 7 Hari yang Kompak & Nyaman Dibaca */}
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {hariList.map(hari => {
-                                      const jadwalHariIni = blok.jadwal.filter(j => j.hari_minggu === hari.value);
-                                      const hasSchedule = jadwalHariIni.length > 0;
-                                      const isTodayEmpty = hasSchedule && jadwalHariIni.some(j => j.is_kosong_malam_ini);
+                            <div className="text-left sm:text-right shrink-0">
+                              {stats.statusKinerja === "RAWAN" ? (
+                                <span className="inline-flex items-center gap-1.5 bg-red-100 text-red-700 px-3 py-1.5 rounded-md font-bold text-xs">
+                                  <AlertTriangle className="size-3.5" /> Tidak Aktif
+                                </span>
+                              ) : stats.statusKinerja === "PERHATIAN" ? (
+                                <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-md font-bold text-xs">
+                                  <Clock className="size-3.5" /> Perlu Perhatian
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-md font-bold text-xs">
+                                  <ShieldCheck className="size-3.5" /> Ronda Aktif
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-6 bg-slate-50/50">
+                          <Tabs defaultValue="jadwal" className="w-full">
+                            <TabsList className="bg-white border border-slate-200 mb-4 rounded-xl p-0.5 w-fit">
+                              <TabsTrigger value="jadwal" className="text-sm font-bold rounded-lg py-2 px-4">Jadwal 7 Hari</TabsTrigger>
+                              <TabsTrigger value="presensi" className="text-sm font-bold rounded-lg py-2 px-4">Riwayat Kehadiran</TabsTrigger>
+                            </TabsList>
 
-                                      // Tampilan minimal untuk hari yang tidak ada jadwal
-                                      if (!hasSchedule) {
-                                        return (
-                                          <div key={hari.value} className="rounded-xl bg-slate-50/50 border border-slate-200/70 p-3.5 flex flex-col justify-between items-center text-center min-h-[145px] shadow-xs">
-                                            <h4 className="font-bold text-sm text-slate-500 mt-1 text-center">
-                                              {hari.label}
-                                            </h4>
-                                            <span className="text-xs text-slate-400 font-medium leading-relaxed max-w-[130px] mb-2 text-center">
-                                              Jadwal belum ditetapkan
-                                            </span>
-                                          </div>
-                                        );
-                                      }
+                            <TabsContent value="jadwal" className="pt-0">
+                              {/* Kalender 7 Hari yang Kompak & Nyaman Dibaca */}
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {hariList.map(hari => {
+                                  const jadwalHariIni = blok.jadwal.filter(j => j.hari_minggu === hari.value);
+                                  const hasSchedule = jadwalHariIni.length > 0;
+                                  const isTodayEmpty = hasSchedule && jadwalHariIni.some(j => j.is_kosong_malam_ini);
 
-                                      // Tampilan kartu untuk hari yang ada jadwal
-                                      return (
-                                        <div key={hari.value} className={`rounded-xl bg-white border p-3.5 flex flex-col min-h-[145px] ${isTodayEmpty ? "border-red-300 ring-1 ring-red-100 shadow-sm" : "border-slate-200 shadow-sm"
-                                          }`}>
-                                          <div className="flex items-center justify-center mb-2.5 relative w-full">
-                                            <h4 className={`font-bold text-sm ${isTodayEmpty ? 'text-red-600' : 'text-slate-800'} text-center`}>
-                                              {hari.label}
-                                            </h4>
-                                            {isTodayEmpty && <span className="absolute right-0 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">Kosong</span>}
-                                          </div>
-
-                                          <div className="space-y-2.5">
-                                            {jadwalHariIni.map((jadwal: any) => {
-                                              let badgeClass = "bg-slate-100 text-slate-600";
-                                              let label = "Belum Ada Data";
-                                              if (jadwal.status_keaktifan === "aktif") { badgeClass = "bg-emerald-100 text-emerald-700"; label = "Aktif"; }
-                                              if (jadwal.status_keaktifan === "kurang_aktif") { badgeClass = "bg-amber-100 text-amber-700"; label = "Kurang"; }
-                                              if (jadwal.status_keaktifan === "tidak_aktif") { badgeClass = "bg-rose-100 text-rose-700"; label = "Vakum"; }
-
-                                              return (
-                                                <div key={jadwal.id} className="flex flex-col gap-2">
-                                                  <div className="flex justify-between items-center">
-                                                    <span className="text-xs font-semibold text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
-                                                      {jadwal.jam_mulai} - {jadwal.jam_selesai}
-                                                    </span>
-                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${badgeClass}`}>{label}</span>
-                                                  </div>
-
-                                                  <div className="bg-slate-50 rounded p-2 border border-slate-100">
-                                                    {jadwal.petugas && jadwal.petugas.length > 0 ? (
-                                                      <ul className="space-y-1">
-                                                        {jadwal.petugas.map((p: any) => (
-                                                          <li key={p.id} className="flex justify-between items-center text-xs">
-                                                            <span className="font-semibold text-slate-700 truncate max-w-[100px]">{p.nama_petugas}</span>
-                                                            <span className="text-slate-400 shrink-0">{p.no_hp || '-'}</span>
-                                                          </li>
-                                                        ))}
-                                                      </ul>
-                                                    ) : (
-                                                      <span className="text-xs italic text-slate-400">Belum ada petugas</span>
-                                                    )}
-                                                  </div>
-                                                </div>
-                                              )
-                                            })}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </TabsContent>
-
-                                <TabsContent value="presensi" className="pt-0">
-                                  <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                                    {loadingBloks[blok.blok_id] ? (
-                                      <div className="py-8 text-center text-xs text-slate-500">Memuat...</div>
-                                    ) : !blokDetails[blok.blok_id] || blokDetails[blok.blok_id].presensi.length === 0 ? (
-                                      <div className="py-8 text-center text-sm text-slate-400">Belum ada riwayat presensi dalam 30 hari.</div>
-                                    ) : (
-                                      <div className="overflow-x-auto">
-                                        <table className="w-full text-left">
-                                          <thead className="bg-slate-50 border-b border-slate-200">
-                                            <tr>
-                                              {/* Table header disesuaikan ukuran teksnya */}
-                                              <th className="px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-500">Tanggal</th>
-                                              <th className="px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-500">Petugas Ronda</th>
-                                              <th className="px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-500">Status</th>
-                                              <th className="px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-500">Catatan</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody className="divide-y divide-slate-200/60 text-sm">
-                                            {blokDetails[blok.blok_id].presensi.map((p: any) => (
-                                              <tr key={p.id} className="hover:bg-slate-50/50">
-                                                <td className="px-5 py-3 text-slate-600">
-                                                  {new Date(p.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                                                </td>
-                                                {/* Text disamakan font-semibold text-slate-900 text-sm */}
-                                                <td className="px-5 py-3 font-semibold text-slate-900">{p.nama_petugas}</td>
-                                                <td className="px-5 py-3">
-                                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.status_hadir === 'HADIR' ? 'bg-emerald-100 text-emerald-700' :
-                                                    p.status_hadir === 'ALFA' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                                                    }`}>
-                                                    {p.status_hadir}
-                                                  </span>
-                                                </td>
-                                                {/* Catatan disesuaikan text-sm text-slate-500 */}
-                                                <td className="px-5 py-3 text-slate-500 truncate max-w-[200px]">{p.catatan || "-"}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
+                                  // Tampilan minimal untuk hari yang tidak ada jadwal
+                                  if (!hasSchedule) {
+                                    return (
+                                      <div key={hari.value} className="rounded-xl bg-slate-50/50 border border-slate-200/70 p-3.5 flex flex-col justify-between items-center text-center min-h-[145px] shadow-xs">
+                                        <h4 className="font-bold text-sm text-slate-500 mt-1 text-center">
+                                          {hari.label}
+                                        </h4>
+                                        <span className="text-xs text-slate-400 font-medium leading-relaxed max-w-[130px] mb-2 text-center">
+                                          Jadwal belum ditetapkan
+                                        </span>
                                       </div>
-                                    )}
+                                    );
+                                  }
+
+                                  // Tampilan kartu untuk hari yang ada jadwal
+                                  return (
+                                    <div key={hari.value} className={`rounded-xl bg-white border p-3.5 flex flex-col min-h-[145px] ${isTodayEmpty ? "border-red-300 ring-1 ring-red-100 shadow-sm" : "border-slate-200 shadow-sm"
+                                      }`}>
+                                      <div className="flex items-center justify-center mb-2.5 relative w-full">
+                                        <h4 className={`font-bold text-sm ${isTodayEmpty ? 'text-red-600' : 'text-slate-800'} text-center`}>
+                                          {hari.label}
+                                        </h4>
+                                        {isTodayEmpty && <span className="absolute right-0 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">Kosong</span>}
+                                      </div>
+
+                                      <div className="space-y-2.5">
+                                        {jadwalHariIni.map((jadwal: any) => {
+                                          let badgeClass = "bg-slate-100 text-slate-600";
+                                          let label = "Belum Ada Data";
+                                          if (jadwal.status_keaktifan === "aktif") { badgeClass = "bg-emerald-100 text-emerald-700"; label = "Aktif"; }
+                                          if (jadwal.status_keaktifan === "kurang_aktif") { badgeClass = "bg-amber-100 text-amber-700"; label = "Kurang"; }
+                                          if (jadwal.status_keaktifan === "tidak_aktif") { badgeClass = "bg-rose-100 text-rose-700"; label = "Vakum"; }
+
+                                          return (
+                                            <div key={jadwal.id} className="flex flex-col gap-2">
+                                              <div className="flex justify-between items-center">
+                                                <span className="text-xs font-semibold text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                                                  {jadwal.jam_mulai} - {jadwal.jam_selesai}
+                                                </span>
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${badgeClass}`}>{label}</span>
+                                              </div>
+
+                                              <div className="bg-slate-50 rounded p-2 border border-slate-100">
+                                                {jadwal.petugas && jadwal.petugas.length > 0 ? (
+                                                  <ul className="space-y-1">
+                                                    {jadwal.petugas.map((p: any) => (
+                                                      <li key={p.id} className="flex justify-between items-center text-xs">
+                                                        <span className="font-semibold text-slate-700 truncate max-w-[100px]">{p.nama_petugas}</span>
+                                                        <span className="text-slate-400 shrink-0">{p.no_hp || '-'}</span>
+                                                      </li>
+                                                    ))}
+                                                  </ul>
+                                                ) : (
+                                                  <span className="text-xs italic text-slate-400">Belum ada petugas</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </TabsContent>
+
+                            <TabsContent value="presensi" className="pt-0">
+                              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                                {loadingBloks[blok.blok_id] ? (
+                                  <div className="py-8 text-center text-xs text-slate-500">Memuat...</div>
+                                ) : !blokDetails[blok.blok_id] || blokDetails[blok.blok_id].presensi.length === 0 ? (
+                                  <div className="py-8 text-center text-sm text-slate-400">Belum ada riwayat presensi dalam 30 hari.</div>
+                                ) : (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                      <thead className="bg-slate-50 border-b border-slate-200">
+                                        <tr>
+                                          {/* Table header disesuaikan ukuran teksnya */}
+                                          <th className="px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-500">Tanggal</th>
+                                          <th className="px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-500">Petugas Ronda</th>
+                                          <th className="px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-500">Status</th>
+                                          <th className="px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-500">Catatan</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-200/60 text-sm">
+                                        {blokDetails[blok.blok_id].presensi.map((p: any) => (
+                                          <tr key={p.id} className="hover:bg-slate-50/50">
+                                            <td className="px-5 py-3 text-slate-600">
+                                              {new Date(p.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                            </td>
+                                            {/* Text disamakan font-semibold text-slate-900 text-sm */}
+                                            <td className="px-5 py-3 font-semibold text-slate-900">{p.nama_petugas}</td>
+                                            <td className="px-5 py-3">
+                                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.status_hadir === 'HADIR' ? 'bg-emerald-100 text-emerald-700' :
+                                                p.status_hadir === 'ALFA' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                                                }`}>
+                                                {p.status_hadir}
+                                              </span>
+                                            </td>
+                                            {/* Catatan disesuaikan text-sm text-slate-500 */}
+                                            <td className="px-5 py-3 text-slate-500 truncate max-w-[200px]">{p.catatan || "-"}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
                                   </div>
-                                </TabsContent>
-                              </Tabs>
-                            </AccordionContent>
-                          </AccordionItem>
-                        );
-                      })}
-                    </Accordion>
-                  )}
+                                )}
+                              </div>
+                            </TabsContent>
+                          </Tabs>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+              )}
+            </div>
+          </div>
+
+          {/* ── Rapor Ronda Bulanan RT ── */}
+          <div className="rounded-3xl border border-slate-200/70 bg-white shadow-sm overflow-hidden animate-in fade-in duration-300">
+            <div className="flex items-center justify-between gap-4 px-6 py-5 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+                  <Award className="size-5" />
+                </span>
+                <div>
+                  <h2 className="text-base font-bold text-slate-800">
+                    Rapor Ronda Bulanan RT (Bulan {monthNames.find(m => m.value === selectedMonth)?.label} {selectedYear})
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-0.5">Akumulasi tingkat kehadiran periode ini (Klik <b>Tegur RT</b> untuk menegur RT terkait).</p>
                 </div>
               </div>
-            </TabsContent>
-
-            {/* RAPOR KINERJA TAB */}
-            <TabsContent value="performance" className="space-y-6 pt-0">
-              <div className="rounded-3xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200">
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex size-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
-                      <Award className="size-4.5" />
-                    </span>
-                    <div>
-                      {/* Sub-judul diselaraskan warnanya dengan text-slate-800 */}
-                      <h2 className="text-base font-bold text-slate-800">Rapor Ronda Bulanan RT</h2>
-                      <p className="text-xs text-slate-500 mt-0.5">Akumulasi tingkat kehadiran vs alfa petugas pada periode ini.</p>
-                    </div>
-                  </div>
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl shrink-0">
+                  Menampilkan {totalRaporItems > 0 ? startRaporIndex + 1 : 0} - {Math.min(endRaporIndex, totalRaporItems)} dari {totalRaporItems} RT
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setRaporCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={activeRaporPage === 1}
+                    className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
+                  >
+                    <ChevronLeft className="size-5 stroke-[2.5px]" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setRaporCurrentPage(prev => Math.min(prev + 1, totalRaporPages))}
+                    disabled={activeRaporPage === totalRaporPages}
+                    className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
+                  >
+                    <ChevronRight className="size-5 stroke-[2.5px]" />
+                  </Button>
                 </div>
+              </div>
+            </div>
 
-                <div className="p-0">
-                  {!data || data.blok_data.length === 0 ? (
-                    <div className="py-16 text-center text-sm text-slate-400">Tidak ada data untuk periode ini.</div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left">
-                        <thead className="bg-slate-50/70 border-b border-slate-200">
-                          <tr>
-                            {/* Table header disesuaikan ukuran teksnya */}
-                            <th className="px-6 py-4 text-sm font-bold uppercase tracking-wider text-slate-500">Wilayah</th>
-                            <th className="px-6 py-4 text-sm font-bold uppercase tracking-wider text-slate-500">Statistik Kehadiran (H / I / A)</th>
-                            <th className="px-6 py-4 text-sm font-bold uppercase tracking-wider text-slate-500">Tingkat Kepatuhan (%)</th>
-                            <th className="px-6 py-4 text-sm font-bold uppercase tracking-wider text-slate-500">Kategori Kinerja</th>
-                            <th className="px-6 py-4 text-sm font-bold uppercase tracking-wider text-slate-500 text-right">Tindakan Evaluasi</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200/80 text-sm">
-                          {data.blok_data.map(blok => {
-                            const stats = getBlockStats(blok);
-                            return (
-                              <tr key={blok.blok_id} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="px-6 py-4">
-                                  {/* Text disamakan font-semibold text-slate-900 text-sm dan subtitle text-xs text-slate-500 */}
-                                  <p className="font-semibold text-sm text-slate-900">RT {blok.no_rt.toString().padStart(3, '0')}</p>
-                                  <p className="text-xs text-slate-500 font-medium">{blok.nama_blok}</p>
-                                </td>
-                                <td className="px-6 py-4 font-bold text-sm">
-                                  <span className="text-emerald-600 mr-2">{stats.totalHadir}H</span>
-                                  <span className="text-amber-600 mr-2">{stats.totalIzin}I</span>
-                                  <span className="text-rose-600">{stats.totalAlfa}A</span>
-                                </td>
-                                <td className="px-6 py-4">
-                                  <div className="flex flex-col gap-1.5 w-28">
-                                    <span className={`text-base font-extrabold ${stats.attendanceRate > 70 ? 'text-emerald-600' : 'text-amber-600'}`}>
+            <div className="p-0">
+              {!data || data.blok_data.length === 0 ? (
+                <div className="py-16 text-center text-sm text-slate-400">Tidak ada data untuk periode ini.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500">Wilayah</th>
+                        <th className="px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500">Statistik Kehadiran</th>
+                        <th className="px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500">Tingkat Kepatuhan</th>
+                        <th className="px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500">Kategori Kinerja</th>
+                        <th className="px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Tindakan Evaluasi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200/60 text-sm">
+                      {paginatedRaporBloks.map(blok => {
+                        const stats = getBlockStats(blok);
+                        return (
+                          <tr key={blok.blok_id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-6 py-3">
+                              <div className="flex items-center gap-3">
+                                <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600 border border-violet-100/70">
+                                  <Building2 className="size-3.5" />
+                                </span>
+                                <div className="text-left">
+                                  <h4 className="text-md font-bold text-slate-900">
+                                    RT {blok.no_rt.toString().padStart(3, '0')}
+                                  </h4>
+                                  <p className="text-sm text-slate-400 font-medium">{blok.nama_blok}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-3">
+                              <div className="flex items-center gap-1">
+                                <span className="inline-flex items-center justify-center px-2 py-2 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100/50">
+                                  {stats.totalHadir} Hadir
+                                </span>
+                                <span className="inline-flex items-center justify-center px-2 py-2 rounded-md text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100/50">
+                                  {stats.totalIzin} Izin
+                                </span>
+                                <span className="inline-flex items-center justify-center px-2 py-2 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-100/50">
+                                  {stats.totalAlfa} Alfa
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-3">
+                              {(() => {
+                                const rateColor = stats.attendanceRate >= 80
+                                  ? 'text-emerald-600'
+                                  : stats.attendanceRate >= 50
+                                    ? 'text-amber-600'
+                                    : 'text-rose-600';
+                                const progressBg = stats.attendanceRate >= 80
+                                  ? 'bg-emerald-500'
+                                  : stats.attendanceRate >= 50
+                                    ? 'bg-amber-500'
+                                    : 'bg-rose-500';
+                                return (
+                                  <div className="flex flex-col gap-1 w-24">
+                                    <span className={`text-sm font-bold ${rateColor} tabular-nums`}>
                                       {stats.attendanceRate}%
                                     </span>
                                     <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                      <div className={`h-full rounded-full ${stats.attendanceRate > 70 ? 'bg-emerald-500' : stats.attendanceRate > 40 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${stats.attendanceRate}%` }}></div>
+                                      <div className={`h-full rounded-full transition-all duration-500 ${progressBg}`} style={{ width: `${stats.attendanceRate}%` }}></div>
                                     </div>
                                   </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                  <span className={`inline-flex px-3 py-1 rounded-md text-xs font-bold ${stats.statusKinerja === 'RAWAN' ? 'bg-red-100 text-red-700 border border-red-200' :
-                                    stats.statusKinerja === 'PERHATIAN' ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                                    }`}>
-                                    {stats.statusKinerja === 'RAWAN' ? 'Rawan Vakum' : stats.statusKinerja === 'PERHATIAN' ? 'Perlu Perhatian' : 'Kinerja Bagus'}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                  {stats.statusKinerja !== 'AMAN' ? (
-                                    <Button onClick={() => handleReprimand(blok.no_rt, blok.nama_blok)} size="sm" className="h-9 px-4 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white">
-                                      Tegur RT
-                                    </Button>
-                                  ) : (
-                                    <span className="text-xs font-semibold text-slate-400 px-4 py-2">Terkendali</span>
-                                  )}
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                                );
+                              })()}
+                            </td>
+                            <td className="px-6 py-3">
+                              {stats.statusKinerja === "RAWAN" ? (
+                                <span className="inline-flex items-center gap-1.5 bg-red-100 text-red-700 px-3 py-1.5 rounded-md font-bold text-xs">
+                                  <AlertTriangle className="size-3.5" /> Tidak Aktif
+                                </span>
+                              ) : stats.statusKinerja === "PERHATIAN" ? (
+                                <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-md font-bold text-xs">
+                                  <Clock className="size-3.5" /> Perlu Perhatian
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-md font-bold text-xs">
+                                  <ShieldCheck className="size-3.5" /> Ronda Aktif
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-3 text-right">
+                              {stats.statusKinerja !== 'AMAN' ? (
+                                <Button onClick={() => handleReprimand(blok.no_rt, blok.nama_blok)} size="sm" className="h-8 px-3 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all flex items-center gap-1 ml-auto">
+                                  <BellRing className="size-3.5" /> Tegur RT
+                                </Button>
+                              ) : (
+                                <span className="inline-flex items-center px-4.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200/60 ml-auto">
+                                  Terkendali
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+              )}
+            </div>
+          </div>
         </>
       )}
     </main>
