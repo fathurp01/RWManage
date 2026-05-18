@@ -127,9 +127,9 @@ export default function KonfirmasiSetoranPage() {
                 <span className="inline-flex size-6 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
                   <Clock className="size-3.5" />
                 </span>
-                <h2 className="text-base font-bold text-slate-800">Perlu Konfirmasi</h2>
+                <h2 className="text-base font-extrabold text-slate-900">Perlu Konfirmasi</h2>
                 {pendingSetoran.length > 0 && (
-                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700">
                     {pendingSetoran.length} antrean
                   </span>
                 )}
@@ -184,12 +184,12 @@ export default function KonfirmasiSetoranPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-xs font-bold text-violet-600 uppercase tracking-widest mb-0.5">Dari Unit RT</p>
-                          <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base">
+                          <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-[15px]">
                             <MapPin className="size-4 text-violet-500 shrink-0" />
                             {item.blok_wilayah.nama_blok} · RT {item.blok_wilayah.no_rt ?? "-"}
                           </h3>
                         </div>
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-amber-50 text-amber-700 border border-amber-100">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tracking-wider uppercase bg-amber-50 text-amber-700 border border-amber-100">
                           Menunggu
                         </span>
                       </div>
@@ -217,7 +217,7 @@ export default function KonfirmasiSetoranPage() {
                             href={item.bukti_url}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-700 hover:text-violet-600 transition-colors bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-2xs"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-violet-600 transition-colors bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-2xs"
                           >
                             <Receipt className="size-3.5 text-slate-500" /> Lihat Bukti
                           </a>
@@ -227,7 +227,7 @@ export default function KonfirmasiSetoranPage() {
                         onClick={() => handleApprove(item.id)}
                         disabled={processing === item.id}
                         size="sm"
-                        className="bg-violet-600 hover:bg-violet-750 text-white rounded-lg shadow-xs transition-all h-9 px-4 gap-1.5 font-semibold text-sm"
+                        className="bg-violet-600 hover:bg-violet-750 text-white rounded-lg shadow-xs transition-all h-8 px-3 gap-1 font-semibold text-xs"
                       >
                         {processing === item.id ? (
                           <div className="size-3 animate-spin rounded-full border border-white border-t-transparent" />
@@ -253,7 +253,7 @@ export default function KonfirmasiSetoranPage() {
                 <span className="inline-flex size-6 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
                   <Receipt className="size-3.5" />
                 </span>
-                <h2 className="text-base font-bold text-slate-800">Riwayat Terkini</h2>
+                <h2 className="text-base font-extrabold text-slate-900">Riwayat Terkini</h2>
               </div>
 
               {/* Pagination in Header */}
@@ -288,7 +288,7 @@ export default function KonfirmasiSetoranPage() {
               <div>
                 <div className="flex items-center justify-between gap-4 px-6 py-4.5 border-b border-slate-100 bg-slate-50/50">
                   <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Histori Setoran RT</h3>
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
                     {historySetoran.length} Diterima
                   </span>
                 </div>
@@ -319,10 +319,10 @@ export default function KonfirmasiSetoranPage() {
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="font-bold tabular-nums text-base text-slate-900">
+                            <p className="font-bold tabular-nums text-[15px] text-slate-900">
                               Rp {Number(item.nominal).toLocaleString("id-ID")}
                             </p>
-                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 mt-1 border border-emerald-100">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 mt-1 border border-emerald-100">
                               TERKONFIRMASI
                             </span>
                           </div>
