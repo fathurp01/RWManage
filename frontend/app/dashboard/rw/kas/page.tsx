@@ -361,16 +361,16 @@ export default function KasRwDashboardPage() {
       {/* Add transaction form */}
       <Card>
         <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="size-4 text-slate-400" />
+          <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <Plus className="size-4.5 text-slate-400" />
             Tambah Transaksi Kas
           </CardTitle>
-          <CardDescription>Catat kas masuk dan kas keluar dengan bukti transaksi.</CardDescription>
+          <CardDescription className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Catat kas masuk dan kas keluar dengan bukti transaksi.</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={createAction} className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="jenis_transaksi" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Jenis Transaksi</Label>
+              <Label htmlFor="jenis_transaksi" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Jenis Transaksi</Label>
               <select id="jenis_transaksi" name="jenis_transaksi" defaultValue="MASUK" className={selectClass} disabled={disabled}>
                 <option value="MASUK">MASUK</option>
                 <option value="KELUAR">KELUAR</option>
@@ -381,12 +381,12 @@ export default function KasRwDashboardPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="tanggal" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Tanggal</Label>
+              <Label htmlFor="tanggal" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tanggal</Label>
               <Input id="tanggal" name="tanggal" type="date" disabled={disabled} />
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="keterangan" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Keterangan</Label>
+              <Label htmlFor="keterangan" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Keterangan</Label>
               <Input
                 id="keterangan"
                 name="keterangan"
@@ -400,7 +400,7 @@ export default function KasRwDashboardPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="nominal" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Nominal (Rp)</Label>
+              <Label htmlFor="nominal" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nominal (Rp)</Label>
               <Input
                 id="nominal"
                 name="nominal"
@@ -416,7 +416,7 @@ export default function KasRwDashboardPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="bukti_url" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Link Bukti (opsional)</Label>
+              <Label htmlFor="bukti_url" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Link Bukti (opsional)</Label>
               <Input
                 id="bukti_url"
                 name="bukti_url"
@@ -427,7 +427,7 @@ export default function KasRwDashboardPage() {
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="bukti_foto" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Upload Foto Bukti (opsional)</Label>
+              <Label htmlFor="bukti_foto" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Upload Foto Bukti (opsional)</Label>
               <div className="relative flex items-center h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 px-3.5 py-2 text-sm transition-all duration-200 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25">
                 <input
                   id="bukti_foto"
@@ -452,7 +452,7 @@ export default function KasRwDashboardPage() {
                   </span>
                 </div>
               </div>
-              <p className="text-[10px] text-slate-400">Pilih salah satu: Link atau Foto. Foto akan diprioritaskan.</p>
+              <p className="text-xs text-slate-400 mt-1">Pilih salah satu: Link atau Foto. Foto akan diprioritaskan.</p>
             </div>
 
             {createState.message ? (
@@ -469,16 +469,16 @@ export default function KasRwDashboardPage() {
       {/* Transaction history */}
       <Card>
         <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle className="flex items-center gap-2">
-            <Search className="size-4 text-slate-400" />
+          <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <Search className="size-4.5 text-slate-400" />
             Riwayat Buku Kas
           </CardTitle>
-          <CardDescription>Cari dan kelola transaksi yang sudah tercatat.</CardDescription>
+          <CardDescription className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Cari dan kelola transaksi yang sudah tercatat.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form action={filterAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-1.5">
-              <Label htmlFor="search" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Cari Transaksi</Label>
+              <Label htmlFor="search" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Cari Transaksi</Label>
               <Input
                 id="search"
                 name="search"
