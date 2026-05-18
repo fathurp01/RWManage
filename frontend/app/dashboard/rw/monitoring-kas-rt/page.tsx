@@ -111,13 +111,13 @@ export default function MonitoringKasRTPage() {
                   <p className="text-[13px] font-bold uppercase tracking-wider text-slate-500">Akumulasi Arus Kas RT</p>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <div>
-                      <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Kas Masuk</span>
+                      <span className="text-xs text-slate-500 mt-1">Kas Masuk</span>
                       <span className="text-sm font-extrabold text-emerald-600 tabular-nums mt-0.5 block">
                         +Rp {totalMasukSemuaRT.toLocaleString("id-ID")}
                       </span>
                     </div>
                     <div>
-                      <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Kas Keluar</span>
+                      <span className="text-xs text-slate-500 mt-1">Kas Keluar</span>
                       <span className="text-sm font-extrabold text-rose-500 tabular-nums mt-0.5 block">
                         -Rp {totalKeluarSemuaRT.toLocaleString("id-ID")}
                       </span>
@@ -233,20 +233,20 @@ export default function MonitoringKasRTPage() {
                           <td className="px-6 py-4">
                             <div className="flex flex-col items-center gap-1.5">
                               <span className={`text-sm font-extrabold tabular-nums ${item.persentase_bayar > 80
-                                  ? "text-emerald-600"
-                                  : item.persentase_bayar > 50
-                                    ? "text-amber-600"
-                                    : "text-rose-600"
+                                ? "text-emerald-600"
+                                : item.persentase_bayar > 50
+                                  ? "text-amber-600"
+                                  : "text-rose-600"
                                 }`}>
                                 {item.persentase_bayar.toFixed(1)}%
                               </span>
                               <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                 <div
                                   className={`h-full rounded-full ${item.persentase_bayar > 80
-                                      ? "bg-emerald-500"
-                                      : item.persentase_bayar > 50
-                                        ? "bg-amber-500"
-                                        : "bg-rose-500"
+                                    ? "bg-emerald-500"
+                                    : item.persentase_bayar > 50
+                                      ? "bg-amber-500"
+                                      : "bg-rose-500"
                                     }`}
                                   style={{ width: `${item.persentase_bayar}%` }}
                                 />
