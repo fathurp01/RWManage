@@ -1,4 +1,4 @@
-﻿import { randomBytes } from "crypto";
+import { randomBytes } from "crypto";
 import { JenisTransaksi, Prisma, StatusIuran } from "@prisma/client";
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
@@ -404,6 +404,56 @@ const revokeShareLink = async (scope: ShareScope, scopeId: string, token: string
   });
 };
 
+const activateShareLink = async (scope: ShareScope, scopeId: string, token: string) => {
+  const existing = await prisma.shareLink.findUnique({
+    where: { token },
+    select: {
+      id: true,
+      scope: true,
+      scope_id: true,
+    },
+  });
+
+  if (!existing || existing.scope !== scope || existing.scope_id !== scopeId) {
+    return null;
+  }
+
+  return prisma.shareLink.update({
+    where: { token },
+    data: {
+      revoked_at: null,
+    },
+    select: {
+      id: true,
+      token: true,
+      scope: true,
+      scope_id: true,
+      expires_at: true,
+      revoked_at: true,
+      created_at: true,
+    },
+  });
+};
+
+const deleteShareLink = async (scope: ShareScope, scopeId: string, token: string) => {
+  const existing = await prisma.shareLink.findUnique({
+    where: { token },
+    select: {
+      id: true,
+      scope: true,
+      scope_id: true,
+    },
+  });
+
+  if (!existing || existing.scope !== scope || existing.scope_id !== scopeId) {
+    return null;
+  }
+
+  return prisma.shareLink.delete({
+    where: { token },
+  });
+};
+
 export const createRwShareLink = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user?.id) {
@@ -500,6 +550,78 @@ export const revokeRwShareLink = async (req: Request, res: Response): Promise<vo
   }
 };
 
+export const activateRwShareLink = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.params as ShareTokenParams;
+
+    if (!token) {
+      res.status(400).json({ success: false, message: "Token wajib diisi." });
+      return;
+    }
+
+    if (!req.user?.id) {
+      res.status(401).json({ success: false, message: "User belum terautentikasi." });
+      return;
+    }
+
+    const rw = await getAuthorizedRw(req.user.id);
+    if (!rw) {
+      res.status(403).json({ success: false, message: "Wilayah RW tidak ditemukan." });
+      return;
+    }
+
+    const activated = await activateShareLink("RW", rw.id, token);
+    if (!activated) {
+      res.status(404).json({ success: false, message: "Share link RW tidak ditemukan." });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Share link RW berhasil diaktifkan.",
+      data: activated,
+    });
+  } catch {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengaktifkan share link RW." });
+  }
+};
+
+export const deleteRwShareLink = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.params as ShareTokenParams;
+
+    if (!token) {
+      res.status(400).json({ success: false, message: "Token wajib diisi." });
+      return;
+    }
+
+    if (!req.user?.id) {
+      res.status(401).json({ success: false, message: "User belum terautentikasi." });
+      return;
+    }
+
+    const rw = await getAuthorizedRw(req.user.id);
+    if (!rw) {
+      res.status(403).json({ success: false, message: "Wilayah RW tidak ditemukan." });
+      return;
+    }
+
+    const deleted = await deleteShareLink("RW", rw.id, token);
+    if (!deleted) {
+      res.status(404).json({ success: false, message: "Share link RW tidak ditemukan." });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Share link RW berhasil dihapus secara permanen.",
+      data: deleted,
+    });
+  } catch {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat menghapus share link RW." });
+  }
+};
+
 export const createMasjidShareLink = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user?.id) {
@@ -593,6 +715,78 @@ export const revokeMasjidShareLink = async (req: Request, res: Response): Promis
     });
   } catch {
     res.status(500).json({ success: false, message: "Terjadi kesalahan saat menonaktifkan share link Masjid." });
+  }
+};
+
+export const activateMasjidShareLink = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.params as ShareTokenParams;
+
+    if (!token) {
+      res.status(400).json({ success: false, message: "Token wajib diisi." });
+      return;
+    }
+
+    if (!req.user?.id) {
+      res.status(401).json({ success: false, message: "User belum terautentikasi." });
+      return;
+    }
+
+    const masjid = await getAuthorizedMasjid(req.user.id);
+    if (!masjid) {
+      res.status(403).json({ success: false, message: "Masjid tidak ditemukan." });
+      return;
+    }
+
+    const activated = await activateShareLink("MASJID", masjid.id, token);
+    if (!activated) {
+      res.status(404).json({ success: false, message: "Share link Masjid tidak ditemukan." });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Share link Masjid berhasil diaktifkan.",
+      data: activated,
+    });
+  } catch {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengaktifkan share link Masjid." });
+  }
+};
+
+export const deleteMasjidShareLink = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.params as ShareTokenParams;
+
+    if (!token) {
+      res.status(400).json({ success: false, message: "Token wajib diisi." });
+      return;
+    }
+
+    if (!req.user?.id) {
+      res.status(401).json({ success: false, message: "User belum terautentikasi." });
+      return;
+    }
+
+    const masjid = await getAuthorizedMasjid(req.user.id);
+    if (!masjid) {
+      res.status(403).json({ success: false, message: "Masjid tidak ditemukan." });
+      return;
+    }
+
+    const deleted = await deleteShareLink("MASJID", masjid.id, token);
+    if (!deleted) {
+      res.status(404).json({ success: false, message: "Share link Masjid tidak ditemukan." });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Share link Masjid berhasil dihapus secara permanen.",
+      data: deleted,
+    });
+  } catch {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat menghapus share link Masjid." });
   }
 };
 

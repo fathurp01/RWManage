@@ -31,15 +31,8 @@ export const getAuditLogList = async (
         auditLogQuery.user_id = user_id;
       }
     } else if (req.user.role === "RW") {
-      // RW hanya bisa lihat audit log user yang ada di wilayahnya
-      const rwUsers = await prisma.user.findMany({
-        where: {
-          wilayah_rw: { user_id: req.user.id }
-        },
-        select: { id: true }
-      });
-      const rwUserIds = rwUsers.map(u => u.id);
-      auditLogQuery.user_id = { in: rwUserIds };
+      // RW hanya bisa lihat audit log dirinya sendiri (terikat ke user yang sedang login)
+      auditLogQuery.user_id = req.user.id;
     } else {
       res.status(403).json({
         success: false,
@@ -52,11 +45,26 @@ export const getAuditLogList = async (
       auditLogQuery.aksi = aksi;
     }
 
-    if (tanggal_mulai && tanggal_akhir) {
-      auditLogQuery.created_at = {
-        gte: new Date(tanggal_mulai),
-        lte: new Date(tanggal_akhir),
-      };
+    if (tanggal_mulai || tanggal_akhir) {
+      const dateFilter: any = {};
+      
+      if (tanggal_mulai && tanggal_mulai.trim() !== "") {
+        const dateStart = new Date(tanggal_mulai);
+        if (!isNaN(dateStart.getTime())) {
+          dateFilter.gte = dateStart;
+        }
+      }
+      
+      if (tanggal_akhir && tanggal_akhir.trim() !== "") {
+        const dateEnd = new Date(tanggal_akhir);
+        if (!isNaN(dateEnd.getTime())) {
+          dateFilter.lte = dateEnd;
+        }
+      }
+
+      if (Object.keys(dateFilter).length > 0) {
+        auditLogQuery.created_at = dateFilter;
+      }
     }
 
     const auditLogs = await prisma.auditLog.findMany({

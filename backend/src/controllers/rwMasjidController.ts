@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
+import { AksiAudit } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import { recordAudit } from "../middlewares/auditLogger";
 
 interface ListRwMasjidQuery {
   blok_wilayah_id?: string;
@@ -228,6 +230,14 @@ export const createRwMasjid = async (req: Request, res: Response): Promise<void>
       },
     });
 
+    await recordAudit(req, {
+      aksi: AksiAudit.CREATE,
+      entitas: "Masjid",
+      entitas_id: masjid.id,
+      data_baru: masjid,
+      keterangan: `Menambahkan Masjid Baru: ${masjid.nama_masjid}`,
+    });
+
     res.status(201).json({
       success: true,
       message: "Masjid berhasil ditambahkan.",
@@ -281,9 +291,7 @@ export const updateRwMasjid = async (req: Request, res: Response): Promise<void>
 
     const existingMasjid = await prisma.masjid.findUnique({
       where: { id: masjid_id },
-      select: {
-        id: true,
-        blok_wilayah_id: true,
+      include: {
         blok_wilayah: {
           select: {
             wilayah_rw_id: true,
@@ -344,6 +352,16 @@ export const updateRwMasjid = async (req: Request, res: Response): Promise<void>
         alamat: true,
         blok_wilayah_id: true,
       },
+    });
+
+    const { blok_wilayah, ...cleanExistingMasjid } = existingMasjid;
+    await recordAudit(req, {
+      aksi: AksiAudit.UPDATE,
+      entitas: "Masjid",
+      entitas_id: updatedMasjid.id,
+      data_lama: cleanExistingMasjid,
+      data_baru: updatedMasjid,
+      keterangan: `Memperbarui Masjid: ${updatedMasjid.nama_masjid}`,
     });
 
     res.status(200).json({

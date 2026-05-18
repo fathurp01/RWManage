@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import { Role, StatusAkun } from "@prisma/client";
+import { Role, StatusAkun, AksiAudit } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma";
+import { recordAudit } from "../middlewares/auditLogger";
 
 const SALT_ROUNDS = 10;
 
@@ -88,6 +89,14 @@ export const createBlokWilayah = async (
         nama_blok,
         no_rt: no_rt || null,
       },
+    });
+
+    await recordAudit(req, {
+      aksi: AksiAudit.CREATE,
+      entitas: "BlokWilayah",
+      entitas_id: blok.id,
+      data_baru: blok,
+      keterangan: `Menambahkan Blok Wilayah baru ${nama_blok} (RT ${no_rt ?? "-"})`,
     });
 
     res.status(201).json({
@@ -237,12 +246,12 @@ export const updateBlokWilayah = async (
       return;
     }
 
-    const blok = await prisma.blokWilayah.findUnique({
+    const existingBlokRecord = await prisma.blokWilayah.findUnique({
       where: { id: blok_id },
-      select: { wilayah_rw_id: true, wilayah_rw: { select: { user_id: true } } },
+      include: { wilayah_rw: { select: { user_id: true } } },
     });
 
-    if (!blok) {
+    if (!existingBlokRecord) {
       res.status(404).json({
         success: false,
         message: "Blok wilayah tidak ditemukan.",
@@ -250,7 +259,7 @@ export const updateBlokWilayah = async (
       return;
     }
 
-    if (blok.wilayah_rw.user_id !== req.user.id) {
+    if (existingBlokRecord.wilayah_rw.user_id !== req.user.id) {
       res.status(403).json({
         success: false,
         message: "Akses ditolak.",
@@ -261,7 +270,7 @@ export const updateBlokWilayah = async (
     if (nama_blok || no_rt) {
       const existingBlok = await prisma.blokWilayah.findFirst({
         where: {
-          wilayah_rw_id: blok.wilayah_rw_id,
+          wilayah_rw_id: existingBlokRecord.wilayah_rw_id,
           id: { not: blok_id },
           OR: [
             ...(nama_blok ? [{ nama_blok: { equals: nama_blok, mode: 'insensitive' as any } }] : []),
@@ -287,6 +296,16 @@ export const updateBlokWilayah = async (
         ...(nama_blok && { nama_blok }),
         ...(no_rt && { no_rt }),
       },
+    });
+
+    const { wilayah_rw, ...cleanExistingBlok } = existingBlokRecord;
+    await recordAudit(req, {
+      aksi: AksiAudit.UPDATE,
+      entitas: "BlokWilayah",
+      entitas_id: updated.id,
+      data_lama: cleanExistingBlok,
+      data_baru: updated,
+      keterangan: `Memperbarui Blok Wilayah ${updated.nama_blok}`,
     });
 
     res.status(200).json({
@@ -330,6 +349,10 @@ export const deleteBlokWilayah = async (
     const blok = await prisma.blokWilayah.findUnique({
       where: { id: blok_id },
       select: {
+        id: true,
+        nama_blok: true,
+        no_rt: true,
+        wilayah_rw_id: true,
         wilayah_rw: { select: { user_id: true } },
         users: {
           select: { id: true, role: true, status_akun: true }
@@ -446,6 +469,15 @@ export const deleteBlokWilayah = async (
       await tx.blokWilayah.delete({
         where: { id: blok_id }
       });
+    });
+
+    const { users, wilayah_rw, ...cleanBlok } = blok;
+    await recordAudit(req, {
+      aksi: AksiAudit.DELETE,
+      entitas: "BlokWilayah",
+      entitas_id: blok_id,
+      data_lama: cleanBlok,
+      keterangan: `Menghapus Blok Wilayah ${blok.nama_blok}`,
     });
 
     res.status(200).json({
@@ -661,6 +693,15 @@ export const createRwRtAccount = async (
       },
     });
 
+    const { password: _, ...cleanNewUser } = newUser;
+    await recordAudit(req, {
+      aksi: AksiAudit.CREATE,
+      entitas: "User",
+      entitas_id: newUser.id,
+      data_baru: cleanNewUser,
+      keterangan: `Menambahkan akun Ketua RT baru: ${newUser.nama} (${newUser.email})`,
+    });
+
     res.status(201).json({
       success: true,
       message: "Akun Ketua RT berhasil ditambahkan.",
@@ -793,7 +834,7 @@ export const updateRwRtAccount = async (
       return;
     }
 
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: targetUserId },
       data: {
         nama: targetNama,
@@ -802,6 +843,18 @@ export const updateRwRtAccount = async (
         blok_wilayah_id: targetBlokId,
         ...(targetPassword ? { password: await bcrypt.hash(targetPassword, SALT_ROUNDS) } : {}),
       },
+    });
+
+    const { password: _p1, ...cleanTargetUser } = targetUser;
+    const { password: _p2, ...cleanUpdatedUser } = updatedUser;
+
+    await recordAudit(req, {
+      aksi: AksiAudit.UPDATE,
+      entitas: "User",
+      entitas_id: targetUserId,
+      data_lama: cleanTargetUser,
+      data_baru: cleanUpdatedUser,
+      keterangan: `Memperbarui akun Ketua RT: ${updatedUser.nama}`,
     });
 
     res.status(200).json({
@@ -890,6 +943,15 @@ export const deleteRwRtAccount = async (
       await tx.user.delete({
         where: { id: targetUserId },
       });
+    });
+
+    const { password: _, ...cleanTargetUser } = targetUser;
+    await recordAudit(req, {
+      aksi: AksiAudit.DELETE,
+      entitas: "User",
+      entitas_id: targetUserId,
+      data_lama: cleanTargetUser,
+      keterangan: `Menghapus akun Ketua RT: ${targetUser.nama}`,
     });
 
     res.status(200).json({

@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import { Role, StatusAkun } from "@prisma/client";
+import { Role, StatusAkun, AksiAudit } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma";
+import { recordAudit } from "../middlewares/auditLogger";
 
 const SALT_ROUNDS = 10;
 
@@ -68,6 +69,14 @@ export const createMasjid = async (
         nama_masjid,
         alamat,
       },
+    });
+
+    await recordAudit(req, {
+      aksi: AksiAudit.CREATE,
+      entitas: "Masjid",
+      entitas_id: masjid.id,
+      data_baru: masjid,
+      keterangan: `Menambahkan Masjid Baru: ${masjid.nama_masjid}`,
     });
 
     res.status(201).json({
@@ -251,12 +260,12 @@ export const updateMasjid = async (
       return;
     }
 
-    const masjid = await prisma.masjid.findUnique({
+    const existingMasjid = await prisma.masjid.findUnique({
       where: { id: masjid_id },
-      select: { blok_wilayah: { select: { wilayah_rw: { select: { user_id: true } } } } },
+      include: { blok_wilayah: { select: { wilayah_rw: { select: { user_id: true } } } } },
     });
 
-    if (!masjid) {
+    if (!existingMasjid) {
       res.status(404).json({
         success: false,
         message: "Data masjid tidak ditemukan.",
@@ -264,7 +273,7 @@ export const updateMasjid = async (
       return;
     }
 
-    if (masjid.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
+    if (existingMasjid.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
       res.status(403).json({
         success: false,
         message: "Akses ditolak.",
@@ -278,6 +287,16 @@ export const updateMasjid = async (
         ...(nama_masjid && { nama_masjid }),
         ...(alamat && { alamat }),
       },
+    });
+
+    const { blok_wilayah, ...cleanExistingMasjid } = existingMasjid;
+    await recordAudit(req, {
+      aksi: AksiAudit.UPDATE,
+      entitas: "Masjid",
+      entitas_id: updated.id,
+      data_lama: cleanExistingMasjid,
+      data_baru: updated,
+      keterangan: `Memperbarui Masjid: ${updated.nama_masjid}`,
     });
 
     res.status(200).json({
@@ -318,12 +337,18 @@ export const deleteMasjid = async (
       return;
     }
 
-    const masjid = await prisma.masjid.findUnique({
+    const existingMasjid = await prisma.masjid.findUnique({
       where: { id: masjid_id },
-      select: { blok_wilayah: { select: { wilayah_rw: { select: { user_id: true } } } } },
+      include: {
+        blok_wilayah: {
+          select: {
+            wilayah_rw: { select: { user_id: true } },
+          },
+        },
+      },
     });
 
-    if (!masjid) {
+    if (!existingMasjid) {
       res.status(404).json({
         success: false,
         message: "Data masjid tidak ditemukan.",
@@ -331,7 +356,7 @@ export const deleteMasjid = async (
       return;
     }
 
-    if (masjid.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
+    if (existingMasjid.blok_wilayah.wilayah_rw.user_id !== req.user.id) {
       res.status(403).json({
         success: false,
         message: "Akses ditolak.",
@@ -395,6 +420,15 @@ export const deleteMasjid = async (
       await tx.masjid.delete({
         where: { id: masjid_id },
       });
+    });
+
+    const { blok_wilayah, ...cleanExistingMasjid } = existingMasjid;
+    await recordAudit(req, {
+      aksi: AksiAudit.DELETE,
+      entitas: "Masjid",
+      entitas_id: masjid_id,
+      data_lama: cleanExistingMasjid,
+      keterangan: `Menghapus Masjid: ${existingMasjid.nama_masjid}`,
     });
 
     res.status(200).json({
@@ -629,6 +663,15 @@ export const createRwPengurusMasjid = async (
       return user;
     });
 
+    const { password: _, ...cleanNewUser } = newUser;
+    await recordAudit(req, {
+      aksi: AksiAudit.CREATE,
+      entitas: "User",
+      entitas_id: newUser.id,
+      data_baru: cleanNewUser,
+      keterangan: `Menambahkan Pengurus Masjid: ${newUser.nama}`,
+    });
+
     res.status(201).json({
       success: true,
       message: "Pengurus masjid berhasil ditambahkan.",
@@ -746,9 +789,21 @@ export const updateRwPengurusMasjid = async (
       return;
     }
 
-    await prisma.$transaction(async (tx) => {
+    const targetUser = await prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+
+    if (!targetUser) {
+      res.status(404).json({
+        success: false,
+        message: "Pengurus masjid tidak ditemukan.",
+      });
+      return;
+    }
+
+    const updatedUser = await prisma.$transaction(async (tx) => {
       // Update user details
-      await tx.user.update({
+      const u = await tx.user.update({
         where: { id: targetUserId },
         data: {
           nama: targetNama,
@@ -765,6 +820,20 @@ export const updateRwPengurusMasjid = async (
           masjid_id: targetMasjidId,
         },
       });
+
+      return u;
+    });
+
+    const { password: _p1, ...cleanTargetUser } = targetUser;
+    const { password: _p2, ...cleanUpdatedUser } = updatedUser;
+
+    await recordAudit(req, {
+      aksi: AksiAudit.UPDATE,
+      entitas: "User",
+      entitas_id: targetUserId,
+      data_lama: cleanTargetUser,
+      data_baru: cleanUpdatedUser,
+      keterangan: `Memperbarui pengurus masjid: ${updatedUser.nama}`,
     });
 
     res.status(200).json({
@@ -829,6 +898,10 @@ export const deleteRwPengurusMasjid = async (
       return;
     }
 
+    const targetUser = await prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+
     await prisma.$transaction(async (tx) => {
       // Delete relation
       await tx.pengurusMasjid.deleteMany({
@@ -840,6 +913,17 @@ export const deleteRwPengurusMasjid = async (
         where: { id: targetUserId },
       });
     });
+
+    if (targetUser) {
+      const { password: _, ...cleanTargetUser } = targetUser;
+      await recordAudit(req, {
+        aksi: AksiAudit.DELETE,
+        entitas: "User",
+        entitas_id: targetUserId,
+        data_lama: cleanTargetUser,
+        keterangan: `Menghapus pengurus masjid: ${targetUser.nama}`,
+      });
+    }
 
     res.status(200).json({
       success: true,

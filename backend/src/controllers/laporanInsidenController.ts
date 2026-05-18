@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { StatusInsiden } from "@prisma/client";
+import { StatusInsiden, AksiAudit } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import { recordAudit } from "../middlewares/auditLogger";
 
 interface CreateLaporanBody {
   tipe_insiden?: string;
@@ -88,6 +89,14 @@ export const createLaporanInsiden = async (
         foto_bukti_url,
         status: "LAPORAN",
       },
+    });
+
+    await recordAudit(req, {
+      aksi: AksiAudit.CREATE,
+      entitas: "LaporanInsiden",
+      entitas_id: laporan.id,
+      data_baru: laporan,
+      keterangan: `Membuat Laporan Insiden Baru: ${tipe_insiden} di ${lokasi}`,
     });
 
     res.status(201).json({
@@ -196,12 +205,12 @@ export const updateLaporanInsiden = async (
       return;
     }
 
-    const laporan = await prisma.laporanInsiden.findUnique({
+    const existingLaporan = await prisma.laporanInsiden.findUnique({
       where: { id: laporan_id },
-      select: { wilayah_rw: { select: { user_id: true } } },
+      include: { wilayah_rw: { select: { user_id: true } } },
     });
 
-    if (!laporan) {
+    if (!existingLaporan) {
       res.status(404).json({
         success: false,
         message: "Laporan insiden tidak ditemukan.",
@@ -209,7 +218,7 @@ export const updateLaporanInsiden = async (
       return;
     }
 
-    if (laporan.wilayah_rw.user_id !== req.user.id) {
+    if (existingLaporan.wilayah_rw.user_id !== req.user.id) {
       res.status(403).json({
         success: false,
         message: "Akses ditolak.",
@@ -235,6 +244,16 @@ export const updateLaporanInsiden = async (
         }),
         ...(foto_bukti_url && { foto_bukti_url }),
       },
+    });
+
+    const { wilayah_rw, ...cleanExistingLaporan } = existingLaporan;
+    await recordAudit(req, {
+      aksi: AksiAudit.UPDATE,
+      entitas: "LaporanInsiden",
+      entitas_id: updated.id,
+      data_lama: cleanExistingLaporan,
+      data_baru: updated,
+      keterangan: `Memperbarui Laporan Insiden: ${updated.tipe_insiden} di ${updated.lokasi}`,
     });
 
     res.status(200).json({
@@ -275,12 +294,12 @@ export const closeLaporanInsiden = async (
       return;
     }
 
-    const laporan = await prisma.laporanInsiden.findUnique({
+    const existingLaporan = await prisma.laporanInsiden.findUnique({
       where: { id: laporan_id },
-      select: { wilayah_rw: { select: { user_id: true } } },
+      include: { wilayah_rw: { select: { user_id: true } } },
     });
 
-    if (!laporan) {
+    if (!existingLaporan) {
       res.status(404).json({
         success: false,
         message: "Laporan insiden tidak ditemukan.",
@@ -288,7 +307,7 @@ export const closeLaporanInsiden = async (
       return;
     }
 
-    if (laporan.wilayah_rw.user_id !== req.user.id) {
+    if (existingLaporan.wilayah_rw.user_id !== req.user.id) {
       res.status(403).json({
         success: false,
         message: "Akses ditolak.",
@@ -299,6 +318,16 @@ export const closeLaporanInsiden = async (
     const updated = await prisma.laporanInsiden.update({
       where: { id: laporan_id },
       data: { status: "DITUTUP" },
+    });
+
+    const { wilayah_rw, ...cleanExistingLaporan } = existingLaporan;
+    await recordAudit(req, {
+      aksi: AksiAudit.UPDATE,
+      entitas: "LaporanInsiden",
+      entitas_id: updated.id,
+      data_lama: cleanExistingLaporan,
+      data_baru: updated,
+      keterangan: `Menutup Laporan Insiden: ${updated.tipe_insiden}`,
     });
 
     res.status(200).json({
@@ -339,12 +368,12 @@ export const deleteLaporanInsiden = async (
       return;
     }
 
-    const laporan = await prisma.laporanInsiden.findUnique({
+    const existingLaporan = await prisma.laporanInsiden.findUnique({
       where: { id: laporan_id },
-      select: { wilayah_rw: { select: { user_id: true } } },
+      include: { wilayah_rw: { select: { user_id: true } } },
     });
 
-    if (!laporan) {
+    if (!existingLaporan) {
       res.status(404).json({
         success: false,
         message: "Laporan insiden tidak ditemukan.",
@@ -352,7 +381,7 @@ export const deleteLaporanInsiden = async (
       return;
     }
 
-    if (laporan.wilayah_rw.user_id !== req.user.id) {
+    if (existingLaporan.wilayah_rw.user_id !== req.user.id) {
       res.status(403).json({
         success: false,
         message: "Akses ditolak.",
@@ -362,6 +391,15 @@ export const deleteLaporanInsiden = async (
 
     await prisma.laporanInsiden.delete({
       where: { id: laporan_id },
+    });
+
+    const { wilayah_rw, ...cleanExistingLaporan } = existingLaporan;
+    await recordAudit(req, {
+      aksi: AksiAudit.DELETE,
+      entitas: "LaporanInsiden",
+      entitas_id: laporan_id,
+      data_lama: cleanExistingLaporan,
+      keterangan: `Menghapus Laporan Insiden: ${existingLaporan.tipe_insiden}`,
     });
 
     res.status(200).json({

@@ -69,6 +69,10 @@ import {
   listRwShareLinks,
   revokeMasjidShareLink,
   revokeRwShareLink,
+  activateRwShareLink,
+  deleteRwShareLink,
+  activateMasjidShareLink,
+  deleteMasjidShareLink,
 } from "../controllers/shareLinkController";
 import { cekKodeUnik, exportPublicKwitansi, getMasjidList } from "../controllers/publicController";
 import {
@@ -1469,6 +1473,24 @@ router.patch(
   validateParams(shareLinkTokenParamsSchema),
   revokeRwShareLink
 );
+router.patch(
+  "/rw/share-links/:token/activate",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(shareLinkTokenParamsSchema),
+  activateRwShareLink
+);
+router.delete(
+  "/rw/share-links/:token",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  validateParams(shareLinkTokenParamsSchema),
+  deleteRwShareLink
+);
 
 // ==================== ZIS TRANSAKSI ROUTES ====================
 router.post(
@@ -1645,6 +1667,24 @@ router.patch(
   checkApproval,
   validateParams(shareLinkTokenParamsSchema),
   revokeMasjidShareLink
+);
+router.patch(
+  "/masjid/share-links/:token/activate",
+  zisActionRateLimit,
+  verifyToken,
+  checkRole(["PENGURUS_MASJID"]),
+  checkApproval,
+  validateParams(shareLinkTokenParamsSchema),
+  activateMasjidShareLink
+);
+router.delete(
+  "/masjid/share-links/:token",
+  zisActionRateLimit,
+  verifyToken,
+  checkRole(["PENGURUS_MASJID"]),
+  checkApproval,
+  validateParams(shareLinkTokenParamsSchema),
+  deleteMasjidShareLink
 );
 
 // ==================== KAS MASJID ROUTES ====================

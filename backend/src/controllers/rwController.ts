@@ -1,7 +1,8 @@
 import { randomBytes } from "crypto";
 import { Request, Response } from "express";
-import { JenisTransaksi, Prisma, StatusIuran } from "@prisma/client";
+import { JenisTransaksi, Prisma, StatusIuran, AksiAudit } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import { recordAudit } from "../middlewares/auditLogger";
 
 interface CreateWargaBody {
   blok_wilayah_id?: string;
@@ -1021,6 +1022,15 @@ export const bayarIuran = async (req: Request, res: Response): Promise<void> => 
       return updated;
     });
 
+    await recordAudit(req, {
+      aksi: AksiAudit.UPDATE,
+      entitas: "IuranWarga",
+      entitas_id: updatedIuran.id,
+      data_lama: existingIuran,
+      data_baru: updatedIuran,
+      keterangan: `Pembayaran iuran oleh RW untuk warga ${existingIuran.warga.nama_kk} (${existingIuran.bulan}/${existingIuran.tahun})`,
+    });
+
     res.status(200).json({
       success: true,
       message: "Pembayaran iuran berhasil diproses.",
@@ -1138,6 +1148,14 @@ export const createKasRW = async (req: Request, res: Response): Promise<void> =>
         bukti_foto_url: true,
         kode_unik: true,
       },
+    });
+
+    await recordAudit(req, {
+      aksi: AksiAudit.CREATE,
+      entitas: "KasRW",
+      entitas_id: kas.id,
+      data_baru: kas,
+      keterangan: `Menambahkan kas RW sebesar ${nominalKas} (${jenis_transaksi})`,
     });
 
     res.status(201).json({
@@ -1521,8 +1539,7 @@ export const updateKasRW = async (req: Request, res: Response): Promise<void> =>
 
     const existingKas = await prisma.kasRW.findUnique({
       where: { id: kas_id },
-      select: {
-        id: true,
+      include: {
         wilayah_rw: {
           select: {
             user_id: true,
@@ -1639,6 +1656,16 @@ export const updateKasRW = async (req: Request, res: Response): Promise<void> =>
       },
     });
 
+    const { wilayah_rw, ...cleanExistingKas } = existingKas;
+    await recordAudit(req, {
+      aksi: AksiAudit.UPDATE,
+      entitas: "KasRW",
+      entitas_id: updatedKas.id,
+      data_lama: cleanExistingKas,
+      data_baru: updatedKas,
+      keterangan: `Memperbarui kas RW ${updatedKas.kode_unik}`,
+    });
+
     res.status(200).json({
       success: true,
       message: "Data kas RW berhasil diperbarui.",
@@ -1674,8 +1701,7 @@ export const deleteKasRW = async (req: Request, res: Response): Promise<void> =>
 
     const existingKas = await prisma.kasRW.findUnique({
       where: { id: kas_id },
-      select: {
-        id: true,
+      include: {
         wilayah_rw: {
           select: {
             user_id: true,
@@ -1706,6 +1732,15 @@ export const deleteKasRW = async (req: Request, res: Response): Promise<void> =>
         id: true,
         kode_unik: true,
       },
+    });
+
+    const { wilayah_rw, ...cleanExistingKas } = existingKas;
+    await recordAudit(req, {
+      aksi: AksiAudit.DELETE,
+      entitas: "KasRW",
+      entitas_id: deletedKas.id,
+      data_lama: cleanExistingKas,
+      keterangan: `Menghapus kas RW ${deletedKas.kode_unik}`,
     });
 
     res.status(200).json({

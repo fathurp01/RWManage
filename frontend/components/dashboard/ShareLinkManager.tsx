@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Link2, ShieldCheck, Trash2 } from "lucide-react";
+import { Copy, Link2, ShieldCheck, Trash2, Check } from "lucide-react";
 
 type Scope = "RW" | "MASJID";
 
@@ -124,6 +124,28 @@ export default function ShareLinkManager({
     }
   };
 
+  const handleActivate = async (token: string) => {
+    try {
+      await api.patch(`${endpointBase}/${token}/activate`);
+      toast.success("Share link berhasil diaktifkan kembali.");
+      await loadLinks();
+    } catch (error) {
+      const apiError = getApiError(error);
+      toast.error(apiError.message);
+    }
+  };
+
+  const handleDelete = async (token: string) => {
+    try {
+      await api.delete(`${endpointBase}/${token}`);
+      toast.success("Share link berhasil dihapus secara permanen.");
+      await loadLinks();
+    } catch (error) {
+      const apiError = getApiError(error);
+      toast.error(apiError.message);
+    }
+  };
+
   const handleCopy = async (publicUrl: string) => {
     try {
       const absoluteUrl = `${window.location.origin}${publicUrl}`;
@@ -151,15 +173,15 @@ export default function ShareLinkManager({
       <Card>
         <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
           <CardTitle className="flex items-center gap-2">
-            <Link2 className="size-4 text-slate-400" />
+            <Link2 className="size-5 text-slate-400" />
             Buat Link Baru
           </CardTitle>
           <CardDescription>Setiap link menggunakan token unik dan bisa dinonaktifkan kapan saja.</CardDescription>
         </CardHeader>
-        <CardContent className="pt-5">
+        <CardContent >
           <div className="grid gap-3 sm:grid-cols-3 sm:items-end">
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="expires">Masa aktif (hari)</Label>
+              <Label htmlFor="expires" className="text-md">Masa aktif (hari)</Label>
               <Input
                 id="expires"
                 type="number"
@@ -183,15 +205,15 @@ export default function ShareLinkManager({
       </Card>
 
       <Card>
-        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
+        <CardHeader className="border-b border-slate-100 dark:border-white/8">
           <CardTitle className="flex items-center justify-between gap-2">
-            <span>Daftar Share Link</span>
-            <span className="text-sm font-semibold text-slate-500 dark:text-muted-foreground">
-              Aktif: {activeLinksCount}
+            <span className="text-lg px-1 py-0">Daftar Share Link</span>
+            <span className="text-sm px-6 py-0 font-semibold text-slate-500 dark:text-muted-foreground">
+              Link Aktif: {activeLinksCount}
             </span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-5 space-y-3">
+        <CardContent className="space-y-3">
           {isLoading ? (
             <p className="text-sm text-slate-500 dark:text-muted-foreground">Memuat share link...</p>
           ) : links.length === 0 ? (
@@ -212,7 +234,7 @@ export default function ShareLinkManager({
                       )}
                       <Badge variant="outline">{scope}</Badge>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-muted-foreground break-all">
+                    <p className="text-xs text-slate-500 dark:text-muted-foreground break-all pt-2">
                       Token: {item.token}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-muted-foreground">
@@ -224,20 +246,53 @@ export default function ShareLinkManager({
                   </div>
 
                   <div className="flex gap-2">
-                    <Button type="button" size="sm" variant="outline" onClick={() => handleCopy(item.public_url)}>
-                      <Copy className="size-4" />
-                      Copy
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="destructive"
-                      disabled={Boolean(item.revoked_at)}
-                      onClick={() => handleRevoke(item.token)}
-                    >
-                      <Trash2 className="size-4" />
-                      Revoke
-                    </Button>
+                    {item.revoked_at ? (
+                      <>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="success"
+                          className="rounded-xl h-9 px-4 flex items-center gap-1.5 font-bold shadow-md shadow-emerald-500/10 hover:shadow-lg"
+                          onClick={() => handleActivate(item.token)}
+                        >
+                          <Check className="size-4" />
+                          Aktifkan
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          className="rounded-xl h-9 px-4 flex items-center gap-1.5 font-bold shadow-md shadow-rose-500/10 hover:shadow-lg"
+                          onClick={() => handleDelete(item.token)}
+                        >
+                          <Trash2 className="size-4" />
+                          Hapus Link
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="rounded-xl h-9 px-4 flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 shadow-xs"
+                          onClick={() => handleCopy(item.public_url)}
+                        >
+                          <Copy className="size-4" />
+                          Copy Link
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          className="rounded-xl h-9 px-4 flex items-center gap-1.5 font-bold shadow-md shadow-rose-500/10 hover:shadow-lg"
+                          onClick={() => handleRevoke(item.token)}
+                        >
+                          <Trash2 className="size-4" />
+                          Nonaktifkan
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
 

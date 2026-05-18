@@ -144,10 +144,10 @@ export default function RwReportPage() {
 
   const chartItems = report
     ? report.series.map((item) => ({
-        label: item.label,
-        value: item.kas_saldo,
-        hint: formatCurrency(item.kas_saldo),
-      }))
+      label: item.label,
+      value: item.kas_saldo,
+      hint: formatCurrency(item.kas_saldo),
+    }))
     : [];
 
   return (
@@ -164,7 +164,7 @@ export default function RwReportPage() {
             Laporan RW Bulanan
           </h1>
           <p className="text-base text-slate-500 dark:text-muted-foreground">
-            Pilih periode lalu unduh hasilnya dalam PDF atau Excel.
+            Pilih periode lalu unduh hasilnya dalam PDF.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -172,30 +172,26 @@ export default function RwReportPage() {
             <RefreshCcw className="size-4" />
             Muat Ulang
           </Button>
-          <Button variant="rw" className="gap-2" onClick={() => handleExport("PDF")} disabled={isLoading}>
-            <FileText className="size-4" />
+          <Button variant="rw" className="gap-2 px-10" onClick={() => handleExport("PDF")} disabled={isLoading}>
+            <FileText className="size-4 " />
             PDF
-          </Button>
-          <Button variant="rw" className="gap-2" onClick={() => handleExport("XLSX")} disabled={isLoading}>
-            <FileDown className="size-4" />
-            Excel
           </Button>
         </div>
       </header>
 
       <Card>
         <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle>Filter Periode</CardTitle>
+          <CardTitle className="text-lg text-slate-900 dark:text-foreground">Filter Periode</CardTitle>
         </CardHeader>
         <CardContent className="pt-5">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
-              <Label htmlFor="tahun">Tahun</Label>
+              <Label htmlFor="tahun" className="text-md text-slate-900 dark:text-foreground">Tahun</Label>
               <select
                 id="tahun"
                 value={tahun}
                 onChange={(event) => setTahun(event.target.value)}
-                className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm"
+                className="h-12 w-full rounded-xl border border-input bg-white dark:bg-card px-3 text-base font-bold focus:ring-2 focus:ring-ring/25"
                 disabled={isLoading}
               >
                 {yearOptions.map((item) => (
@@ -206,12 +202,12 @@ export default function RwReportPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bulan">Bulan</Label>
+              <Label htmlFor="bulan" className="text-md text-slate-900 dark:text-foreground">Bulan</Label>
               <select
                 id="bulan"
                 value={bulan}
                 onChange={(event) => setBulan(event.target.value)}
-                className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm"
+                className="h-12 w-full rounded-xl border border-input bg-white dark:bg-card px-3 text-base font-bold focus:ring-2 focus:ring-ring/25"
                 disabled={isLoading}
               >
                 {monthOptions.map((item) => (
@@ -222,8 +218,8 @@ export default function RwReportPage() {
               </select>
             </div>
             <div className="flex items-end lg:col-span-2">
-              <Button variant="rw" className="w-full gap-2" onClick={() => loadReport()} disabled={isLoading}>
-                <BarChart3 className="size-4" />
+              <Button variant="rw" className="h-12 w-full gap-2 text-base font-black" onClick={() => loadReport()} disabled={isLoading}>
+                <BarChart3 className="size-5" />
                 Tampilkan Laporan
               </Button>
             </div>

@@ -9,6 +9,7 @@ type AuditPayload = {
   data_lama?: unknown;
   data_baru?: unknown;
   keterangan?: string;
+  user_id?: string;
 };
 
 const stringifyPayload = (value: unknown): string | null => {
@@ -26,13 +27,14 @@ const stringifyPayload = (value: unknown): string | null => {
 };
 
 export const recordAudit = async (req: Request, payload: AuditPayload): Promise<void> => {
-  if (!req.user?.id) {
+  const finalUserId = req.user?.id || payload.user_id;
+  if (!finalUserId) {
     return;
   }
 
   await prisma.auditLog.create({
     data: {
-      user_id: req.user.id,
+      user_id: finalUserId,
       aksi: payload.aksi,
       entitas: payload.entitas,
       entitas_id: payload.entitas_id,

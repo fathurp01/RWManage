@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { Prisma, Role, StatusAkun, User } from "@prisma/client";
+import { Prisma, Role, StatusAkun, User, AksiAudit } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import { recordAudit } from "../middlewares/auditLogger";
 const SALT_ROUNDS = 10;
 
 interface RegisterBody {
@@ -338,6 +339,21 @@ export const loginWithClient = async (client: typeof prisma, req: Request, res: 
       blok_wilayah_id: blokWilayahId,
     });
 
+    await recordAudit(req, {
+      user_id: user.id,
+      aksi: AksiAudit.LOGIN,
+      entitas: "User",
+      entitas_id: user.id,
+      data_baru: {
+        id: user.id,
+        nama: user.nama,
+        email: user.email,
+        role: user.role,
+        status_akun: user.status_akun,
+      },
+      keterangan: `User ${user.nama} berhasil masuk (LOGIN) sebagai ${user.role}`,
+    });
+
     res.status(200).json({
       success: true,
       message: "Login berhasil.",
@@ -502,6 +518,15 @@ export const approvePengurusWithClient = async (
         status_akun: true,
         alasan_penolakan: true,
       },
+    });
+
+    await recordAudit(req, {
+      aksi: status_akun === "APPROVED" ? AksiAudit.APPROVE : AksiAudit.REJECT,
+      entitas: "User",
+      entitas_id: user_id,
+      data_lama: targetUser,
+      data_baru: updatedUser,
+      keterangan: `${status_akun === "APPROVED" ? "Menyetujui" : "Menolak"} pendaftaran Pengurus Masjid: ${updatedUser.nama}`,
     });
 
     res.status(200).json({
@@ -992,6 +1017,8 @@ export const approveRTWithClient = async (
       where: { id: user_id },
       select: {
         id: true,
+        nama: true,
+        email: true,
         role: true,
         status_akun: true,
         blok_wilayah: {
@@ -1046,6 +1073,16 @@ export const approveRTWithClient = async (
         status_akun: true,
         alasan_penolakan: true,
       },
+    });
+
+    const { blok_wilayah, ...cleanTargetUser } = targetUser;
+    await recordAudit(req, {
+      aksi: status_akun === "APPROVED" ? AksiAudit.APPROVE : AksiAudit.REJECT,
+      entitas: "User",
+      entitas_id: user_id,
+      data_lama: cleanTargetUser,
+      data_baru: updatedUser,
+      keterangan: `${status_akun === "APPROVED" ? "Menyetujui" : "Menolak"} pendaftaran RT: ${updatedUser.nama}`,
     });
 
     res.status(200).json({
