@@ -262,6 +262,7 @@ export const getWargaForRt = async (req: Request, res: Response): Promise<void> 
         tanggal_lahir: true,
         pendidikan: true,
         pekerjaan: true,
+        status_keluarga: true,
         blok_wilayah_id: true,
       },
       orderBy: { nama_kk: "asc" },
@@ -279,7 +280,7 @@ export const getWargaForRt = async (req: Request, res: Response): Promise<void> 
 
 export const createWargaForRt = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { nama_kk, no_kk, nik, tanggal_terbit_kk, tanggal_lahir, pekerjaan, pendidikan } = req.body as any;
+    const { nama_kk, no_kk, nik, tanggal_terbit_kk, tanggal_lahir, pekerjaan, pendidikan, status_keluarga } = req.body as any;
 
     if (!req.user?.id) {
       res.status(401).json({ success: false, message: "User belum terautentikasi." });
@@ -318,15 +319,24 @@ export const createWargaForRt = async (req: Request, res: Response): Promise<voi
           tanggal_lahir: tanggal_lahir ? new Date(tanggal_lahir) : null,
           pendidikan: pendidikan || null,
           pekerjaan: pekerjaan?.trim() || null,
+          status_keluarga: status_keluarga || "MAMPU",
         },
       });
+
+      const statusKK = created.status_keluarga;
+      let nominalRate = pengaturan.nominal_iuran;
+      if (statusKK === "KURANG_MAMPU") {
+        nominalRate = pengaturan.nominal_iuran_kurang_mampu;
+      } else if (statusKK === "LANSIA") {
+        nominalRate = pengaturan.nominal_iuran_lansia;
+      }
 
       await tx.iuranWarga.createMany({
         data: Array.from({ length: 12 }, (_, idx) => ({
           warga_id: created.id,
           bulan: idx + 1,
           tahun: currentYear,
-          nominal: pengaturan.nominal_iuran,
+          nominal: nominalRate,
           status: StatusIuran.BELUM,
         })),
       });
@@ -451,19 +461,49 @@ export const updateWargaForRt = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const { nama_kk, no_kk, nik, tanggal_terbit_kk, tanggal_lahir, pekerjaan, pendidikan } = req.body as any;
+    const { nama_kk, no_kk, nik, tanggal_terbit_kk, tanggal_lahir, pekerjaan, pendidikan, status_keluarga } = req.body as any;
 
-    const updated = await prisma.warga.update({
-      where: { id: warga_id },
-      data: {
-        ...(nama_kk ? { nama_kk: nama_kk.trim() } : {}),
-        ...(no_kk !== undefined ? { no_kk: no_kk?.trim() || null } : {}),
-        ...(nik !== undefined ? { nik: nik?.trim() || null } : {}),
-        ...(tanggal_terbit_kk !== undefined ? { tanggal_terbit_kk: tanggal_terbit_kk ? new Date(tanggal_terbit_kk) : null } : {}),
-        ...(tanggal_lahir !== undefined ? { tanggal_lahir: tanggal_lahir ? new Date(tanggal_lahir) : null } : {}),
-        ...(pendidikan !== undefined ? { pendidikan: pendidikan || null } : {}),
-        ...(pekerjaan !== undefined ? { pekerjaan: pekerjaan?.trim() || null } : {}),
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      const wargaUpdated = await tx.warga.update({
+        where: { id: warga_id },
+        data: {
+          ...(nama_kk ? { nama_kk: nama_kk.trim() } : {}),
+          ...(no_kk !== undefined ? { no_kk: no_kk?.trim() || null } : {}),
+          ...(nik !== undefined ? { nik: nik?.trim() || null } : {}),
+          ...(tanggal_terbit_kk !== undefined ? { tanggal_terbit_kk: tanggal_terbit_kk ? new Date(tanggal_terbit_kk) : null } : {}),
+          ...(tanggal_lahir !== undefined ? { tanggal_lahir: tanggal_lahir ? new Date(tanggal_lahir) : null } : {}),
+          ...(pendidikan !== undefined ? { pendidikan: pendidikan || null } : {}),
+          ...(pekerjaan !== undefined ? { pekerjaan: pekerjaan?.trim() || null } : {}),
+          ...(status_keluarga !== undefined ? { status_keluarga } : {}),
+        },
+      });
+
+      if (status_keluarga !== undefined && status_keluarga !== existing.status_keluarga) {
+        const pengaturan = await tx.pengaturanIuranRW.findUnique({
+          where: { wilayah_rw_id: blok.wilayah_rw_id }
+        });
+        
+        if (pengaturan) {
+          let nominalRate = pengaturan.nominal_iuran;
+          if (status_keluarga === "KURANG_MAMPU") {
+            nominalRate = pengaturan.nominal_iuran_kurang_mampu;
+          } else if (status_keluarga === "LANSIA") {
+            nominalRate = pengaturan.nominal_iuran_lansia;
+          }
+          
+          await tx.iuranWarga.updateMany({
+            where: {
+              warga_id,
+              status: StatusIuran.BELUM,
+            },
+            data: {
+              nominal: nominalRate,
+            },
+          });
+        }
+      }
+
+      return wargaUpdated;
     });
 
     await recordAudit(req, {

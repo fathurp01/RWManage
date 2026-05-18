@@ -6,6 +6,8 @@ import { recordAudit } from "../middlewares/auditLogger";
 
 type PengaturanIuranSnapshot = {
   nominal_iuran: string | number;
+  nominal_iuran_kurang_mampu: string | number;
+  nominal_iuran_lansia: string | number;
   persen_rt: number;
   persen_rw: number;
 };
@@ -17,7 +19,7 @@ type PengaturanIuranHistoryItem = {
   data_lama: PengaturanIuranSnapshot | null;
   data_baru: PengaturanIuranSnapshot | null;
   perubahan: Array<{
-    field: "nominal_iuran" | "persen_rt" | "persen_rw";
+    field: "nominal_iuran" | "nominal_iuran_kurang_mampu" | "nominal_iuran_lansia" | "persen_rt" | "persen_rw";
     label: string;
     lama: string | number | null;
     baru: string | number | null;
@@ -46,6 +48,8 @@ const parseSnapshot = (value: string | null): PengaturanIuranSnapshot | null => 
     ) {
       return {
         nominal_iuran: parsed.nominal_iuran,
+        nominal_iuran_kurang_mampu: parsed.nominal_iuran_kurang_mampu ?? 0,
+        nominal_iuran_lansia: parsed.nominal_iuran_lansia ?? 0,
         persen_rt: Number(parsed.persen_rt),
         persen_rw: Number(parsed.persen_rw),
       };
@@ -61,8 +65,13 @@ const buildHistoryDiff = (
   oldSnapshot: PengaturanIuranSnapshot | null,
   newSnapshot: PengaturanIuranSnapshot | null
 ) => {
-  const fields: Array<{ field: "nominal_iuran" | "persen_rt" | "persen_rw"; label: string }> = [
+  const fields: Array<{
+    field: "nominal_iuran" | "nominal_iuran_kurang_mampu" | "nominal_iuran_lansia" | "persen_rt" | "persen_rw";
+    label: string;
+  }> = [
     { field: "nominal_iuran", label: "Nominal Iuran Bulanan" },
+    { field: "nominal_iuran_kurang_mampu", label: "Nominal Iuran Kurang Mampu" },
+    { field: "nominal_iuran_lansia", label: "Nominal Iuran Lansia" },
     { field: "persen_rt", label: "Porsi Kas RT" },
     { field: "persen_rw", label: "Porsi Kas RW" },
   ];
@@ -125,14 +134,14 @@ export const upsertPengaturanIuranRW = async (req: Request, res: Response): Prom
       return;
     }
 
-    const { nominal_iuran, persen_rt, persen_rw } = req.body;
+    const { nominal_iuran, nominal_iuran_kurang_mampu, nominal_iuran_lansia, persen_rt, persen_rw } = req.body;
 
     const previousPengaturan = await prisma.pengaturanIuranRW.findUnique({
       where: { wilayah_rw_id: rwWilayah.id },
     });
     
     // Validasi basic
-    if (!nominal_iuran) {
+    if (nominal_iuran === undefined) {
       res.status(400).json({ success: false, message: "nominal_iuran wajib diisi." });
       return;
     }
@@ -149,12 +158,16 @@ export const upsertPengaturanIuranRW = async (req: Request, res: Response): Prom
       where: { wilayah_rw_id: rwWilayah.id },
       update: {
         nominal_iuran: Number(nominal_iuran),
+        nominal_iuran_kurang_mampu: Number(nominal_iuran_kurang_mampu ?? 0),
+        nominal_iuran_lansia: Number(nominal_iuran_lansia ?? 0),
         persen_rt: Number(pRt),
         persen_rw: Number(pRw),
       },
       create: {
         wilayah_rw_id: rwWilayah.id,
         nominal_iuran: Number(nominal_iuran),
+        nominal_iuran_kurang_mampu: Number(nominal_iuran_kurang_mampu ?? 0),
+        nominal_iuran_lansia: Number(nominal_iuran_lansia ?? 0),
         persen_rt: Number(pRt),
         persen_rw: Number(pRw),
       },

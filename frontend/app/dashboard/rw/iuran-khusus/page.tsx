@@ -220,7 +220,7 @@ export default function IuranKhususRwPage() {
   return (
     <main className="flex flex-1 flex-col gap-6">
       {/* Page Header */}
-      <header className="flex flex-col gap-1">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-purple-600 text-white shadow-sm shadow-violet-500/30">
             <Plus className="size-5" />
@@ -234,7 +234,7 @@ export default function IuranKhususRwPage() {
             </p>
           </div>
         </div>
-        <div className="mt-3">
+        <div className="shrink-0">
           <Link href="/dashboard/rw/kas">
             <Button variant="outline" className="gap-2">
               <ArrowLeft className="size-4" />

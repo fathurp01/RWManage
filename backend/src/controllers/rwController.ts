@@ -132,7 +132,7 @@ export const createWargaWithClient = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { blok_wilayah_id, nama_kk, no_kk, nik, tanggal_terbit_kk, tanggal_lahir, pekerjaan, pendidikan } = req.body as any;
+    const { blok_wilayah_id, nama_kk, no_kk, nik, tanggal_terbit_kk, tanggal_lahir, pekerjaan, pendidikan, status_keluarga } = req.body as any;
 
     if (!blok_wilayah_id || !nama_kk) {
       res.status(400).json({
@@ -203,15 +203,24 @@ export const createWargaWithClient = async (
           tanggal_lahir: tanggal_lahir ? new Date(tanggal_lahir) : null,
           pendidikan: pendidikan || null,
           pekerjaan: pekerjaan?.trim() || null,
+          status_keluarga: status_keluarga || "MAMPU",
         },
       });
+
+      const statusKK = warga.status_keluarga;
+      let nominalRate = pengaturan.nominal_iuran;
+      if (statusKK === "KURANG_MAMPU") {
+        nominalRate = pengaturan.nominal_iuran_kurang_mampu;
+      } else if (statusKK === "LANSIA") {
+        nominalRate = pengaturan.nominal_iuran_lansia;
+      }
 
       await tx.iuranWarga.createMany({
         data: Array.from({ length: 12 }, (_, idx) => ({
           warga_id: warga.id,
           bulan: idx + 1,
           tahun: currentYear,
-          nominal: pengaturan.nominal_iuran,
+          nominal: nominalRate,
           status: StatusIuran.BELUM,
         })),
       });
@@ -426,7 +435,7 @@ export const getWargaDetail = async (req: Request, res: Response): Promise<void>
 export const updateWarga = async (req: Request, res: Response): Promise<void> => {
   try {
     const { warga_id } = req.params as WargaIdParams;
-    const { nama_kk, no_kk, nik, tanggal_terbit_kk, tanggal_lahir, pekerjaan, pendidikan } = req.body as any; const tarif_iuran_bulanan = undefined;
+    const { nama_kk, no_kk, nik, tanggal_terbit_kk, tanggal_lahir, pekerjaan, pendidikan, status_keluarga } = req.body as any; const tarif_iuran_bulanan = undefined;
 
     if (!warga_id) {
       res.status(400).json({
@@ -444,7 +453,7 @@ export const updateWarga = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    if (nama_kk === undefined && tarif_iuran_bulanan === undefined && no_kk === undefined && nik === undefined && tanggal_terbit_kk === undefined && tanggal_lahir === undefined && pekerjaan === undefined && pendidikan === undefined) {
+    if (nama_kk === undefined && tarif_iuran_bulanan === undefined && no_kk === undefined && nik === undefined && tanggal_terbit_kk === undefined && tanggal_lahir === undefined && pekerjaan === undefined && pendidikan === undefined && status_keluarga === undefined) {
       res.status(400).json({
         success: false,
         message: "Minimal satu field harus dikirim untuk update warga.",
@@ -466,6 +475,7 @@ export const updateWarga = async (req: Request, res: Response): Promise<void> =>
       select: {
         id: true,
         deleted_at: true,
+        status_keluarga: true,
         blok_wilayah: {
           select: {
             wilayah_rw_id: true,
@@ -498,6 +508,7 @@ export const updateWarga = async (req: Request, res: Response): Promise<void> =>
       tanggal_lahir?: Date | null;
       pekerjaan?: string | null;
       pendidikan?: string | null;
+      status_keluarga?: any;
       iuran_warga?: {
         updateMany: {
           where: {
@@ -519,6 +530,7 @@ export const updateWarga = async (req: Request, res: Response): Promise<void> =>
     if (tanggal_lahir !== undefined) dataToUpdate.tanggal_lahir = tanggal_lahir ? new Date(tanggal_lahir) : null;
     if (pekerjaan !== undefined) dataToUpdate.pekerjaan = pekerjaan?.trim() || null;
     if (pendidikan !== undefined) dataToUpdate.pendidikan = pendidikan || null;
+    if (status_keluarga !== undefined) dataToUpdate.status_keluarga = status_keluarga;
 
     if (tarif_iuran_bulanan !== undefined) {
       const parsedTarif = parsePositiveNumber(tarif_iuran_bulanan);
@@ -544,15 +556,43 @@ export const updateWarga = async (req: Request, res: Response): Promise<void> =>
       };
     }
 
-    const updatedWarga = await prisma.warga.update({
-      where: { id: warga_id },
-      data: dataToUpdate,
-      select: {
-        id: true,
-        nama_kk: true,
+    const updatedWarga = await prisma.$transaction(async (tx) => {
+      const wargaUpdated = await tx.warga.update({
+        where: { id: warga_id },
+        data: dataToUpdate,
+        select: {
+          id: true,
+          nama_kk: true,
+          blok_wilayah_id: true,
+        },
+      });
+
+      if (status_keluarga !== undefined && status_keluarga !== existingWarga.status_keluarga) {
+        const pengaturan = await tx.pengaturanIuranRW.findUnique({
+          where: { wilayah_rw_id: rwWilayah.id }
+        });
         
-        blok_wilayah_id: true,
-      },
+        if (pengaturan) {
+          let nominalRate = pengaturan.nominal_iuran;
+          if (status_keluarga === "KURANG_MAMPU") {
+            nominalRate = pengaturan.nominal_iuran_kurang_mampu;
+          } else if (status_keluarga === "LANSIA") {
+            nominalRate = pengaturan.nominal_iuran_lansia;
+          }
+          
+          await tx.iuranWarga.updateMany({
+            where: {
+              warga_id,
+              status: StatusIuran.BELUM,
+            },
+            data: {
+              nominal: nominalRate,
+            },
+          });
+        }
+      }
+
+      return wargaUpdated;
     });
 
     res.status(200).json({
@@ -1712,6 +1752,7 @@ export const getDataPenduduk = async (req: Request, res: Response): Promise<void
             tanggal_lahir: true,
             pendidikan: true,
             pekerjaan: true,
+            status_keluarga: true,
             anggota_keluarga: {
               where: { deleted_at: null },
               select: {
@@ -1771,11 +1812,13 @@ export const getDataPenduduk = async (req: Request, res: Response): Promise<void
         blok_data: dataPenduduk,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in getDataPenduduk:", error);
     res.status(500).json({
       success: false,
       message: "Terjadi kesalahan saat mengambil data penduduk.",
+      error: error.message || String(error),
+      stack: error.stack,
     });
   }
 };

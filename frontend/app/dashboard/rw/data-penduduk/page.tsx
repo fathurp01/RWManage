@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getApiError } from "@/lib/axios";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,7 @@ interface KepalaKeluarga {
   blok_wilayah_id: string;
   nama_blok: string;
   no_rt: number;
+  status_keluarga?: "MAMPU" | "KURANG_MAMPU" | "LANSIA";
   no_kk?: string;
   tanggal_terbit_kk?: string;
   nik?: string;
@@ -226,7 +227,19 @@ function KKCard({
 
         {/* Info KK: nama + lokasi */}
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-lg text-slate-900 leading-tight truncate">{kk.nama_kk}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-bold text-lg text-slate-900 leading-tight truncate">{kk.nama_kk}</p>
+            {kk.status_keluarga === "KURANG_MAMPU" && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200 text-amber-700 bg-amber-50/50 dark:border-amber-900/40 dark:text-amber-400 dark:bg-amber-950/20">
+                Kurang Mampu
+              </span>
+            )}
+            {kk.status_keluarga === "LANSIA" && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-200 text-sky-700 bg-sky-50/50 dark:border-sky-900/40 dark:text-sky-400 dark:bg-sky-950/20">
+                Lansia
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             <MapPin className="size-3.5 shrink-0 text-slate-400" />
             <p className="text-sm text-slate-500 truncate">{kk.nama_blok} &middot; RT {String(kk.no_rt).padStart(3, "0")}</p>
@@ -301,7 +314,6 @@ export default function DataPendudukPage() {
   const [blokOptions, setBlokOptions] = useState<{ id: string; nama: string }[]>([]);
   const [rtOptions, setRtOptions] = useState<string[]>([]);
   const [expandedKK, setExpandedKK] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
 
   const loadData = async () => {
     try {
@@ -376,17 +388,44 @@ export default function DataPendudukPage() {
     }
 
     setFilteredData(result);
-    setCurrentPage(1);
   }, [search, filterBlok, filterRt, data]);
 
   const toggleExpand = (kkId: string) => {
     setExpandedKK(expandedKK === kkId ? null : kkId);
   };
 
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+  const dataMampu = useMemo(() => filteredData.filter((kk) => kk.status_keluarga === "MAMPU" || !kk.status_keluarga), [filteredData]);
+  const dataKurangMampu = useMemo(() => filteredData.filter((kk) => kk.status_keluarga === "KURANG_MAMPU"), [filteredData]);
+  const dataLansia = useMemo(() => filteredData.filter((kk) => kk.status_keluarga === "LANSIA"), [filteredData]);
+
+  // ── Pagination States ────────────────────────────────────────────────────────
+  const [pageMampu, setPageMampu] = useState(0);
+  const [pageKurangMampu, setPageKurangMampu] = useState(0);
+  const [pageLansia, setPageLansia] = useState(0);
+  const itemsPerPage = 5;
+
+  // Reset pagination to first page when search filters change
+  useEffect(() => {
+    setPageMampu(0);
+    setPageKurangMampu(0);
+    setPageLansia(0);
+  }, [filteredData]);
+
+  // Paginated Data
+  const paginatedMampu = useMemo(() => {
+    const start = pageMampu * itemsPerPage;
+    return dataMampu.slice(start, start + itemsPerPage);
+  }, [dataMampu, pageMampu]);
+
+  const paginatedKurangMampu = useMemo(() => {
+    const start = pageKurangMampu * itemsPerPage;
+    return dataKurangMampu.slice(start, start + itemsPerPage);
+  }, [dataKurangMampu, pageKurangMampu]);
+
+  const paginatedLansia = useMemo(() => {
+    const start = pageLansia * itemsPerPage;
+    return dataLansia.slice(start, start + itemsPerPage);
+  }, [dataLansia, pageLansia]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -530,97 +569,194 @@ export default function DataPendudukPage() {
         )}
       </div>
 
-      {/* ── Daftar KK ── */}
-      <section className="flex flex-col gap-3">
-        {/* Header section */}
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-base font-bold text-slate-800">
-            Daftar Kepala Keluarga Mampu
-          </h2>
-          {!loading && (
-            <span className="text-sm text-slate-500 tabular-nums">
-              {filteredData.length > 0
-                ? `Menampilkan ${startIndex + 1}-${Math.min(
-                  startIndex + itemsPerPage,
-                  filteredData.length
-                )} dari ${filteredData.length} KK`
-                : "0 KK"}
-            </span>
-          )}
+      {/* ── Halaman / Kategori KK Segregated ── */}
+      {loading ? (
+        /* Loading state */
+        <div className="rounded-3xl border border-slate-200/70 bg-white p-12 text-center shadow-sm">
+          <div className="inline-flex size-14 animate-spin items-center justify-center rounded-full border-4 border-violet-200 border-t-violet-500 mx-auto" />
+          <p className="mt-4 text-base font-semibold text-slate-500">Memuat data penduduk...</p>
+          <p className="text-sm text-slate-400 mt-1">Mohon tunggu sebentar</p>
         </div>
+      ) : filteredData.length === 0 ? (
+        /* Empty state */
+        <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center shadow-sm">
+          <span className="inline-flex size-14 items-center justify-center rounded-full bg-slate-100 mx-auto">
+            <Users className="size-7 text-slate-400" />
+          </span>
+          <p className="mt-4 text-base font-semibold text-slate-600">
+            {data.length === 0 ? "Belum ada data penduduk" : "Tidak ada hasil pencarian"}
+          </p>
+          <p className="text-sm text-slate-400 mt-1">
+            {data.length === 0
+              ? "Data akan muncul setelah admin RT menambahkan warga."
+              : "Coba ubah kata kunci atau pilih blok yang berbeda."}
+          </p>
+        </div>
+      ) : (
+        /* Categorized sections */
+        <div className="space-y-8">
 
-        {loading ? (
-          /* Loading state */
-          <div className="rounded-3xl border border-slate-200/70 bg-white p-12 text-center shadow-sm">
-            <div className="inline-flex size-14 animate-spin items-center justify-center rounded-full border-4 border-violet-200 border-t-violet-500 mx-auto" />
-            <p className="mt-4 text-base font-semibold text-slate-500">Memuat data penduduk...</p>
-            <p className="text-sm text-slate-400 mt-1">Mohon tunggu sebentar</p>
-          </div>
-        ) : filteredData.length === 0 ? (
-          /* Empty state */
-          <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center shadow-sm">
-            <span className="inline-flex size-14 items-center justify-center rounded-full bg-slate-100 mx-auto">
-              <Users className="size-7 text-slate-400" />
-            </span>
-            <p className="mt-4 text-base font-semibold text-slate-600">
-              {data.length === 0 ? "Belum ada data penduduk" : "Tidak ada hasil pencarian"}
-            </p>
-            <p className="text-sm text-slate-400 mt-1">
-              {data.length === 0
-                ? "Data akan muncul setelah admin RT menambahkan warga."
-                : "Coba ubah kata kunci atau pilih blok yang berbeda."}
-            </p>
-          </div>
-        ) : (
-          /* List */
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-3">
-              {paginatedData.map((kk) => (
-                <KKCard
-                  key={kk.id}
-                  kk={kk}
-                  isExpanded={expandedKK === kk.id}
-                  onToggle={() => toggleExpand(kk.id)}
-                />
-              ))}
-            </div>
 
-            {/* Pagination Controls */}
-            {!loading && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-2 px-1 py-1.5 border-t border-slate-100 pt-4">
-                <p className="text-sm text-slate-500 font-medium">
-                  Halaman <span className="font-bold text-violet-600">{currentPage}</span> dari{" "}
-                  <span className="font-bold text-slate-800">{totalPages}</span>
-                </p>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="h-9 px-3 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 disabled:pointer-events-none transition-all"
-                  >
-                    <ChevronLeft className="size-4 mr-1 shrink-0" />
-                    Sebelumnya
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="h-9 px-3 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 disabled:pointer-events-none transition-all"
-                  >
-                    Berikutnya
-                    <ChevronRight className="size-4 ml-1 shrink-0" />
-                  </Button>
+          {/* Section 1: Keluarga Mampu */}
+          <section className="flex flex-col gap-3">
+            <div className="border-t border-slate-500" />
+            <div className="flex items-center justify-between px-1 border-b border-slate-200 dark:border-white/10 pb-2.5">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <Users className="size-5 text-slate-500" />
+                Daftar Kepala Keluarga Mampu ({dataMampu.length})
+              </h2>
+              {dataMampu.length > itemsPerPage && (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500 font-medium hidden sm:inline">
+                    Menampilkan {pageMampu * itemsPerPage + 1}-{Math.min((pageMampu + 1) * itemsPerPage, dataMampu.length)} dari {dataMampu.length}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={pageMampu === 0}
+                      onClick={() => setPageMampu((p) => Math.max(0, p - 1))}
+                      className="size-8 rounded-lg !p-0 shadow-sm border-slate-200 hover:border-violet-300 disabled:opacity-40"
+                    >
+                      <ChevronLeft className="size-4 text-slate-600" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={(pageMampu + 1) * itemsPerPage >= dataMampu.length}
+                      onClick={() => setPageMampu((p) => p + 1)}
+                      className="size-8 rounded-lg !p-0 shadow-sm border-slate-200 hover:border-violet-300 disabled:opacity-40"
+                    >
+                      <ChevronRight className="size-4 text-slate-600" />
+                    </Button>
+                  </div>
                 </div>
+              )}
+            </div>
+            {dataMampu.length === 0 ? (
+              <div className="text-sm text-slate-400 italic py-2 px-1">Tidak ada kepala keluarga berstatus Mampu.</div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {paginatedMampu.map((kk) => (
+                  <KKCard
+                    key={kk.id}
+                    kk={kk}
+                    isExpanded={expandedKK === kk.id}
+                    onToggle={() => toggleExpand(kk.id)}
+                  />
+                ))}
               </div>
             )}
-          </div>
-        )}
-      </section>
+          </section>
+
+          {/* Section 2: Keluarga Kurang Mampu */}
+          <section className="flex flex-col gap-3">
+            {/* Pembatas garis yang jelas di atas daftar keluarga */}
+            <div className="border-t border-slate-500" />
+            <div className="flex items-center justify-between px-1 border-b border-slate-200 dark:border-white/10 pb-2.5">
+              <h2 className="text-lg font-bold text-amber-800 dark:text-amber-400 flex items-center gap-2">
+                <Users className="size-5 text-amber-500" />
+                Daftar Kepala Keluarga Kurang Mampu ({dataKurangMampu.length})
+              </h2>
+              {dataKurangMampu.length > itemsPerPage && (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-amber-600 dark:text-amber-400 font-medium hidden sm:inline">
+                    Menampilkan {pageKurangMampu * itemsPerPage + 1}-{Math.min((pageKurangMampu + 1) * itemsPerPage, dataKurangMampu.length)} dari {dataKurangMampu.length}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={pageKurangMampu === 0}
+                      onClick={() => setPageKurangMampu((p) => Math.max(0, p - 1))}
+                      className="size-8 rounded-lg !p-0 shadow-sm border-amber-200 hover:border-amber-400 hover:bg-amber-50/50 disabled:opacity-40"
+                    >
+                      <ChevronLeft className="size-4 text-amber-700" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={(pageKurangMampu + 1) * itemsPerPage >= dataKurangMampu.length}
+                      onClick={() => setPageKurangMampu((p) => p + 1)}
+                      className="size-8 rounded-lg !p-0 shadow-sm border-amber-200 hover:border-amber-400 hover:bg-amber-50/50 disabled:opacity-40"
+                    >
+                      <ChevronRight className="size-4 text-amber-700" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+            {dataKurangMampu.length === 0 ? (
+              <div className="text-sm text-slate-400 italic py-2 px-1">Tidak ada kepala keluarga berstatus Kurang Mampu.</div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {paginatedKurangMampu.map((kk) => (
+                  <KKCard
+                    key={kk.id}
+                    kk={kk}
+                    isExpanded={expandedKK === kk.id}
+                    onToggle={() => toggleExpand(kk.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Section 3: Keluarga Lansia */}
+          <section className="flex flex-col gap-3">
+            <div className="border-t border-slate-500" />
+            <div className="flex items-center justify-between px-1 border-b border-slate-200 dark:border-white/10 pb-2.5">
+              <h2 className="text-lg font-bold text-sky-800 dark:text-sky-400 flex items-center gap-2">
+                <Users className="size-5 text-sky-500" />
+                Daftar Kepala Keluarga Lansia ({dataLansia.length})
+              </h2>
+              {dataLansia.length > itemsPerPage && (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-sky-600 dark:text-sky-400 font-medium hidden sm:inline">
+                    Menampilkan {pageLansia * itemsPerPage + 1}-{Math.min((pageLansia + 1) * itemsPerPage, dataLansia.length)} dari {dataLansia.length}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={pageLansia === 0}
+                      onClick={() => setPageLansia((p) => Math.max(0, p - 1))}
+                      className="size-8 rounded-lg !p-0 shadow-sm border-sky-200 hover:border-sky-400 hover:bg-sky-50/50 disabled:opacity-40"
+                    >
+                      <ChevronLeft className="size-4 text-sky-700" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={(pageLansia + 1) * itemsPerPage >= dataLansia.length}
+                      onClick={() => setPageLansia((p) => p + 1)}
+                      className="size-8 rounded-lg !p-0 shadow-sm border-sky-200 hover:border-sky-400 hover:bg-sky-50/50 disabled:opacity-40"
+                    >
+                      <ChevronRight className="size-4 text-sky-700" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+            {dataLansia.length === 0 ? (
+              <div className="text-sm text-slate-400 italic py-2 px-1">Tidak ada kepala keluarga berstatus Lansia.</div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {paginatedLansia.map((kk) => (
+                  <KKCard
+                    key={kk.id}
+                    kk={kk}
+                    isExpanded={expandedKK === kk.id}
+                    onToggle={() => toggleExpand(kk.id)}
+                  />
+                ))}
+              </div>
+            )}
+            <div className="border-t border-slate-500" />
+          </section>
+        </div>
+      )}
     </main>
   );
 }
+

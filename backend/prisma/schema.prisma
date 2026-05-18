@@ -40,6 +40,12 @@ enum JenisBayar {
   BERAS
 }
 
+enum StatusKeluarga {
+  MAMPU
+  KURANG_MAMPU
+  LANSIA
+}
+
 enum JenisZakat {
   FITRAH
   MAAL
@@ -178,6 +184,7 @@ model Warga {
   tanggal_lahir       DateTime?
   pendidikan          String?
   pekerjaan           String?
+  status_keluarga     StatusKeluarga    @default(MAMPU)
   deleted_at          DateTime?
   
   blok_wilayah        BlokWilayah       @relation(fields: [blok_wilayah_id], references: [id])
@@ -415,7 +422,9 @@ model ShareLink {
 model PengaturanIuranRW {
   id              String      @id @default(uuid())
   wilayah_rw_id   String      @unique
-  nominal_iuran   Decimal     @db.Decimal(10, 2)
+  nominal_iuran              Decimal     @db.Decimal(10, 2)
+  nominal_iuran_kurang_mampu Decimal     @default(0.00) @db.Decimal(10, 2)
+  nominal_iuran_lansia       Decimal     @default(0.00) @db.Decimal(10, 2)
   persen_rt       Float       @default(70.0)
   persen_rw       Float       @default(30.0)
   created_at      DateTime    @default(now())

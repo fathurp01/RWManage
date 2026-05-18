@@ -237,6 +237,8 @@ async function main() {
     data: {
       wilayah_rw_id: wilayahRwId,
       nominal_iuran: new Prisma.Decimal(50000),
+      nominal_iuran_kurang_mampu: new Prisma.Decimal(20000),
+      nominal_iuran_lansia: new Prisma.Decimal(0),
       persen_rt: 70.0,
       persen_rw: 30.0,
     },
@@ -351,50 +353,124 @@ async function main() {
     ],
   });
 
-  const [wargaBudi, wargaSiti, wargaDeni] = await Promise.all([
-    prisma.warga.create({
-      data: {
-        blok_wilayah_id: blokA.id,
-        nama_kk: 'Budi Santoso',
-        no_kk: '3171012345678901',
-        nik: '3172098765432101',
-        tanggal_terbit_kk: new Date('2022-01-01T00:00:00.000Z'),
-        tanggal_lahir: new Date('1985-02-10T00:00:00.000Z'),
-        pendidikan: 'SMA',
-        pekerjaan: 'Wiraswasta',
-      },
-    }),
-    prisma.warga.create({
-      data: {
-        blok_wilayah_id: blokB.id,
-        nama_kk: 'Siti Aminah',
-        no_kk: '3171000000000002',
-        nik: '3172000000000002',
-        tanggal_terbit_kk: new Date('2020-05-12T00:00:00.000Z'),
-        tanggal_lahir: new Date('1990-03-15T00:00:00.000Z'),
-        pendidikan: 'DIPLOMA',
-        pekerjaan: 'Pegawai Swasta',
-      },
-    }),
-    prisma.warga.create({
-      data: {
-        blok_wilayah_id: blokC.id,
-        nama_kk: 'Deni Kurniawan',
-        no_kk: '3171000000000003',
-        nik: '3172000000000003',
-        tanggal_terbit_kk: new Date('2018-08-22T00:00:00.000Z'),
-        tanggal_lahir: new Date('1988-11-05T00:00:00.000Z'),
-        pendidikan: 'SARJANA',
-        pekerjaan: 'PNS',
-      },
-    }),
-  ]);
+  const bloks = [blokA, blokB, blokC];
 
-  const wargaSeeds = [
-    { warga: wargaBudi, nominal: 50000, prefix: 'BS', paidMonths: [1, 2, 3] },
-    { warga: wargaSiti, nominal: 50000, prefix: 'SA', paidMonths: [1, 2] },
-    { warga: wargaDeni, nominal: 60000, prefix: 'DK', paidMonths: [1] },
-  ] as const;
+  const namaMampu = [
+    'Budi Santoso', 'Andi Wijaya', 'Hendra Setiawan', 'Rian Hidayat', 'Prasetyo Utomo',
+    'Yusuf Pratama', 'Aditya Nugraha', 'Fajar Ramadhan', 'Dimas Anggara', 'Aris Munandar', 'Taufik Hidayat'
+  ];
+
+  const namaKurangMampu = [
+    'Siti Aminah', 'Asep Sunandar', 'Udin Sedunia', 'Mamat Alkatiri', 'Dadang Subur',
+    'Cecep Gorbachev', 'Kurnia Meiga', 'Slamet Kopling', 'Tono Sugiarto', 'Rudi Tabuti', 'Soleh Solihun'
+  ];
+
+  const namaLansia = [
+    'Deni Kurniawan', 'Mbah Marijan', 'Opa Rudy', 'Kakek Sugiono', 'Abah Juhana',
+    'Eyang Subur', 'Bapak Sukarno', 'Oma Rose', 'Kakek Harun', 'Nenek Sumiyati', 'Mbah Darmo'
+  ];
+
+  let wargaBudi: any;
+  let wargaSiti: any;
+  let wargaDeni: any;
+
+  const wargaSeeds: any[] = [];
+
+  // 1. Generate 11 Mampu Warga
+  for (let i = 0; i < namaMampu.length; i++) {
+    const name = namaMampu[i];
+    const blok = bloks[i % bloks.length];
+    
+    const w = await prisma.warga.create({
+      data: {
+        blok_wilayah_id: blok.id,
+        nama_kk: name,
+        no_kk: `317101${String(10000000000 + i).slice(1)}`,
+        nik: `317209${String(10000000000 + i).slice(1)}`,
+        tanggal_terbit_kk: new Date('2022-01-01T00:00:00.000Z'),
+        tanggal_lahir: new Date(1980 + (i % 10), i % 12, 10),
+        pendidikan: i % 2 === 0 ? 'SARJANA' : 'SMA',
+        pekerjaan: i % 2 === 0 ? 'Pegawai Swasta' : 'Wiraswasta',
+        status_keluarga: 'MAMPU',
+      }
+    });
+
+    if (i === 0) {
+      wargaBudi = w;
+      wargaSeeds.push({ warga: w, nominal: 50000, prefix: 'BS', paidMonths: [1, 2, 3] });
+    } else {
+      wargaSeeds.push({
+        warga: w,
+        nominal: 50000,
+        prefix: `MMP${i}`,
+        paidMonths: [1, 2]
+      });
+    }
+  }
+
+  // 2. Generate 11 Kurang Mampu Warga
+  for (let i = 0; i < namaKurangMampu.length; i++) {
+    const name = namaKurangMampu[i];
+    const blok = bloks[(i + 1) % bloks.length];
+    
+    const w = await prisma.warga.create({
+      data: {
+        blok_wilayah_id: blok.id,
+        nama_kk: name,
+        no_kk: `317102${String(20000000000 + i).slice(1)}`,
+        nik: `317202${String(20000000000 + i).slice(1)}`,
+        tanggal_terbit_kk: new Date('2020-05-12T00:00:00.000Z'),
+        tanggal_lahir: new Date(1985 + (i % 10), i % 12, 15),
+        pendidikan: i % 2 === 0 ? 'DIPLOMA' : 'SMP',
+        pekerjaan: i % 2 === 0 ? 'Buruh' : 'Pedagang',
+        status_keluarga: 'KURANG_MAMPU',
+      }
+    });
+
+    if (i === 0) {
+      wargaSiti = w;
+      wargaSeeds.push({ warga: w, nominal: 20000, prefix: 'SA', paidMonths: [1, 2] });
+    } else {
+      wargaSeeds.push({
+        warga: w,
+        nominal: 20000,
+        prefix: `KMP${i}`,
+        paidMonths: [1]
+      });
+    }
+  }
+
+  // 3. Generate 11 Lansia Warga
+  for (let i = 0; i < namaLansia.length; i++) {
+    const name = namaLansia[i];
+    const blok = bloks[(i + 2) % bloks.length];
+    
+    const w = await prisma.warga.create({
+      data: {
+        blok_wilayah_id: blok.id,
+        nama_kk: name,
+        no_kk: `317103${String(30000000000 + i).slice(1)}`,
+        nik: `317203${String(30000000000 + i).slice(1)}`,
+        tanggal_terbit_kk: new Date('2018-08-22T00:00:00.000Z'),
+        tanggal_lahir: new Date(1940 + (i % 15), i % 12, 5),
+        pendidikan: i % 2 === 0 ? 'SARJANA' : 'SD',
+        pekerjaan: 'Pensiunan',
+        status_keluarga: 'LANSIA',
+      }
+    });
+
+    if (i === 0) {
+      wargaDeni = w;
+      wargaSeeds.push({ warga: w, nominal: 0, prefix: 'DK', paidMonths: [1] });
+    } else {
+      wargaSeeds.push({
+        warga: w,
+        nominal: 0,
+        prefix: `LNS${i}`,
+        paidMonths: [1]
+      });
+    }
+  }
 
   await prisma.iuranWarga.createMany({
     data: wargaSeeds.flatMap(({ warga, nominal, prefix, paidMonths }) => {
@@ -679,6 +755,95 @@ async function main() {
         pelapor_nama: 'Warga Blok B',
         pelapor_no_hp: '081234567895',
         foto_bukti_url: null,
+      },
+    ],
+  });
+  await prisma.setoranIuranRT.createMany({
+    data: [
+      {
+        blok_wilayah_id: blokA.id,
+        wilayah_rw_id: wilayahRwId,
+        nominal: new Prisma.Decimal(350000),
+        status: 'PENDING',
+        tanggal_setor: new Date(new Date().setDate(new Date().getDate() - 2)),
+        bukti_url: '/uploads/sample-bukti-1.jpg',
+      },
+      {
+        blok_wilayah_id: blokB.id,
+        wilayah_rw_id: wilayahRwId,
+        nominal: new Prisma.Decimal(240000),
+        status: 'PENDING',
+        tanggal_setor: new Date(new Date().setDate(new Date().getDate() - 1)),
+        bukti_url: '/uploads/sample-bukti-2.jpg',
+      },
+      {
+        blok_wilayah_id: blokC.id,
+        wilayah_rw_id: wilayahRwId,
+        nominal: new Prisma.Decimal(180000),
+        status: 'PENDING',
+        tanggal_setor: new Date(new Date().setHours(new Date().getHours() - 3)),
+        bukti_url: '/uploads/sample-bukti-3.jpg',
+      },
+      {
+        blok_wilayah_id: blokA.id,
+        wilayah_rw_id: wilayahRwId,
+        nominal: new Prisma.Decimal(500000),
+        status: 'TERKONFIRMASI',
+        tanggal_setor: new Date(new Date().setDate(new Date().getDate() - 10)),
+        tanggal_konfirmasi: new Date(new Date().setDate(new Date().getDate() - 9)),
+        bukti_url: '/uploads/sample-bukti-4.jpg',
+      },
+      {
+        blok_wilayah_id: blokB.id,
+        wilayah_rw_id: wilayahRwId,
+        nominal: new Prisma.Decimal(420000),
+        status: 'TERKONFIRMASI',
+        tanggal_setor: new Date(new Date().setDate(new Date().getDate() - 8)),
+        tanggal_konfirmasi: new Date(new Date().setDate(new Date().getDate() - 7)),
+        bukti_url: '/uploads/sample-bukti-5.jpg',
+      },
+      {
+        blok_wilayah_id: blokC.id,
+        wilayah_rw_id: wilayahRwId,
+        nominal: new Prisma.Decimal(300000),
+        status: 'TERKONFIRMASI',
+        tanggal_setor: new Date(new Date().setDate(new Date().getDate() - 12)),
+        tanggal_konfirmasi: new Date(new Date().setDate(new Date().getDate() - 11)),
+        bukti_url: '/uploads/sample-bukti-6.jpg',
+      },
+      {
+        blok_wilayah_id: blokA.id,
+        wilayah_rw_id: wilayahRwId,
+        nominal: new Prisma.Decimal(150000),
+        status: 'PENDING',
+        tanggal_setor: new Date(new Date().setDate(new Date().getDate() - 5)),
+        bukti_url: '/uploads/sample-bukti-7.jpg',
+      },
+      {
+        blok_wilayah_id: blokB.id,
+        wilayah_rw_id: wilayahRwId,
+        nominal: new Prisma.Decimal(200000),
+        status: 'PENDING',
+        tanggal_setor: new Date(new Date().setDate(new Date().getDate() - 4)),
+        bukti_url: '/uploads/sample-bukti-8.jpg',
+      },
+      {
+        blok_wilayah_id: blokC.id,
+        wilayah_rw_id: wilayahRwId,
+        nominal: new Prisma.Decimal(250000),
+        status: 'TERKONFIRMASI',
+        tanggal_setor: new Date(new Date().setDate(new Date().getDate() - 15)),
+        tanggal_konfirmasi: new Date(new Date().setDate(new Date().getDate() - 14)),
+        bukti_url: '/uploads/sample-bukti-9.jpg',
+      },
+      {
+        blok_wilayah_id: blokA.id,
+        wilayah_rw_id: wilayahRwId,
+        nominal: new Prisma.Decimal(600000),
+        status: 'TERKONFIRMASI',
+        tanggal_setor: new Date(new Date().setDate(new Date().getDate() - 20)),
+        tanggal_konfirmasi: new Date(new Date().setDate(new Date().getDate() - 19)),
+        bukti_url: '/uploads/sample-bukti-10.jpg',
       },
     ],
   });

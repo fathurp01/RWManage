@@ -85,6 +85,7 @@ export const createWargaSchema = z.object({
   tanggal_lahir: z.string().datetime().optional(),
   pendidikan: z.enum(["TK", "SD", "SMP", "SMA", "DIPLOMA", "SARJANA", "LAINNYA"]).optional(),
   pekerjaan: z.string().trim().max(100).optional(),
+  status_keluarga: z.enum(["MAMPU", "KURANG_MAMPU", "LANSIA"]).optional(),
 });
 
 export const getIuranWargaQuerySchema = z.object({
@@ -108,6 +109,7 @@ export const createRtWargaSchema = z.object({
   tanggal_lahir: z.string().datetime().optional(),
   pendidikan: z.enum(["TK", "SD", "SMP", "SMA", "DIPLOMA", "SARJANA", "LAINNYA"]).optional(),
   pekerjaan: z.string().trim().max(100).optional(),
+  status_keluarga: z.enum(["MAMPU", "KURANG_MAMPU", "LANSIA"]).optional(),
 });
 
 export const updateRtWargaSchema = z
@@ -119,6 +121,7 @@ export const updateRtWargaSchema = z
     tanggal_lahir: z.string().datetime().optional(),
     pendidikan: z.enum(["TK", "SD", "SMP", "SMA", "DIPLOMA", "SARJANA", "LAINNYA"]).optional(),
     pekerjaan: z.string().trim().max(100).optional(),
+    status_keluarga: z.enum(["MAMPU", "KURANG_MAMPU", "LANSIA"]).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "Minimal satu field harus dikirim untuk update.",
@@ -236,6 +239,7 @@ export const updateWargaSchema = z.object({
   tanggal_lahir: z.string().datetime().optional(),
   pendidikan: z.enum(["TK", "SD", "SMP", "SMA", "DIPLOMA", "SARJANA", "LAINNYA"]).optional(),
   pekerjaan: z.string().trim().max(100).optional(),
+  status_keluarga: z.enum(["MAMPU", "KURANG_MAMPU", "LANSIA"]).optional(),
 }).refine((value) => Object.keys(value).length > 0, {
   message: "Minimal satu field harus dikirim untuk update warga.",
 });
@@ -617,6 +621,8 @@ export const cekKodeUnikQuerySchema = z.object({
 // ==================== PENGATURAN IURAN RW ====================
 export const pengaturanIuranRWSchema = z.object({
   nominal_iuran: z.coerce.number().positive(),
+  nominal_iuran_kurang_mampu: z.coerce.number().min(0),
+  nominal_iuran_lansia: z.coerce.number().min(0),
   persen_rt: z.coerce.number().min(0).max(100).optional(),
   persen_rw: z.coerce.number().min(0).max(100).optional(),
 }).refine((data) => {
