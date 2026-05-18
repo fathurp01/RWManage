@@ -271,21 +271,21 @@ export default function IuranKhususRwPage() {
 
       <Card>
         <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="size-4 text-slate-400" />
+          <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <Plus className="size-4.5 text-slate-400" />
             Tambah Iuran Khusus
           </CardTitle>
-          <CardDescription>Catat pemasukan dari sewa fasum, donatur, atau sumber lain di luar RT.</CardDescription>
+          <CardDescription className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Catat pemasukan dari sewa fasum, donatur, atau sumber lain di luar RT.</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={createAction} className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="tanggal" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Tanggal</Label>
+              <Label htmlFor="tanggal" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tanggal</Label>
               <Input id="tanggal" name="tanggal" type="date" disabled={isCreating} />
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="sumber" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Keterangan</Label>
+              <Label htmlFor="sumber" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Keterangan</Label>
               <Input
                 id="sumber"
                 name="sumber"
@@ -297,7 +297,7 @@ export default function IuranKhususRwPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="nominal" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Nominal (Rp)</Label>
+              <Label htmlFor="nominal" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nominal (Rp)</Label>
               <Input
                 id="nominal"
                 name="nominal"
@@ -311,12 +311,12 @@ export default function IuranKhususRwPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="bukti_url" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Link Bukti (opsional)</Label>
+              <Label htmlFor="bukti_url" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Link Bukti (opsional)</Label>
               <Input id="bukti_url" name="bukti_url" type="url" placeholder="https://..." disabled={isCreating} />
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="bukti_foto" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Foto Bukti (opsional)</Label>
+              <Label htmlFor="bukti_foto" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Foto Bukti (opsional)</Label>
               <div className="relative flex items-center h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 px-3.5 py-2 text-sm transition-all duration-200 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25">
                 <input
                   id="bukti_foto"
@@ -354,11 +354,11 @@ export default function IuranKhususRwPage() {
 
       <Card>
         <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="size-4 text-slate-400" />
+          <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <FileText className="size-4.5 text-slate-400" />
             Riwayat Iuran Khusus
           </CardTitle>
-          <CardDescription>Daftar transaksi yang sudah dicatat pada menu ini.</CardDescription>
+          <CardDescription className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Daftar transaksi yang sudah dicatat pada menu ini.</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
