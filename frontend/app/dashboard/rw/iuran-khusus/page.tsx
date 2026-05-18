@@ -374,12 +374,12 @@ export default function IuranKhususRwPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-slate-50/80 dark:bg-white/3">
-                      <TableHead className="font-semibold">Tanggal</TableHead>
-                      <TableHead className="font-semibold">Jenis</TableHead>
-                      <TableHead className="font-semibold">Keterangan</TableHead>
-                      <TableHead className="font-semibold">Nominal</TableHead>
-                      <TableHead className="font-semibold hidden md:table-cell">Kode Unik</TableHead>
-                      <TableHead className="text-right font-semibold">Aksi</TableHead>
+                      <TableHead className="font-semibold w-[15%]">Tanggal</TableHead>
+                      <TableHead className="font-semibold w-[12%]">Jenis</TableHead>
+                      <TableHead className="font-semibold w-[38%]">Keterangan</TableHead>
+                      <TableHead className="font-semibold w-[15%]">Nominal</TableHead>
+                      <TableHead className="font-semibold hidden md:table-cell w-[12%]">Kode Unik</TableHead>
+                      <TableHead className="text-right font-semibold w-[8%]">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
