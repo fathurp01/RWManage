@@ -252,8 +252,8 @@ export default function PengaturanIuranPage() {
                 <Calculator className="size-4" />
               </span>
               <div>
-                <h2 className="text-base font-bold text-slate-900">Nominal Iuran Bulanan Warga</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <h2 className="text-base font-bold text-slate-800">Nominal Iuran Bulanan Warga</h2>
+                <p className="text-xs text-slate-400 mt-0.5">
                   Besaran iuran wajib per bulan berdasarkan kategori ekonomi keluarga. Lansia dapat dibebaskan dengan nominal <strong>Rp 0</strong>.
                 </p>
               </div>
@@ -264,7 +264,7 @@ export default function PengaturanIuranPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {/* Nominal Mampu */}
                 <div className="space-y-2 p-4 rounded-2xl bg-slate-50 border border-slate-200/70">
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Keluarga Mampu</p>
+                  <p className="text-sm font-semibold text-slate-700">Keluarga Mampu</p>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 select-none pointer-events-none">Rp</span>
                     <Input
@@ -279,12 +279,12 @@ export default function PengaturanIuranPage() {
                       className="pl-8 h-11 rounded-xl text-sm font-semibold"
                     />
                   </div>
-                  <p className="text-[11px] text-slate-400">Tarif bulanan standar warga mampu.</p>
+                  <p className="text-xs text-slate-400 mt-1">Tarif bulanan standar warga mampu.</p>
                 </div>
 
                 {/* Nominal Kurang Mampu */}
                 <div className="space-y-2 p-4 rounded-2xl bg-amber-50/60 border border-amber-200/50">
-                  <p className="text-xs font-bold uppercase tracking-widest text-amber-700">Keluarga Kurang Mampu</p>
+                  <p className="text-sm font-semibold text-amber-700">Keluarga Kurang Mampu</p>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-amber-500/80 select-none pointer-events-none">Rp</span>
                     <Input
@@ -299,12 +299,12 @@ export default function PengaturanIuranPage() {
                       className="pl-8 h-11 rounded-xl text-sm font-semibold border-amber-200 focus-visible:ring-amber-400"
                     />
                   </div>
-                  <p className="text-[11px] text-amber-700/60">Tarif bersubsidi untuk warga tidak mampu.</p>
+                  <p className="text-xs text-amber-700/60 mt-1">Tarif bersubsidi untuk warga tidak mampu.</p>
                 </div>
 
                 {/* Nominal Lansia */}
                 <div className="space-y-2 p-4 rounded-2xl bg-sky-50/60 border border-sky-200/50">
-                  <p className="text-xs font-bold uppercase tracking-widest text-sky-700">Keluarga Lansia</p>
+                  <p className="text-sm font-semibold text-sky-700">Keluarga Lansia</p>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-sky-500/80 select-none pointer-events-none">Rp</span>
                     <Input
@@ -319,7 +319,7 @@ export default function PengaturanIuranPage() {
                       className="pl-8 h-11 rounded-xl text-sm font-semibold border-sky-200 focus-visible:ring-sky-400"
                     />
                   </div>
-                  <p className="text-[11px] text-sky-700/60">Isi Rp 0 untuk membebaskan iuran lansia.</p>
+                  <p className="text-xs text-sky-700/60 mt-1">Isi Rp 0 untuk membebaskan iuran lansia.</p>
                 </div>
               </div>
             </div>
@@ -333,9 +333,9 @@ export default function PengaturanIuranPage() {
                 <ArrowRightLeft className="size-4" />
               </span>
               <div>
-                <h2 className="text-base font-bold text-slate-900">Pembagian Alokasi Persentase Kas</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Rasio pembagian dana iuran antara Kas RT dan Kas RW. <strong>Total harus berjumlah tepat 100%.</strong>
+                <h2 className="text-base font-bold text-slate-800">Pembagian Alokasi Persentase Kas</h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Rasio pembagian dana iuran antara Kas RT and Kas RW. <strong>Total harus berjumlah tepat 100%.</strong>
                 </p>
               </div>
             </div>
@@ -347,9 +347,9 @@ export default function PengaturanIuranPage() {
                 <div className="space-y-2 p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/50">
                   <div className="flex items-center gap-2">
                     <div className="size-2.5 rounded-full bg-emerald-500 shrink-0" />
-                    <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">Porsi Kas RT (%)</p>
+                    <p className="text-sm font-semibold text-emerald-700">Porsi Kas RT (%)</p>
                   </div>
-                  <p className="text-[11px] text-emerald-700/60">Bagian nominal iuran yang masuk ke kas RT.</p>
+                  <p className="text-xs text-emerald-600/80 mt-1">Bagian nominal iuran yang masuk ke kas RT.</p>
                   <Input
                     id="persenRT"
                     type="number"
@@ -362,7 +362,7 @@ export default function PengaturanIuranPage() {
                       setPersenRW(100 - val);
                     }}
                     required
-                    className="text-center font-bold text-lg h-12 rounded-xl border-emerald-200 focus-visible:ring-emerald-400"
+                    className="text-center font-semibold text-sm h-11 rounded-xl border-emerald-200 focus-visible:ring-emerald-400"
                   />
                 </div>
 
@@ -370,9 +370,9 @@ export default function PengaturanIuranPage() {
                 <div className="space-y-2 p-4 rounded-2xl bg-violet-50/60 border border-violet-200/50">
                   <div className="flex items-center gap-2">
                     <div className="size-2.5 rounded-full bg-violet-500 shrink-0" />
-                    <p className="text-xs font-bold uppercase tracking-widest text-violet-700">Porsi Kas RW (%)</p>
+                    <p className="text-sm font-semibold text-violet-700">Porsi Kas RW (%)</p>
                   </div>
-                  <p className="text-[11px] text-violet-700/60">Bagian nominal iuran yang masuk ke kas RW.</p>
+                  <p className="text-xs text-violet-600/80 mt-1">Bagian nominal iuran yang masuk ke kas RW.</p>
                   <Input
                     id="persenRW"
                     type="number"
@@ -385,7 +385,7 @@ export default function PengaturanIuranPage() {
                       setPersenRT(100 - val);
                     }}
                     required
-                    className="text-center font-bold text-lg h-12 rounded-xl border-violet-200 focus-visible:ring-violet-400"
+                    className="text-center font-semibold text-sm h-11 rounded-xl border-violet-200 focus-visible:ring-violet-400"
                   />
                 </div>
               </div>
@@ -417,11 +417,11 @@ export default function PengaturanIuranPage() {
                       <p className="text-xs font-bold text-slate-700 mb-2">1. Keluarga Mampu ({formatCurrency(nominalNum)})</p>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
-                          <p className="text-slate-400">Kas RT:</p>
+                          <p className="text-slate-500">Kas RT:</p>
                           <p className="font-bold text-emerald-600">{formatCurrency(Math.round((nominalNum * persenRT) / 100))}</p>
                         </div>
                         <div>
-                          <p className="text-slate-400">Kas RW:</p>
+                          <p className="text-slate-500">Kas RW:</p>
                           <p className="font-bold text-violet-600">{formatCurrency(Math.round((nominalNum * persenRW) / 100))}</p>
                         </div>
                       </div>
@@ -432,11 +432,11 @@ export default function PengaturanIuranPage() {
                       <p className="text-xs font-bold text-amber-700 mb-2">2. Kurang Mampu ({formatCurrency(nominalKMNum)})</p>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
-                          <p className="text-slate-400">Kas RT:</p>
+                          <p className="text-slate-500">Kas RT:</p>
                           <p className="font-bold text-emerald-600">{formatCurrency(Math.round((nominalKMNum * persenRT) / 100))}</p>
                         </div>
                         <div>
-                          <p className="text-slate-400">Kas RW:</p>
+                          <p className="text-slate-500">Kas RW:</p>
                           <p className="font-bold text-violet-600">{formatCurrency(Math.round((nominalKMNum * persenRW) / 100))}</p>
                         </div>
                       </div>
@@ -450,11 +450,11 @@ export default function PengaturanIuranPage() {
                       ) : (
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div>
-                            <p className="text-slate-400">Kas RT:</p>
+                            <p className="text-slate-500">Kas RT:</p>
                             <p className="font-bold text-emerald-600">{formatCurrency(Math.round((nominalLansiaNum * persenRT) / 100))}</p>
                           </div>
                           <div>
-                            <p className="text-slate-400">Kas RW:</p>
+                            <p className="text-slate-500">Kas RW:</p>
                             <p className="font-bold text-violet-600">{formatCurrency(Math.round((nominalLansiaNum * persenRW) / 100))}</p>
                           </div>
                         </div>
@@ -473,8 +473,8 @@ export default function PengaturanIuranPage() {
                 <ArrowRightLeft className="size-4" />
               </span>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Sistem Iuran Berjenjang</h3>
-                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                <h3 className="text-sm font-bold text-slate-800">Sistem Iuran Berjenjang</h3>
+                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
                   Sistem akan mencocokkan status warga (Mampu, Kurang Mampu, atau Lansia) secara otomatis pada saat penagihan bulanan dibuat berdasarkan nominal di atas.
                 </p>
               </div>
@@ -486,7 +486,7 @@ export default function PengaturanIuranPage() {
             type="submit"
             variant="rw"
             disabled={saving || !totalValid}
-            className="w-full h-13 gap-2 bg-linear-to-r from-violet-600 to-purple-600 text-white font-bold text-base rounded-3xl hover:opacity-90 transition shadow-lg shadow-violet-500/25"
+            className="w-full h-11 gap-2 bg-linear-to-r from-violet-600 to-purple-600 text-white font-bold text-sm rounded-xl hover:opacity-90 transition shadow-md shadow-violet-500/25"
           >
             {saving ? (
               <>
@@ -512,8 +512,8 @@ export default function PengaturanIuranPage() {
               <History className="size-4" />
             </span>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Histori Perubahan Iuran</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Audit log perubahan nominal dan porsi kas.</p>
+              <h2 className="text-base font-bold text-slate-800">Histori Perubahan Iuran</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Audit log perubahan nominal dan porsi kas.</p>
             </div>
           </div>
           <Button
@@ -550,10 +550,10 @@ export default function PengaturanIuranPage() {
               <table className="w-full text-left border-collapse">
                 <thead className="bg-slate-50/70 border-b border-slate-100">
                   <tr>
-                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-500">Waktu</th>
-                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-500">Diubah Oleh</th>
-                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-500">Detail Perubahan</th>
-                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-500">Catatan</th>
+                    <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Waktu</th>
+                    <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Diubah Oleh</th>
+                    <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Detail Perubahan</th>
+                    <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Catatan</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -563,23 +563,23 @@ export default function PengaturanIuranPage() {
                       className="hover:bg-slate-50/50 transition-colors duration-150"
                     >
                       {/* Waktu */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-xs font-bold text-slate-800">
                           Perubahan #{history.length - (indexOfFirstHistoryItem + idx)}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+                        <div className="text-xs text-slate-400 font-medium mt-0.5">
                           {formatDateTime(item.created_at)}
                         </div>
                       </td>
 
                       {/* Diubah Oleh */}
-                      <td className="px-4 py-3.5">
+                      <td className="px-6 py-4">
                         {item.user ? (
                           <div>
                             <span className="block text-xs font-bold text-slate-700">
                               {item.user.nama || item.user.email}
                             </span>
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 mt-1">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 mt-1">
                               {item.user.role}
                             </span>
                           </div>
@@ -589,7 +589,7 @@ export default function PengaturanIuranPage() {
                       </td>
 
                       {/* Detail Perubahan */}
-                      <td className="px-4 py-3.5">
+                      <td className="px-6 py-4">
                         {item.perubahan.length > 0 ? (
                           <div className="flex flex-col gap-1.5 max-w-sm">
                             {item.perubahan.map((change) => {
@@ -605,7 +605,7 @@ export default function PengaturanIuranPage() {
                                     {change.label}:
                                   </span>
                                   <div className="flex items-center gap-1.5 font-medium">
-                                    <span className="text-slate-400 line-through text-[11px] tabular-nums">
+                                    <span className="text-slate-400 line-through text-xs tabular-nums">
                                       {lamaStr}
                                     </span>
                                     <span className="text-slate-300">→</span>
@@ -625,7 +625,7 @@ export default function PengaturanIuranPage() {
                       </td>
 
                       {/* Catatan / Keterangan */}
-                      <td className="px-4 py-3.5 max-w-xs">
+                      <td className="px-6 py-4 max-w-xs">
                         {item.keterangan ? (
                           <p className="text-xs text-slate-600 italic leading-relaxed break-words">
                             "{item.keterangan}"
