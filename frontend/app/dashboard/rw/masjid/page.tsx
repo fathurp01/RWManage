@@ -883,7 +883,7 @@ export default function RwMasjidManagementPage() {
                 <Button
                   type="submit"
                   disabled={isSubmittingCreate || !hasBlok}
-                  className="h-11 px-6 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold shadow-sm text-sm"
+                  className="h-11 px-6 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-md shadow-blue-500/25 hover:bg-blue-700 transition"
                 >
                   {isSubmittingCreate ? (
                     <><Loader2 className="size-4 mr-2 animate-spin" /> Menyimpan...</>
@@ -1331,7 +1331,7 @@ export default function RwMasjidManagementPage() {
                 </Button>
                 <Button
                   type="submit"
-                  className="h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all text-sm flex items-center gap-2 shadow-md shadow-indigo-200"
+                  className="h-11 px-6 rounded-xl bg-blue-600 text-white font-bold text-sm flex items-center gap-2 shadow-md shadow-blue-500/25 hover:bg-blue-700 transition"
                 >
                   <Plus className="size-4" /> Tambah Pengurus
                 </Button>

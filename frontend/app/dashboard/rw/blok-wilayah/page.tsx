@@ -786,7 +786,7 @@ export default function BlokWilayahPage() {
                   Batal
                 </Button>
                 <Button type="submit" disabled={isSubmitting}
-                  className="h-11 px-6 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold shadow-sm text-sm">
+                  className="h-11 px-6 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-md shadow-blue-500/25 hover:bg-blue-700 transition">
                   {isSubmitting ? <><Loader2 className="size-4 mr-2 animate-spin" /> Menyimpan...</> : <><Plus className="size-4 mr-2" /> Simpan Blok</>}
                 </Button>
               </div>
@@ -1114,7 +1114,7 @@ export default function BlokWilayahPage() {
                 <Button
                   type="submit"
                   disabled={isSubmittingRt}
-                  className="h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all text-sm flex items-center gap-2 shadow-md shadow-indigo-200"
+                  className="h-11 px-6 rounded-xl bg-blue-600 text-white font-bold text-sm flex items-center gap-2 shadow-md shadow-blue-500/25 hover:bg-blue-700 transition"
                 >
                   {isSubmittingRt ? <><Loader2 className="size-4 mr-2 animate-spin" /> Menambahkan...</> : <><Plus className="size-4" /> Tambah Ketua RT</>}
                 </Button>

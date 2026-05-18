@@ -485,7 +485,7 @@ export default function PengaturanIuranPage() {
             type="submit"
             variant="rw"
             disabled={saving || !totalValid}
-            className="w-full h-11 gap-2 bg-linear-to-r from-violet-600 to-purple-600 text-white font-bold text-sm rounded-xl hover:opacity-90 transition shadow-md shadow-violet-500/25"
+            className="w-full h-11 gap-2 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 transition shadow-md shadow-blue-500/25"
           >
             {saving ? (
               <>

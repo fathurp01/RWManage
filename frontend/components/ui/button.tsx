@@ -22,10 +22,10 @@ const buttonVariants = cva(
         default:
           "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md hover:shadow-primary/20",
         rw: [
-          "bg-gradient-to-br from-indigo-500 to-indigo-700 text-white",
-          "shadow-sm hover:shadow-md hover:shadow-indigo-500/30",
-          "hover:from-indigo-400 hover:to-indigo-600",
-          "dark:from-indigo-500 dark:to-indigo-700",
+          "bg-blue-600 text-white",
+          "shadow-sm hover:shadow-md hover:shadow-blue-500/30",
+          "hover:bg-blue-700",
+          "dark:bg-blue-600 dark:hover:bg-blue-700",
         ].join(" "),
         masjid: [
           "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white",

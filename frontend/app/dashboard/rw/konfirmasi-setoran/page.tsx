@@ -217,7 +217,7 @@ export default function KonfirmasiSetoranPage() {
                             href={item.bukti_url}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-[13px] font-bold text-slate-700 hover:text-indigo-600 transition-colors bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs"
+                            className="inline-flex items-center gap-1.5 text-[13px] font-bold text-slate-700 hover:text-slate-900 transition-colors bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs"
                           >
                             <Receipt className="size-3.5 text-slate-500" /> Lihat Bukti
                           </a>
@@ -227,8 +227,7 @@ export default function KonfirmasiSetoranPage() {
                         onClick={() => handleApprove(item.id)}
                         disabled={processing === item.id}
                         size="sm"
-                        variant="rw"
-                        className="h-[34px] px-3.5 gap-1 font-bold text-[13px]"
+                        className="bg-blue-600 hover:bg-blue-700 shadow-xs hover:shadow-md hover:shadow-blue-500/20 text-white rounded-lg transition-all h-8.5 px-3.5 gap-1 font-bold text-[13px]"
                       >
                         {processing === item.id ? (
                           <div className="size-3 animate-spin rounded-full border border-white border-t-transparent" />
