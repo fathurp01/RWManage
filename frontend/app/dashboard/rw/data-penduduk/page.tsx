@@ -121,59 +121,59 @@ function AnggotaCard({
   anggota: AnggotaKeluarga;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col gap-2.5 shadow-sm">
+    <div className="bg-white rounded-2xl border border-slate-100 p-3.5 flex flex-col gap-2 shadow-xs">
       {/* Nama & hubungan */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-slate-100">
-            <User className="size-4 text-slate-500" />
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+            <User className="size-3.5 text-slate-500" />
           </span>
-          <p className="font-bold text-base text-slate-900 leading-tight truncate">{anggota.nama}</p>
+          <p className="font-bold text-sm text-slate-800 leading-tight truncate">{anggota.nama}</p>
         </div>
-        <span className={`shrink-0 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${hubunganColor(anggota.hubungan)}`}>
+        <span className={`shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${hubunganColor(anggota.hubungan)}`}>
           {anggota.hubungan}
         </span>
       </div>
 
       {/* Detail pribadi (Selalu tampil, jika kosong beri penanda) */}
-      <div className="grid grid-cols-1 gap-1.5 text-sm mt-1">
-        <div className="flex items-center gap-2 text-slate-600">
+      <div className="grid grid-cols-1 gap-1 text-xs mt-1.5">
+        <div className="flex items-center gap-2 text-slate-500">
           <CreditCard className="size-3.5 shrink-0 text-slate-400" />
-          <span className="font-medium min-w-[75px]">NIK:</span>
+          <span className="font-semibold min-w-[70px]">NIK:</span>
           {anggota.nik ? (
             <span className="text-slate-700 font-mono text-xs tracking-wide">{anggota.nik}</span>
           ) : (
-            <span className="text-slate-400 italic text-xs">Belum diisi</span>
+            <span className="text-slate-400 italic">Belum diisi</span>
           )}
         </div>
 
-        <div className="flex items-center gap-2 text-slate-600">
+        <div className="flex items-center gap-2 text-slate-500">
           <Calendar className="size-3.5 shrink-0 text-slate-400" />
-          <span className="font-medium min-w-[75px]">Lahir:</span>
+          <span className="font-semibold min-w-[70px]">Lahir:</span>
           {anggota.tanggal_lahir ? (
-            <span className="text-slate-700 text-xs">{formatTanggal(anggota.tanggal_lahir)}</span>
+            <span className="text-slate-700">{formatTanggal(anggota.tanggal_lahir)}</span>
           ) : (
-            <span className="text-slate-400 italic text-xs">Belum diisi</span>
+            <span className="text-slate-400 italic">Belum diisi</span>
           )}
         </div>
 
-        <div className="flex items-center gap-2 text-slate-600">
+        <div className="flex items-center gap-2 text-slate-500">
           <Briefcase className="size-3.5 shrink-0 text-slate-400" />
-          <span className="font-medium min-w-[75px]">Pekerjaan:</span>
+          <span className="font-semibold min-w-[70px]">Pekerjaan:</span>
           {anggota.pekerjaan ? (
-            <span className="text-slate-700 text-xs">{anggota.pekerjaan}</span>
+            <span className="text-slate-700">{anggota.pekerjaan}</span>
           ) : (
-            <span className="text-slate-400 italic text-xs">Belum diisi</span>
+            <span className="text-slate-400 italic">Belum diisi</span>
           )}
         </div>
 
-        <div className="flex items-center gap-2 text-slate-600">
+        <div className="flex items-center gap-2 text-slate-500">
           <GraduationCap className="size-3.5 shrink-0 text-slate-400" />
-          <span className="font-medium min-w-[75px]">Pendidikan:</span>
+          <span className="font-semibold min-w-[70px]">Pendidikan:</span>
           {anggota.pendidikan ? (
-            <span className="text-slate-700 text-xs">{anggota.pendidikan}</span>
+            <span className="text-slate-700">{anggota.pendidikan}</span>
           ) : (
-            <span className="text-slate-400 italic text-xs">Belum diisi</span>
+            <span className="text-slate-400 italic">Belum diisi</span>
           )}
         </div>
       </div>
@@ -217,43 +217,43 @@ function KKCard({
       {/* ── Baris header KK ── */}
       <button
         onClick={onToggle}
-        className="w-full text-left px-5 py-4 flex items-center gap-4 transition-colors hover:bg-violet-50/40"
+        className="w-full text-left px-5 py-3.5 flex items-center gap-4 transition-colors hover:bg-violet-50/40"
         aria-expanded={isExpanded}
       >
         {/* Avatar KK */}
-        <span className={`inline-flex size-12 shrink-0 items-center justify-center rounded-2xl font-extrabold text-sm transition-colors ${isExpanded ? "bg-violet-600 text-white shadow-sm shadow-violet-500/40" : "bg-violet-100 text-violet-700"}`}>
+        <span className={`inline-flex size-10 shrink-0 items-center justify-center rounded-xl font-extrabold text-xs transition-colors ${isExpanded ? "bg-violet-600 text-white shadow-sm shadow-violet-500/40" : "bg-violet-100 text-violet-700"}`}>
           KK
         </span>
 
         {/* Info KK: nama + lokasi */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-bold text-lg text-slate-900 leading-tight truncate">{kk.nama_kk}</p>
+            <p className="font-bold text-sm text-slate-800 leading-tight truncate">{kk.nama_kk}</p>
             {kk.status_keluarga === "KURANG_MAMPU" && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200 text-amber-700 bg-amber-50/50 dark:border-amber-900/40 dark:text-amber-400 dark:bg-amber-950/20">
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-amber-200 text-amber-700 bg-amber-50/50">
                 Kurang Mampu
               </span>
             )}
             {kk.status_keluarga === "LANSIA" && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-200 text-sky-700 bg-sky-50/50 dark:border-sky-900/40 dark:text-sky-400 dark:bg-sky-950/20">
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-sky-200 text-sky-700 bg-sky-50/50">
                 Lansia
               </span>
             )}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             <MapPin className="size-3.5 shrink-0 text-slate-400" />
-            <p className="text-sm text-slate-500 truncate">{kk.nama_blok} &middot; RT {String(kk.no_rt).padStart(3, "0")}</p>
+            <p className="text-xs text-slate-400 truncate">{kk.nama_blok} &middot; RT {String(kk.no_rt).padStart(3, "0")}</p>
           </div>
         </div>
 
         {/* Kolom tengah: NO KK + tanggal terbit KK */}
         <div className="flex flex-col gap-1 min-w-0 shrink-0 mr-2 sm:mr-6">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 w-12">NO KK</span>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 w-12">NO KK</span>
             <span className="text-xs font-mono text-slate-700">{kk.no_kk || "-"}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 w-12">TERBIT</span>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 w-12">TERBIT</span>
             <span className="text-xs text-slate-500">{kk.tanggal_terbit_kk ? formatTanggal(kk.tanggal_terbit_kk) : "-"}</span>
           </div>
         </div>
@@ -261,8 +261,8 @@ function KKCard({
         {/* Kanan: jumlah anggota + chevron */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="text-right hidden sm:block">
-            <p className="text-xl font-extrabold tabular-nums text-violet-600 leading-none">{totalSeluruh}</p>
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mt-1">anggota</p>
+            <p className="text-base font-extrabold tabular-nums text-violet-600 leading-none">{totalSeluruh}</p>
+            <p className="text-[9px] uppercase tracking-wider font-bold text-slate-400 mt-0.5">anggota</p>
           </div>
           <span className={`inline-flex size-8 items-center justify-center rounded-xl transition-all ${isExpanded ? "bg-violet-100 text-violet-600" : "bg-slate-100 text-slate-400"}`}>
             {isExpanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
@@ -453,36 +453,42 @@ export default function DataPendudukPage() {
           {/* Total KK */}
           <div className="relative overflow-hidden rounded-3xl border border-violet-200/50 bg-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
             <div className="absolute top-0 left-0 right-0 h-1 rounded-t-3xl bg-linear-to-r from-violet-500 to-purple-600" />
-            <div className="p-5 pt-6 flex flex-col gap-2">
-              <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
+            <div className="p-5 pt-6 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Kepala Keluarga</p>
+                <p className="text-2xl font-black tabular-nums text-violet-700 tracking-tight truncate">{summary.total_kk}</p>
+              </div>
+              <span className="inline-flex size-10 items-center justify-center rounded-2xl shrink-0 bg-violet-50 text-violet-600">
                 <Home className="size-5" />
               </span>
-              <p className="text-3xl font-extrabold tabular-nums text-violet-700">{summary.total_kk}</p>
-              <p className="text-sm font-semibold text-slate-500">Kepala Keluarga</p>
             </div>
           </div>
 
           {/* Total Penduduk */}
           <div className="relative overflow-hidden rounded-3xl border border-indigo-200/50 bg-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
             <div className="absolute top-0 left-0 right-0 h-1 rounded-t-3xl bg-linear-to-r from-indigo-500 to-violet-600" />
-            <div className="p-5 pt-6 flex flex-col gap-2">
-              <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+            <div className="p-5 pt-6 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total Penduduk</p>
+                <p className="text-2xl font-black tabular-nums text-indigo-700 tracking-tight truncate">{summary.total_penduduk}</p>
+              </div>
+              <span className="inline-flex size-10 items-center justify-center rounded-2xl shrink-0 bg-indigo-50 text-indigo-600">
                 <Users className="size-5" />
               </span>
-              <p className="text-3xl font-extrabold tabular-nums text-indigo-700">{summary.total_penduduk}</p>
-              <p className="text-sm font-semibold text-slate-500">Total Penduduk</p>
             </div>
           </div>
 
           {/* Total RT */}
           <div className="relative overflow-hidden rounded-3xl border border-slate-200/50 bg-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
             <div className="absolute top-0 left-0 right-0 h-1 rounded-t-3xl bg-linear-to-r from-slate-400 to-slate-600" />
-            <div className="p-5 pt-6 flex flex-col gap-2">
-              <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+            <div className="p-5 pt-6 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Jumlah RT</p>
+                <p className="text-2xl font-black tabular-nums text-slate-700 tracking-tight truncate">{summary.total_rt}</p>
+              </div>
+              <span className="inline-flex size-10 items-center justify-center rounded-2xl shrink-0 bg-slate-100 text-slate-600">
                 <GitBranch className="size-5" />
               </span>
-              <p className="text-3xl font-extrabold tabular-nums text-slate-700">{summary.total_rt}</p>
-              <p className="text-sm font-semibold text-slate-500">Jumlah RT</p>
             </div>
           </div>
         </section>
@@ -502,7 +508,7 @@ export default function DataPendudukPage() {
               placeholder="Cari nama KK, anggota, atau NIK..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 h-11 rounded-xl text-base w-full"
+              className="pl-10 h-11 rounded-xl text-sm w-full"
             />
           </div>
           {/* Filter blok */}
@@ -601,7 +607,7 @@ export default function DataPendudukPage() {
           <section className="flex flex-col gap-3">
             <div className="border-t border-slate-500" />
             <div className="flex items-center justify-between px-1 border-b border-slate-200 dark:border-white/10 pb-2.5">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <Users className="size-5 text-slate-500" />
                 Daftar Kepala Keluarga Mampu ({dataMampu.length})
               </h2>
@@ -654,7 +660,7 @@ export default function DataPendudukPage() {
             {/* Pembatas garis yang jelas di atas daftar keluarga */}
             <div className="border-t border-slate-500" />
             <div className="flex items-center justify-between px-1 border-b border-slate-200 dark:border-white/10 pb-2.5">
-              <h2 className="text-lg font-bold text-amber-800 dark:text-amber-400 flex items-center gap-2">
+              <h2 className="text-base font-bold text-amber-800 dark:text-amber-400 flex items-center gap-2">
                 <Users className="size-5 text-amber-500" />
                 Daftar Kepala Keluarga Kurang Mampu ({dataKurangMampu.length})
               </h2>
@@ -706,7 +712,7 @@ export default function DataPendudukPage() {
           <section className="flex flex-col gap-3">
             <div className="border-t border-slate-500" />
             <div className="flex items-center justify-between px-1 border-b border-slate-200 dark:border-white/10 pb-2.5">
-              <h2 className="text-lg font-bold text-sky-800 dark:text-sky-400 flex items-center gap-2">
+              <h2 className="text-base font-bold text-sky-800 dark:text-sky-400 flex items-center gap-2">
                 <Users className="size-5 text-sky-500" />
                 Daftar Kepala Keluarga Lansia ({dataLansia.length})
               </h2>

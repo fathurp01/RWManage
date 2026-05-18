@@ -1243,7 +1243,7 @@ export default function BlokWilayahPage() {
                           <p className="font-semibold text-slate-700 text-xs">
                             {new Date(item.created_at).toLocaleDateString("id-ID", { dateStyle: "medium" })}
                           </p>
-                          <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                          <p className="text-xs text-slate-400/80 font-medium mt-0.5">
                             {new Date(item.created_at).toLocaleTimeString("id-ID", { timeStyle: "short" })}
                           </p>
                         </div>
