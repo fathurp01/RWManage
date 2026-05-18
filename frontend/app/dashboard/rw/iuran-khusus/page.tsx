@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Pencil, Trash2, Wallet, ArrowLeft, FileText, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 interface KasItem {
   id: string;
@@ -374,29 +375,33 @@ export default function IuranKhususRwPage() {
                   <TableHeader>
                     <TableRow className="bg-slate-50/80 dark:bg-white/3">
                       <TableHead className="font-semibold text-xs">Tanggal</TableHead>
+                      <TableHead className="font-semibold text-xs">Jenis</TableHead>
                       <TableHead className="font-semibold text-xs">Keterangan</TableHead>
-                      <TableHead className="font-semibold text-xs text-right">Nominal</TableHead>
+                      <TableHead className="font-semibold text-xs">Nominal</TableHead>
+                      <TableHead className="font-semibold text-xs hidden md:table-cell">Kode Unik</TableHead>
                       <TableHead className="font-semibold text-xs text-right">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginatedItems.map((item) => (
                       <TableRow key={item.id} className="hover:bg-slate-50/60 dark:hover:bg-white/3 transition-colors">
-                        <TableCell className="text-sm text-slate-500 dark:text-muted-foreground whitespace-nowrap">
+                        <TableCell className="text-sm text-slate-600 dark:text-muted-foreground whitespace-nowrap">
                           {formatDate(item.tanggal)}
                         </TableCell>
                         <TableCell>
+                          <Badge variant={item.jenis_transaksi === "MASUK" ? "success" : "destructive"}>
+                            {item.jenis_transaksi}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
                           <p className="font-semibold text-sm text-slate-900 dark:text-foreground">{item.keterangan}</p>
-                          <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                            <code className="text-xs text-slate-500 dark:text-muted-foreground bg-slate-100 dark:bg-white/8 px-2 py-0.5 rounded-md">
-                              {item.kode_unik}
-                            </code>
+                          <div className="mt-1">
                             {item.bukti_foto_url ? (
                               <a
                                 href={`${baseUrl}${item.bukti_foto_url}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+                                className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline underline-offset-4"
                               >
                                 <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                 Lihat Foto Bukti →
@@ -406,7 +411,7 @@ export default function IuranKhususRwPage() {
                                 href={item.bukti_url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+                                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline underline-offset-4"
                               >
                                 <span className="size-1.5 rounded-full bg-indigo-500" />
                                 Lihat Link Bukti →
@@ -416,11 +421,16 @@ export default function IuranKhususRwPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-bold tabular-nums text-slate-900 dark:text-foreground whitespace-nowrap text-sm">
+                        <TableCell className="font-bold tabular-nums text-slate-900 dark:text-foreground whitespace-nowrap text-sm">
                           {formatRupiah(item.nominal)}
                         </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <code className="text-xs text-slate-500 dark:text-muted-foreground bg-slate-100 dark:bg-white/8 px-2 py-0.5 rounded-md">
+                            {item.kode_unik}
+                          </code>
+                        </TableCell>
                         <TableCell className="text-right">
-                          <div className="inline-flex items-center justify-end gap-1.5">
+                          <div className="flex justify-end gap-1.5">
                             <EditKasDialog item={item} onSaved={loadData} />
                             <DeleteKasDialog itemId={item.id} onDeleted={loadData} />
                           </div>
