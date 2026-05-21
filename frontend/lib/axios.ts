@@ -1,5 +1,4 @@
 import axios, { AxiosError } from "axios";
-import { AUTH_STORAGE_KEY } from "@/lib/auth";
 
 export type FieldErrors = Record<string, string>;
 
@@ -20,48 +19,16 @@ interface ErrorEnvelope {
   errors?: ValidationIssue[];
 }
 
-const readTokenFromStorage = (): string | null => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw) as { token?: string };
-    return typeof parsed.token === "string" ? parsed.token : null;
-  } catch {
-    return null;
-  }
-};
-
-const clearAuthToken = (): void => {
-  if (typeof window === "undefined") {
-    return;
-  }
-  localStorage.removeItem(AUTH_STORAGE_KEY);
-};
-
 const redirectToLogin = (): void => {
   if (typeof window === "undefined") {
     return;
   }
+  // Only redirect if the user is currently visiting a protected dashboard route
+  if (!window.location.pathname.startsWith("/dashboard")) {
+    return;
+  }
   // Use window.location for reliable redirect that works across all contexts
   window.location.href = "/auth/login?session-expired=true";
-};
-
-const buildAuthHeaders = (): Record<string, string> => {
-  const headers: Record<string, string> = {};
-  const token = readTokenFromStorage();
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  return headers;
 };
 
 const mapValidationErrors = (issues: ValidationIssue[] | undefined): FieldErrors => {
@@ -107,20 +74,10 @@ const normalizeApiError = (error: unknown): ApiClientError => {
 
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api",
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
-});
-
-api.interceptors.request.use((config) => {
-  const token = readTokenFromStorage();
-
-  if (token) {
-    config.headers = config.headers ?? {};
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
 });
 
 api.interceptors.response.use(
@@ -133,7 +90,6 @@ api.interceptors.response.use(
     const isLoginRequest = axios.isAxiosError(error) && error.config?.url?.includes("/auth/login");
     
     if (normalizedError.status === 401 && !isLoginRequest) {
-      clearAuthToken();
       redirectToLogin();
     }
 
@@ -160,37 +116,12 @@ export const downloadApiFile = async (
   filename: string,
   params?: Record<string, string | number | undefined>
 ): Promise<void> => {
-  const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api").replace(/\/$/, "");
-  const url = new URL(`${baseUrl}${path.startsWith("/") ? path : `/${path}`}`);
-
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== "") {
-        url.searchParams.set(key, String(value));
-      }
-    });
-  }
-
-  const response = await fetch(url.toString(), {
-    method: "GET",
-    headers: {
-      ...buildAuthHeaders(),
-    },
+  const response = await api.get<Blob>(path, {
+    params,
+    responseType: "blob",
   });
 
-  if (!response.ok) {
-    const contentType = response.headers.get("content-type") ?? "";
-
-    if (contentType.includes("application/json")) {
-      const payload = (await response.json()) as ErrorEnvelope;
-      throw new Error(payload.message || "Gagal mengunduh file.");
-    }
-
-    const errorText = await response.text();
-    throw new Error(errorText || "Gagal mengunduh file.");
-  }
-
-  const blob = await response.blob();
+  const blob = response.data;
   const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = objectUrl;

@@ -3,10 +3,10 @@ import { getSession } from './auth';
 
 test('cicilan iuran create -> list -> bayar -> delete (API)', async ({ request }) => {
   const session = await getSession(request);
-  const token = session.token;
+  const headers = { Cookie: session.cookie, Origin: 'http://localhost:3001' };
 
   const blokRes = await request.get('http://localhost:3000/api/rw/blok-wilayah', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
   });
   const blokJson = await blokRes.json();
   const firstBlok = blokJson?.data?.blok_list?.[0];
@@ -14,7 +14,7 @@ test('cicilan iuran create -> list -> bayar -> delete (API)', async ({ request }
 
   const tahun = new Date().getFullYear();
   const wargaRes = await request.get('http://localhost:3000/api/rw/iuran-warga', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
     params: { blok_wilayah_id: firstBlok.id, tahun },
   });
   const wargaJson = await wargaRes.json();
@@ -25,7 +25,7 @@ test('cicilan iuran create -> list -> bayar -> delete (API)', async ({ request }
   if (!targetIuran?.id) throw new Error('No unpaid iuran available for cicilan');
 
   const createRes = await request.post('http://localhost:3000/api/rw/cicilan-iuran', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
     data: {
       iuran_id: targetIuran.id,
       jumlah_bulan: 2,
@@ -39,7 +39,7 @@ test('cicilan iuran create -> list -> bayar -> delete (API)', async ({ request }
   if (!cicilanId) throw new Error('Create cicilan response missing id');
 
   const listRes = await request.get('http://localhost:3000/api/rw/cicilan-iuran', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
     params: { warga_id: firstWarga.id },
   });
   const listJson = await listRes.json();
@@ -47,7 +47,7 @@ test('cicilan iuran create -> list -> bayar -> delete (API)', async ({ request }
   if (!found) throw new Error('Created cicilan not found in list');
 
   const paidRes = await request.patch(`http://localhost:3000/api/rw/cicilan-iuran/${cicilanId}/bayar`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
   });
   if (paidRes.status() !== 200) {
     const txt = await paidRes.text();
@@ -55,7 +55,7 @@ test('cicilan iuran create -> list -> bayar -> delete (API)', async ({ request }
   }
 
   const delRes = await request.delete(`http://localhost:3000/api/rw/cicilan-iuran/${cicilanId}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
   });
   if (delRes.status() !== 200) {
     const txt = await delRes.text();

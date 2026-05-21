@@ -4,7 +4,28 @@ import jwt from "jsonwebtoken";
 import { Prisma, Role, StatusAkun, User, AksiAudit } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { recordAudit } from "../middlewares/auditLogger";
-const SALT_ROUNDS = 10;
+const SALT_ROUNDS = 12;
+
+const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME ?? "rwmanage_token";
+const AUTH_COOKIE_MAX_AGE_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+const isCookieSecure = (): boolean => {
+  // Bank-grade production: secure cookies.
+  // For local HTTP dev/test, either set COOKIE_SECURE=false or rely on default (non-production -> false).
+  if (process.env.COOKIE_SECURE === "true") return true;
+  if (process.env.COOKIE_SECURE === "false") return false;
+  return process.env.NODE_ENV === "production";
+};
+
+const authCookieOptions = () => {
+  return {
+    httpOnly: true,
+    secure: isCookieSecure(),
+    sameSite: "strict" as const,
+    maxAge: AUTH_COOKIE_MAX_AGE_MS,
+    path: "/",
+  };
+};
 
 interface RegisterBody {
   nama?: string;
@@ -55,7 +76,7 @@ const createToken = (user: TokenPayload): string => {
       blok_wilayah_id: user.blok_wilayah_id,
     },
     jwtSecret,
-    { expiresIn: "1d" }
+    { expiresIn: "2h" }
   );
 };
 
@@ -339,6 +360,8 @@ export const loginWithClient = async (client: typeof prisma, req: Request, res: 
       blok_wilayah_id: blokWilayahId,
     });
 
+    res.cookie(AUTH_COOKIE_NAME, tokenWithTenantContext, authCookieOptions());
+
     await recordAudit(req, {
       user_id: user.id,
       aksi: AksiAudit.LOGIN,
@@ -358,7 +381,6 @@ export const loginWithClient = async (client: typeof prisma, req: Request, res: 
       success: true,
       message: "Login berhasil.",
       data: {
-        token: tokenWithTenantContext,
         user: {
           id: user.id,
           nama: user.nama,
@@ -366,6 +388,7 @@ export const loginWithClient = async (client: typeof prisma, req: Request, res: 
           role: user.role,
           status_akun: user.status_akun,
           wilayah_rw_id: wilayahRwId,
+          blok_wilayah_id: blokWilayahId,
           masjid_ids: masjidIds ?? [],
         },
       },
@@ -380,6 +403,102 @@ export const loginWithClient = async (client: typeof prisma, req: Request, res: 
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   return loginWithClient(prisma, req, res);
+};
+
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  const { maxAge: _maxAge, ...options } = authCookieOptions();
+  res.clearCookie(AUTH_COOKIE_NAME, options);
+
+  res.status(200).json({
+    success: true,
+    message: "Logout berhasil.",
+  });
+};
+
+export const meWithClient = async (
+  client: typeof prisma,
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: "Akses ditolak. User belum terautentikasi.",
+      });
+      return;
+    }
+
+    const dbUser = await client.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        nama: true,
+        email: true,
+        role: true,
+        status_akun: true,
+        blok_wilayah_id: true,
+      },
+    });
+
+    if (!dbUser) {
+      res.status(401).json({
+        success: false,
+        message: "User tidak ditemukan.",
+      });
+      return;
+    }
+
+    let wilayahRwId: string | undefined;
+    let masjidIds: string[] | undefined;
+    let blokWilayahId: string | undefined;
+
+    if (dbUser.role === Role.RW) {
+      const wilayah = await client.wilayahRW.findUnique({
+        where: { user_id: dbUser.id },
+        select: { id: true },
+      });
+      wilayahRwId = wilayah?.id;
+    }
+
+    if (dbUser.role === Role.RT) {
+      blokWilayahId = dbUser.blok_wilayah_id ?? undefined;
+    }
+
+    if (dbUser.role === Role.PENGURUS_MASJID) {
+      const pengurusMasjid = await client.pengurusMasjid.findMany({
+        where: { user_id: dbUser.id },
+        select: { masjid_id: true },
+      });
+      masjidIds = pengurusMasjid.map((item) => item.masjid_id);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "OK",
+      data: {
+        user: {
+          id: dbUser.id,
+          nama: dbUser.nama,
+          email: dbUser.email,
+          role: dbUser.role,
+          status_akun: dbUser.status_akun,
+          wilayah_rw_id: wilayahRwId,
+          blok_wilayah_id: blokWilayahId,
+          masjid_ids: masjidIds ?? [],
+        },
+      },
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan saat memuat sesi.",
+    });
+  }
+};
+
+export const me = async (req: Request, res: Response): Promise<void> => {
+  return meWithClient(prisma, req, res);
 };
 
 export const approvePengurusWithClient = async (

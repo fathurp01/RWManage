@@ -264,6 +264,12 @@ export const getWargaForRt = async (req: Request, res: Response): Promise<void> 
         pekerjaan: true,
         status_keluarga: true,
         blok_wilayah_id: true,
+        blok_wilayah: {
+          select: {
+            nama_blok: true,
+            no_rt: true,
+          },
+        },
       },
       orderBy: { nama_kk: "asc" },
     });

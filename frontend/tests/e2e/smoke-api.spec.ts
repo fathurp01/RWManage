@@ -7,7 +7,7 @@ test.describe('API smoke tests', () => {
     const session = await getSession(reqCtx);
     await reqCtx.dispose();
 
-    const headers = { Authorization: `Bearer ${session.token}` };
+    const headers = { Cookie: session.cookie, Origin: 'http://localhost:3001' };
     const rwPaths = [
       '/api/rw/cicilan-iuran',
       '/api/rw/performa-ronda',
@@ -29,7 +29,7 @@ test.describe('API smoke tests', () => {
     });
     await reqCtx.dispose();
 
-    const headers = { Authorization: `Bearer ${adminSession.token}` };
+    const headers = { Cookie: adminSession.cookie, Origin: 'http://localhost:3001' };
     const adminPaths = ['/api/admin/audit-logs', '/api/admin/dashboard/overview'];
     for (const p of adminPaths) {
       const res = await request.get(`http://localhost:3000${p}`, { headers });

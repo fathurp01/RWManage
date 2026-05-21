@@ -1,5 +1,22 @@
 import rateLimit from "express-rate-limit";
 
+const createStrictLimiter = (
+  windowMs: number,
+  limit: number,
+  message: string
+) => {
+  return rateLimit({
+    windowMs,
+    limit,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      success: false,
+      message,
+    },
+  });
+};
+
 export const createLimiter = (
   windowMs: number,
   limit: number,
@@ -25,6 +42,12 @@ export const authRateLimit = createLimiter(
   15 * 60 * 1000,
   30,
   "Terlalu banyak percobaan autentikasi. Coba lagi nanti."
+);
+
+export const loginRateLimit = createStrictLimiter(
+  15 * 60 * 1000,
+  5,
+  "Terlalu banyak percobaan. Silakan coba lagi dalam 15 menit."
 );
 
 export const publicRateLimit = createLimiter(

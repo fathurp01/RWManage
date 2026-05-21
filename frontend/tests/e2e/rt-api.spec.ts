@@ -6,12 +6,12 @@ test.describe('RT API flows', () => {
     const reqCtx = await playwright.request.newContext();
     const session = await getSession(reqCtx, {
       email: 'rt001@rwmanage.com',
-      password: 'rt123',
+      password: 'rtmanage123',
       healthCheckPath: 'http://localhost:3000/api/rt/iuran',
     });
     await reqCtx.dispose();
 
-    const headers = { Authorization: `Bearer ${session.token}` };
+    const headers = { Cookie: session.cookie, Origin: 'http://localhost:3001' };
 
     const smokePaths = ['/api/rt/iuran', '/api/rt/warga', '/api/rt/performa-ronda', '/api/rt/laporan-insiden', '/api/rt/audit-logs'];
     for (const path of smokePaths) {

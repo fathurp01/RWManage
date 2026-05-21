@@ -33,3 +33,13 @@ export const isValidStatusAkun = (value: unknown): value is StatusAkun => {
 export const isUuid = (value: string): boolean => {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 };
+
+export const setClientCookie = (name: string, value: string, maxAgeSeconds: number = 2 * 60 * 60) => {
+  if (typeof window === "undefined") return;
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax`;
+};
+
+export const deleteClientCookie = (name: string) => {
+  if (typeof window === "undefined") return;
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+};

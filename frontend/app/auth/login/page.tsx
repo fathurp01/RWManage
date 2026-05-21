@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { api, getApiError, type FieldErrors } from "@/lib/axios";
 import { useAuth } from "@/context/AuthContext";
-import type { AppRole, AuthStoragePayload } from "@/lib/auth";
+import type { AppRole, AuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,7 +49,7 @@ const inferRoleFromNextPath = (nextPath: string | null): AppRole | null => {
   return null;
 };
 
-const toRedirectPath = (role: AuthStoragePayload["user"]["role"], nextPath: string | null): string => {
+const toRedirectPath = (role: AppRole, nextPath: string | null): string => {
   if (nextPath && nextPath.startsWith("/")) return nextPath;
   return role === "RW" || role === "RT" || role === "SUPERADMIN"
     ? "/dashboard/rw"
@@ -60,7 +60,7 @@ const toRedirectPath = (role: AuthStoragePayload["user"]["role"], nextPath: stri
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setSession, isAuthenticated, user } = useAuth();
+  const { setUser, isAuthenticated, user } = useAuth();
   const hasShownReasonRef = useRef(false);
 
   const [searchParamsState] = useState(() => {
@@ -192,17 +192,17 @@ export default function LoginPage() {
       }
 
       try {
-        const response = await api.post<{ data: AuthStoragePayload }>("/auth/login", payload);
+        const response = await api.post<{ data: { user: AuthUser } }>("/auth/login", payload);
 
-        const session = response.data?.data;
+        const nextUser = response.data?.data?.user;
 
-        if (!session?.token || !session?.user) {
+        if (!nextUser) {
           toast.error("Respons login tidak valid dari server.");
           return { message: "Respons login tidak valid.", fieldErrors: {} };
         }
 
         // Guard: masjid system should not let RW/RT/SUPERADMIN in
-        if (system === "masjid" && session.user.role !== "PENGURUS_MASJID") {
+        if (system === "masjid" && nextUser.role !== "PENGURUS_MASJID") {
           toast.error("Akun ini bukan Pengurus Masjid. Gunakan login Sistem RW & RT.");
           return {
             message: "Akun ini bukan Pengurus Masjid.",
@@ -211,7 +211,7 @@ export default function LoginPage() {
         }
 
         // Guard: rwrt system should not let PENGURUS_MASJID in
-        if (system === "rwrt" && session.user.role === "PENGURUS_MASJID") {
+        if (system === "rwrt" && nextUser.role === "PENGURUS_MASJID") {
           toast.error("Akun ini adalah Pengurus Masjid. Gunakan login Sistem Masjid.");
           return {
             message: "Akun ini adalah Pengurus Masjid.",
@@ -219,9 +219,9 @@ export default function LoginPage() {
           };
         }
 
-        setSession(session);
+        setUser(nextUser);
         toast.success("Login berhasil.");
-        router.push(toRedirectPath(session.user.role, nextPath));
+        router.push(toRedirectPath(nextUser.role, nextPath));
 
         return { message: "", fieldErrors: {} };
       } catch (error) {

@@ -12,6 +12,7 @@ export const registerSchema = z
     blok_wilayah_id: uuidSchema.optional(),
     masjid_id: uuidSchema.optional(),
   })
+  .strict()
   .superRefine((value, ctx) => {
     if (value.role === "PENGURUS_MASJID" && !value.masjid_id) {
       ctx.addIssue({
@@ -31,9 +32,9 @@ export const registerSchema = z
 
 export const loginSchema = z.object({
   email: z.string().trim().email().transform((value) => value.toLowerCase()),
-  password: z.string().min(1).max(128),
+  password: z.string().min(8).max(128),
   role: z.enum(["RW", "RT", "PENGURUS_MASJID"]).optional(),
-});
+}).strict();
 
 export const approveRegistrationSchema = z
   .object({

@@ -7,16 +7,16 @@ test('superadmin dashboard endpoints reachable (API)', async ({ request }) => {
     password: 'superadmin123',
     healthCheckPath: 'http://localhost:3000/api/admin/dashboard/overview',
   });
-  const token = session.token;
+  const cookie = session.cookie;
 
   const overviewRes = await request.get('http://localhost:3000/api/admin/dashboard/overview', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Cookie: cookie },
   });
   const healthRes = await request.get('http://localhost:3000/api/admin/dashboard/health', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Cookie: cookie },
   });
   const queueRes = await request.get('http://localhost:3000/api/admin/dashboard/approval-queue', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Cookie: cookie },
   });
 
   if (overviewRes.status() !== 200) throw new Error('Overview endpoint failed: ' + (await overviewRes.text()).slice(0, 200));

@@ -14,6 +14,10 @@ export interface RtWargaRecord {
   pendidikan?: string | null;
   pekerjaan?: string | null;
   status_keluarga?: "MAMPU" | "KURANG_MAMPU" | "LANSIA";
+  blok_wilayah?: {
+    nama_blok: string;
+    no_rt: string | null;
+  } | null;
 }
 
 export interface RtAnggotaKeluargaRecord {
@@ -57,6 +61,8 @@ export interface RtInsidenRecord {
   pelapor_no_hp: string | null;
   status: RtStatusInsiden;
   created_at: string;
+  tindakan_diambil?: string | null;
+  foto_bukti_url?: string | null;
 }
 
 export interface RtRondaPetugas {
@@ -170,6 +176,11 @@ export const rtClient = {
     await api.delete(`/rt/warga/${warga_id}`);
   },
 
+  async updateWarga(warga_id: string, payload: Partial<{ nama_kk: string; no_kk: string; nik: string; tanggal_terbit_kk: string; tanggal_lahir: string; pendidikan: string; pekerjaan: string; status_keluarga: "MAMPU" | "KURANG_MAMPU" | "LANSIA" }>): Promise<RtWargaRecord> {
+    const res = await api.patch<{ data: RtWargaRecord }>(`/rt/warga/${warga_id}`, payload);
+    return res.data.data;
+  },
+
   async listAnggota(warga_id: string): Promise<RtAnggotaKeluargaRecord[]> {
     const res = await api.get<{ data: RtAnggotaKeluargaRecord[] }>("/rt/anggota-keluarga", {
       params: { warga_id },
@@ -187,6 +198,11 @@ export const rtClient = {
     pekerjaan?: string;
   }): Promise<RtAnggotaKeluargaRecord> {
     const res = await api.post<{ data: RtAnggotaKeluargaRecord }>("/rt/anggota-keluarga", payload);
+    return res.data.data;
+  },
+
+  async updateAnggota(anggota_id: string, payload: Partial<{ nama: string; hubungan: string; nik: string; tanggal_lahir: string; pendidikan: string; pekerjaan: string }>): Promise<RtAnggotaKeluargaRecord> {
+    const res = await api.patch<{ data: RtAnggotaKeluargaRecord }>(`/rt/anggota-keluarga/${anggota_id}`, payload);
     return res.data.data;
   },
 

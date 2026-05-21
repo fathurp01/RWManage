@@ -137,7 +137,7 @@ const rwGroups: SidebarGroup[] = [
     ],
   },
   {
-    groupLabel: "Administrasi, Pelaporan & Transparansi",
+    groupLabel: "Pelaporan & Transparansi",
     items: [
 
 
@@ -471,8 +471,8 @@ export function DashboardSidebar({ role }: { role: AppRole | null }) {
   else if (role === "RT") flatItems = rtItems;
   else if (role === "SUPERADMIN") flatItems = superadminItems;
 
-  const handleLogout = useCallback(() => {
-    logout();
+  const handleLogout = useCallback(async () => {
+    await logout();
     router.push("/");
   }, [logout, router]);
 

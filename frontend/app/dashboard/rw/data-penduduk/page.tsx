@@ -222,7 +222,13 @@ function KKCard({
       >
         {/* Avatar KK */}
         <span className={`inline-flex size-10 shrink-0 items-center justify-center rounded-xl font-extrabold text-xs transition-colors ${isExpanded ? "bg-violet-600 text-white shadow-sm shadow-violet-500/40" : "bg-violet-100 text-violet-700"}`}>
-          KK
+          {kk.nama_kk
+            .split(" ")
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((w) => w[0])
+            .join("")
+            .toUpperCase()}
         </span>
 
         {/* Info KK: nama + lokasi */}
@@ -605,8 +611,8 @@ export default function DataPendudukPage() {
 
           {/* Section 1: Keluarga Mampu */}
           <section className="flex flex-col gap-3">
-            <div className="border-t border-slate-500" />
-            <div className="flex items-center justify-between px-1 border-b border-slate-200 dark:border-white/10 pb-2.5">
+            <div className="border-t border-slate-200/70 dark:border-white/8" />
+            <div className="flex items-center justify-between px-1 border-b border-slate-200/70 dark:border-white/8 pb-2.5">
               <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <Users className="size-5 text-slate-500" />
                 Daftar Kepala Keluarga Mampu ({dataMampu.length})
@@ -658,8 +664,8 @@ export default function DataPendudukPage() {
           {/* Section 2: Keluarga Kurang Mampu */}
           <section className="flex flex-col gap-3">
             {/* Pembatas garis yang jelas di atas daftar keluarga */}
-            <div className="border-t border-slate-500" />
-            <div className="flex items-center justify-between px-1 border-b border-slate-200 dark:border-white/10 pb-2.5">
+            <div className="border-t border-slate-200/70 dark:border-white/8" />
+            <div className="flex items-center justify-between px-1 border-b border-slate-200/70 dark:border-white/8 pb-2.5">
               <h2 className="text-base font-bold text-amber-800 dark:text-amber-400 flex items-center gap-2">
                 <Users className="size-5 text-amber-500" />
                 Daftar Kepala Keluarga Kurang Mampu ({dataKurangMampu.length})
@@ -710,8 +716,8 @@ export default function DataPendudukPage() {
 
           {/* Section 3: Keluarga Lansia */}
           <section className="flex flex-col gap-3">
-            <div className="border-t border-slate-500" />
-            <div className="flex items-center justify-between px-1 border-b border-slate-200 dark:border-white/10 pb-2.5">
+            <div className="border-t border-slate-200/70 dark:border-white/8" />
+            <div className="flex items-center justify-between px-1 border-b border-slate-200/70 dark:border-white/8 pb-2.5">
               <h2 className="text-base font-bold text-sky-800 dark:text-sky-400 flex items-center gap-2">
                 <Users className="size-5 text-sky-500" />
                 Daftar Kepala Keluarga Lansia ({dataLansia.length})
@@ -758,7 +764,7 @@ export default function DataPendudukPage() {
                 ))}
               </div>
             )}
-            <div className="border-t border-slate-500" />
+            <div className="border-t border-slate-200/70 dark:border-white/8" />
           </section>
         </div>
       )}

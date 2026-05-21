@@ -35,6 +35,12 @@ const getTokenFromHeader = (authorizationHeader?: string): string | null => {
   return token;
 };
 
+const getTokenFromCookie = (req: Request): string | null => {
+  const cookieName = process.env.AUTH_COOKIE_NAME ?? "rwmanage_token";
+  const value = (req as any).cookies?.[cookieName];
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+};
+
 const parseJwtUser = (decoded: string | JwtPayload): AuthUserPayload | null => {
   if (typeof decoded === "string") {
     return null;
@@ -80,7 +86,7 @@ export const verifyToken = (
   res: Response,
   next: NextFunction
 ): void => {
-  const token = getTokenFromHeader(req.headers.authorization);
+  const token = getTokenFromCookie(req) ?? getTokenFromHeader(req.headers.authorization);
 
   if (!token) {
     res.status(401).json({

@@ -44,10 +44,10 @@ async function main() {
   await safeDelete(() => prisma.user.deleteMany(), 'user');
 
   const currentYear = new Date().getFullYear();
-  const saltRounds = 10;
+  const saltRounds = 12;
 
-  const passwordHashRW = await bcrypt.hash('rw123', saltRounds);
-  const passwordHashRT = await bcrypt.hash('rt123', saltRounds);
+  const passwordHashRW = await bcrypt.hash('rwmanage123', saltRounds);
+  const passwordHashRT = await bcrypt.hash('rtmanage123', saltRounds);
   const passwordHashSuperadmin = await bcrypt.hash('superadmin123', saltRounds);
   const passwordHashMasjid = await bcrypt.hash('masjid123', saltRounds);
   const passwordHashPending = await bcrypt.hash('pending123', saltRounds);
@@ -873,10 +873,10 @@ async function main() {
 
   console.log('Seeding selesai!');
   console.log('Akun demo:');
-  console.log('- RW: rw@rwmanage.com / rw123');
-  console.log('- RT Blok A: rt001@rwmanage.com / rt123');
-  console.log('- RT Blok B: rt002@rwmanage.com / rt123');
-  console.log('- RT Blok C: rt003@rwmanage.com / rt123');
+  console.log('- RW: rw@rwmanage.com / rwmanage123');
+  console.log('- RT Blok A: rt001@rwmanage.com / rtmanage123');
+  console.log('- RT Blok B: rt002@rwmanage.com / rtmanage123');
+  console.log('- RT Blok C: rt003@rwmanage.com / rtmanage123');
   console.log('- Superadmin: superadmin@rwmanage.com / superadmin123');
   console.log('- Pengurus APPROVED: masjid@rwmanage.com / masjid123');
   console.log('- Pengurus PENDING: pending@rwmanage.com / pending123');

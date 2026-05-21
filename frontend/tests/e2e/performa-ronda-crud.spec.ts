@@ -3,17 +3,17 @@ import { getSession } from './auth';
 
 test('performa ronda create -> list -> update -> delete (API)', async ({ request }) => {
   const session = await getSession(request);
-  const token = session.token;
+  const headers = { Cookie: session.cookie, Origin: 'http://localhost:3001' };
 
   const blokRes = await request.get('http://localhost:3000/api/rw/blok-wilayah', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
   });
   const blokJson = await blokRes.json();
   const firstBlok = blokJson?.data?.blok_list?.[0];
   if (!firstBlok?.id) throw new Error('No blok available');
 
   const createRes = await request.post('http://localhost:3000/api/rw/performa-ronda', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
     data: {
       blok_wilayah_id: firstBlok.id,
       tanggal: new Date().toISOString(),
@@ -28,7 +28,7 @@ test('performa ronda create -> list -> update -> delete (API)', async ({ request
   if (!performaId) throw new Error('Create performa response missing id');
 
   const listRes = await request.get('http://localhost:3000/api/rw/performa-ronda', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
     params: { blok_wilayah_id: firstBlok.id },
   });
   const listJson = await listRes.json();
@@ -36,7 +36,7 @@ test('performa ronda create -> list -> update -> delete (API)', async ({ request
   if (!found) throw new Error('Created performa not found in list');
 
   const updateRes = await request.patch(`http://localhost:3000/api/rw/performa-ronda/${performaId}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
     data: { status_kehadiran: 'IZIN', catatan: 'Updated by e2e' },
   });
   if (updateRes.status() !== 200) {
@@ -45,7 +45,7 @@ test('performa ronda create -> list -> update -> delete (API)', async ({ request
   }
 
   const delRes = await request.delete(`http://localhost:3000/api/rw/performa-ronda/${performaId}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
   });
   if (delRes.status() !== 200) {
     const txt = await delRes.text();

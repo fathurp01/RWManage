@@ -3,6 +3,8 @@ import {
   approvePengurus,
   listPendingPengurus,
   login,
+  logout,
+  me,
   register,
   listPendingRegistrationsWithClient as listPendingRegistrations,
   approveRegistrationWithClient as approveRegistration,
@@ -126,6 +128,7 @@ import {
   deleteLaporanInsidenForRt,
   createWargaForRt,
   getWargaForRt,
+  updateWargaForRt,
   getIuranForRt,
   getIuranHistoryForRt,
   bayarIuranForRt,
@@ -205,6 +208,7 @@ import {
 import { upload } from "../middlewares/uploadMiddleware";
 import {
   authRateLimit,
+  loginRateLimit,
   publicRateLimit,
   rwActionRateLimit,
   zisActionRateLimit,
@@ -286,6 +290,8 @@ import {
   masjidParamsSchema,
   getMasjidListQuerySchema,
   createRtWargaSchema,
+  updateRtWargaSchema,
+  rtWargaParamsSchema,
   createRtPerformaRondaSchema,
   getRtPerformaRondaQuerySchema,
   updateRtPerformaRondaSchema,
@@ -305,7 +311,9 @@ const router = Router();
 
 // ==================== AUTH ROUTES ====================
 router.post("/auth/register", authRateLimit, validateBody(registerSchema), register);
-router.post("/auth/login", authRateLimit, validateBody(loginSchema), login);
+router.post("/auth/login", loginRateLimit, validateBody(loginSchema), login);
+router.post("/auth/logout", logout);
+router.get("/auth/me", verifyToken, me);
 router.patch(
   "/auth/approve-pengurus",
   rwActionRateLimit,
@@ -847,6 +855,16 @@ router.post(
   checkApproval,
   validateBody(createRtWargaSchema),
   createWargaForRt
+);
+router.patch(
+  "/rt/warga/:warga_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateParams(rtWargaParamsSchema),
+  validateBody(updateRtWargaSchema),
+  updateWargaForRt
 );
 router.patch(
   "/rt/cicilan-iuran/:cicilan_id",

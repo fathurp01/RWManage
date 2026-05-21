@@ -3,10 +3,10 @@ import { getSession } from './auth';
 
 test('laporan insiden create -> list -> close -> delete (API)', async ({ request }) => {
   const session = await getSession(request);
-  const token = session.token;
+  const headers = { Cookie: session.cookie, Origin: 'http://localhost:3001' };
 
   const createRes = await request.post('http://localhost:3000/api/rw/laporan-insiden', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
     multipart: {
       tipe_insiden: 'Gangguan Keamanan',
       tanggal_insiden: new Date().toISOString(),
@@ -22,14 +22,14 @@ test('laporan insiden create -> list -> close -> delete (API)', async ({ request
   if (!laporanId) throw new Error('Create laporan response missing id');
 
   const listRes = await request.get('http://localhost:3000/api/rw/laporan-insiden', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
   });
   const listJson = await listRes.json();
   const found = (listJson?.data ?? []).find((x: any) => x.id === laporanId);
   if (!found) throw new Error('Created laporan not found in list');
 
   const closeRes = await request.patch(`http://localhost:3000/api/rw/laporan-insiden/${laporanId}/close`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
   });
   if (closeRes.status() !== 200) {
     const txt = await closeRes.text();
@@ -37,7 +37,7 @@ test('laporan insiden create -> list -> close -> delete (API)', async ({ request
   }
 
   const delRes = await request.delete(`http://localhost:3000/api/rw/laporan-insiden/${laporanId}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
   });
   if (delRes.status() !== 200) {
     const txt = await delRes.text();
