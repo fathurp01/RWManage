@@ -121,6 +121,7 @@ export default function KasRwDashboardPage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -239,6 +240,7 @@ export default function KasRwDashboardPage() {
           fileInputRef.current.value = "";
         }
         setCreateFileName("");
+        setShowAddForm(false);
 
         return { message: "", fieldErrors: {} };
       } catch (error) {
@@ -317,7 +319,7 @@ export default function KasRwDashboardPage() {
   return (
     <main className="flex flex-1 flex-col gap-6">
       {/* Page header */}
-      <header className="flex flex-col gap-1">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 text-white shadow-sm shadow-indigo-500/30">
             <BookOpenText className="size-5" />
@@ -330,6 +332,24 @@ export default function KasRwDashboardPage() {
               Kelola transaksi kas masuk & keluar
             </p>
           </div>
+        </div>
+        <div className="shrink-0">
+          <Button
+            type="button"
+            onClick={() => setShowAddForm(!showAddForm)}
+            className={showAddForm
+              ? "gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white border-0 shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 transition-all duration-300 rounded-xl h-11 px-5 font-bold"
+              : "gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white border-0 shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 rounded-xl h-11 px-5 font-bold"
+            }
+            variant="default"
+          >
+            {showAddForm ? "Tutup Form" : (
+              <>
+                <Plus className="size-4" />
+                Tambah Transaksi
+              </>
+            )}
+          </Button>
         </div>
       </header>
 
@@ -359,112 +379,114 @@ export default function KasRwDashboardPage() {
       </section>
 
       {/* Add transaction form */}
-      <Card>
-        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <Plus className="size-4.5 text-slate-400" />
-            Tambah Transaksi Kas
-          </CardTitle>
-          <CardDescription className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Catat kas masuk dan kas keluar dengan bukti transaksi.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={createAction} className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="jenis_transaksi" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Jenis Transaksi</Label>
-              <select id="jenis_transaksi" name="jenis_transaksi" defaultValue="MASUK" className={selectClass} disabled={disabled}>
-                <option value="MASUK">MASUK</option>
-                <option value="KELUAR">KELUAR</option>
-              </select>
-              {createState.fieldErrors.jenis_transaksi ? (
-                <p className="text-xs text-destructive">{createState.fieldErrors.jenis_transaksi}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="tanggal" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tanggal</Label>
-              <Input id="tanggal" name="tanggal" type="date" disabled={disabled} />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="keterangan" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Keterangan</Label>
-              <Input
-                id="keterangan"
-                name="keterangan"
-                placeholder="Contoh: Pembelian alat kebersihan"
-                aria-invalid={Boolean(createState.fieldErrors.keterangan)}
-                disabled={disabled}
-              />
-              {createState.fieldErrors.keterangan ? (
-                <p className="text-xs text-destructive">{createState.fieldErrors.keterangan}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="nominal" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nominal (Rp)</Label>
-              <Input
-                id="nominal"
-                name="nominal"
-                type="number"
-                min={0}
-                step={1000}
-                aria-invalid={Boolean(createState.fieldErrors.nominal)}
-                disabled={disabled}
-              />
-              {createState.fieldErrors.nominal ? (
-                <p className="text-xs text-destructive">{createState.fieldErrors.nominal}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="bukti_url" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Link Bukti (opsional)</Label>
-              <Input
-                id="bukti_url"
-                name="bukti_url"
-                type="url"
-                placeholder="https://..."
-                disabled={disabled}
-              />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="bukti_foto" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Upload Foto Bukti (opsional)</Label>
-              <div className="relative flex items-center h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 px-3.5 py-2 text-sm transition-all duration-200 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25">
-                <input
-                  id="bukti_foto"
-                  name="bukti_foto"
-                  type="file"
-                  accept="image/*"
-                  disabled={disabled}
-                  ref={fileInputRef}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    setCreateFileName(file ? file.name : "");
-                  }}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:pointer-events-none"
-                />
-                <div className="flex items-center gap-2.5 w-full pointer-events-none select-none">
-                  <span className="font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors">
-                    Choose File
-                  </span>
-                  <span className="text-slate-300 dark:text-slate-600 font-light">|</span>
-                  <span className="text-slate-400 dark:text-slate-500 truncate flex-1">
-                    {createFileName || "No file chosen"}
-                  </span>
-                </div>
+      {showAddForm && (
+        <Card>
+          <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
+            <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <Plus className="size-4.5 text-slate-400" />
+              Tambah Transaksi Kas
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Catat kas masuk dan kas keluar dengan bukti transaksi.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={createAction} className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="jenis_transaksi" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Jenis Transaksi</Label>
+                <select id="jenis_transaksi" name="jenis_transaksi" defaultValue="MASUK" className={selectClass} disabled={disabled}>
+                  <option value="MASUK">MASUK</option>
+                  <option value="KELUAR">KELUAR</option>
+                </select>
+                {createState.fieldErrors.jenis_transaksi ? (
+                  <p className="text-xs text-destructive">{createState.fieldErrors.jenis_transaksi}</p>
+                ) : null}
               </div>
-              <p className="text-xs text-slate-400 mt-1">Pilih salah satu: Link atau Foto. Foto akan diprioritaskan.</p>
-            </div>
 
-            {createState.message ? (
-              <p className="sm:col-span-2 text-sm text-destructive">{createState.message}</p>
-            ) : null}
+              <div className="space-y-1.5">
+                <Label htmlFor="tanggal" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tanggal</Label>
+                <Input id="tanggal" name="tanggal" type="date" disabled={disabled} />
+              </div>
 
-            <Button type="submit" variant="rw" size="default" className="sm:col-span-2 w-full sm:w-auto" disabled={disabled}>
-              {isCreating ? "Menyimpan..." : "Simpan Transaksi"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="keterangan" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Keterangan</Label>
+                <Input
+                  id="keterangan"
+                  name="keterangan"
+                  placeholder="Contoh: Pembelian alat kebersihan"
+                  aria-invalid={Boolean(createState.fieldErrors.keterangan)}
+                  disabled={disabled}
+                />
+                {createState.fieldErrors.keterangan ? (
+                  <p className="text-xs text-destructive">{createState.fieldErrors.keterangan}</p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="nominal" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nominal (Rp)</Label>
+                <Input
+                  id="nominal"
+                  name="nominal"
+                  type="number"
+                  min={0}
+                  step={1000}
+                  aria-invalid={Boolean(createState.fieldErrors.nominal)}
+                  disabled={disabled}
+                />
+                {createState.fieldErrors.nominal ? (
+                  <p className="text-xs text-destructive">{createState.fieldErrors.nominal}</p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="bukti_url" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Link Bukti (opsional)</Label>
+                <Input
+                  id="bukti_url"
+                  name="bukti_url"
+                  type="url"
+                  placeholder="https://..."
+                  disabled={disabled}
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="bukti_foto" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Upload Foto Bukti (opsional)</Label>
+                <div className="relative flex items-center h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 px-3.5 py-2 text-sm transition-all duration-200 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25">
+                  <input
+                    id="bukti_foto"
+                    name="bukti_foto"
+                    type="file"
+                    accept="image/*"
+                    disabled={disabled}
+                    ref={fileInputRef}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      setCreateFileName(file ? file.name : "");
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:pointer-events-none"
+                  />
+                  <div className="flex items-center gap-2.5 w-full pointer-events-none select-none">
+                    <span className="font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors">
+                      Choose File
+                    </span>
+                    <span className="text-slate-300 dark:text-slate-600 font-light">|</span>
+                    <span className="text-slate-400 dark:text-slate-500 truncate flex-1">
+                      {createFileName || "No file chosen"}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">Pilih salah satu: Link atau Foto. Foto akan diprioritaskan.</p>
+              </div>
+
+              {createState.message ? (
+                <p className="sm:col-span-2 text-sm text-destructive">{createState.message}</p>
+              ) : null}
+
+              <Button type="submit" variant="rw" size="default" className="sm:col-span-2 w-full sm:w-auto" disabled={disabled}>
+                {isCreating ? "Menyimpan..." : "Simpan Transaksi"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Transaction history */}
       <Card>
