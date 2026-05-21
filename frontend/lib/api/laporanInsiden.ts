@@ -18,6 +18,7 @@ export interface LaporanInsidenRecord {
   created_at: string;
   updated_at?: string;
   blok_wilayah?: { nama_blok: string; no_rt?: string | null };
+  urgensi?: "RENDAH" | "SEDANG" | "TINGGI";
 }
 
 export interface CreateLaporanPayload {

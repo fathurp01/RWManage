@@ -63,6 +63,7 @@ export interface RtInsidenRecord {
   created_at: string;
   tindakan_diambil?: string | null;
   foto_bukti_url?: string | null;
+  urgensi: "RENDAH" | "SEDANG" | "TINGGI";
 }
 
 export interface RtRondaPetugas {
@@ -142,6 +143,7 @@ export const rtClient = {
     pelapor_nama: string;
     pelapor_no_hp?: string;
     foto_bukti?: File | null;
+    urgensi: "RENDAH" | "SEDANG" | "TINGGI";
   }): Promise<RtInsidenRecord> {
     const formData = new FormData();
     formData.append("tipe_insiden", payload.tipe_insiden);
@@ -151,6 +153,7 @@ export const rtClient = {
     formData.append("pelapor_nama", payload.pelapor_nama);
     if (payload.pelapor_no_hp) formData.append("pelapor_no_hp", payload.pelapor_no_hp);
     if (payload.foto_bukti) formData.append("foto_bukti", payload.foto_bukti);
+    formData.append("urgensi", payload.urgensi);
 
     const res = await api.post<{ data: RtInsidenRecord }>("/rt/laporan-insiden", formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -163,7 +166,47 @@ export const rtClient = {
     return res.data.data;
   },
 
-  async updateInsiden(laporan_id: string, payload: Partial<RtInsidenRecord>): Promise<RtInsidenRecord> {
+  async updateInsiden(
+    laporan_id: string,
+    payload: Partial<RtInsidenRecord> & { foto_bukti?: File | null }
+  ): Promise<RtInsidenRecord> {
+    const hasFile = payload.foto_bukti !== undefined;
+    const hasFields =
+      payload.pelapor_nama !== undefined ||
+      payload.pelapor_no_hp !== undefined ||
+      payload.tipe_insiden !== undefined ||
+      payload.lokasi !== undefined ||
+      payload.deskripsi !== undefined ||
+      payload.urgensi !== undefined ||
+      payload.status !== undefined ||
+      payload.tindakan_diambil !== undefined;
+
+    if (hasFile || hasFields) {
+      const formData = new FormData();
+      if (payload.tipe_insiden !== undefined) formData.append("tipe_insiden", payload.tipe_insiden);
+      if (payload.lokasi !== undefined) formData.append("lokasi", payload.lokasi);
+      if (payload.deskripsi !== undefined) formData.append("deskripsi", payload.deskripsi);
+      if (payload.status !== undefined) formData.append("status", payload.status);
+      if (payload.tindakan_diambil !== undefined && payload.tindakan_diambil !== null) {
+        formData.append("tindakan_diambil", payload.tindakan_diambil);
+      }
+      if (payload.urgensi !== undefined) formData.append("urgensi", payload.urgensi);
+      if (payload.pelapor_nama !== undefined && payload.pelapor_nama !== null) {
+        formData.append("pelapor_nama", payload.pelapor_nama);
+      }
+      if (payload.pelapor_no_hp !== undefined) {
+        formData.append("pelapor_no_hp", payload.pelapor_no_hp || "");
+      }
+      if (payload.foto_bukti) {
+        formData.append("foto_bukti", payload.foto_bukti);
+      }
+
+      const res = await api.patch<{ data: RtInsidenRecord }>(`/rt/laporan-insiden/${laporan_id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return res.data.data;
+    }
+
     const res = await api.patch<{ data: RtInsidenRecord }>(`/rt/laporan-insiden/${laporan_id}`, payload);
     return res.data.data;
   },

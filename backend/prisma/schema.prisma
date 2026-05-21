@@ -357,6 +357,7 @@ model LaporanInsiden {
   lokasi                  String
   deskripsi               String        @db.Text
   status                  StatusInsiden @default(LAPORAN)
+  urgensi                 String        @default("RENDAH")
   pelapor_nama            String
   pelapor_no_hp           String?
   foto_bukti_url          String?

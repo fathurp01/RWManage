@@ -30,7 +30,8 @@ import {
   ChevronRight,
   X,
   Eye,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from "lucide-react";
 
 export default function RtInsidenPage() {
@@ -62,11 +63,14 @@ export default function RtInsidenPage() {
   const [pelaporNoHp, setPelaporNoHp] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string>("");
+  const [urgensi, setUrgensi] = useState<"RENDAH" | "SEDANG" | "TINGGI">("RENDAH");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Detail Status Update State
   const [updateStatus, setUpdateStatus] = useState<RtStatusInsiden>("LAPORAN");
   const [tindakan, setTindakan] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   // Clean file names when closing modal
   useEffect(() => {
@@ -98,7 +102,7 @@ export default function RtInsidenPage() {
       setLoading(true);
       const data = await rtClient.listInsiden();
       setReports(data);
-      
+
       // Update selected report if it is currently open
       setSelectedReport((prev) => {
         if (!prev) return null;
@@ -124,6 +128,7 @@ export default function RtInsidenPage() {
     setPelaporNama("");
     setPelaporNoHp("");
     setFile(null);
+    setUrgensi("RENDAH");
     setModalOpen(true);
   };
 
@@ -135,6 +140,7 @@ export default function RtInsidenPage() {
     setPelaporNama(incident.pelapor_nama);
     setPelaporNoHp(incident.pelapor_no_hp || "");
     setFile(null);
+    setUrgensi(incident.urgensi || "RENDAH");
     setDetailOpen(false); // Close detail when editing
     setModalOpen(true);
   };
@@ -144,12 +150,17 @@ export default function RtInsidenPage() {
       toast.error("Mohon lengkapi field wajib");
       return;
     }
+    setIsSubmitting(true);
     try {
       if (isEdit && selectedReport) {
         await rtClient.updateInsiden(selectedReport.id, {
           tipe_insiden: judul,
           lokasi,
           deskripsi,
+          urgensi,
+          pelapor_nama: pelaporNama,
+          pelapor_no_hp: pelaporNoHp || null,
+          foto_bukti: file,
         });
         toast.success("Laporan berhasil diperbarui");
       } else {
@@ -161,6 +172,7 @@ export default function RtInsidenPage() {
           pelapor_nama: pelaporNama,
           pelapor_no_hp: pelaporNoHp || undefined,
           foto_bukti: file,
+          urgensi,
         });
         toast.success("Laporan berhasil dikirim");
       }
@@ -168,6 +180,8 @@ export default function RtInsidenPage() {
       load();
     } catch (err) {
       toast.error(getApiError(err).message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -188,6 +202,7 @@ export default function RtInsidenPage() {
 
   const handleUpdateStatus = async () => {
     if (!selectedReport) return;
+    setIsUpdatingStatus(true);
     try {
       await rtClient.updateInsiden(selectedReport.id, {
         status: updateStatus,
@@ -197,6 +212,8 @@ export default function RtInsidenPage() {
       load();
     } catch (err) {
       toast.error(getApiError(err).message);
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -208,7 +225,12 @@ export default function RtInsidenPage() {
   };
 
   // Urgency detection helpers
-  const getUrgency = (tipe: string, deskripsi: string): { label: string; color: string; bg: string } => {
+  const getUrgency = (tipe: string, deskripsi: string, storedUrgency?: string): { label: string; color: string; bg: string } => {
+    const u = (storedUrgency || "").toUpperCase();
+    if (u === "TINGGI") return { label: "Tinggi", color: "text-rose-700 dark:text-rose-400", bg: "bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-950/30" };
+    if (u === "SEDANG") return { label: "Sedang", color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-50 border border-amber-200 text-amber-700 dark:bg-amber-950/30" };
+    if (u === "RENDAH") return { label: "Rendah", color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-950/30" };
+
     const t = (tipe || "").toLowerCase();
     const d = (deskripsi || "").toLowerCase();
 
@@ -291,7 +313,7 @@ export default function RtInsidenPage() {
     if (status === "PROSES") return "!bg-amber-50/70 !border-amber-300 !text-amber-700 hover:!bg-amber-100/80 dark:!bg-amber-950/20 dark:!border-amber-900/50 dark:!text-amber-400 font-extrabold shadow-sm";
     if (status === "SELESAI") return "!bg-emerald-50/70 !border-emerald-300 !text-emerald-700 hover:!bg-emerald-100/80 dark:!bg-emerald-950/20 dark:!border-emerald-900/50 dark:!text-emerald-400 font-extrabold shadow-sm";
     if (status === "DITUTUP") return "!bg-slate-50/70 !border-slate-300 !text-slate-600 hover:!bg-slate-100/80 dark:!bg-slate-800/20 dark:!border-slate-700/50 dark:!text-slate-400 font-extrabold shadow-sm";
-    return "!bg-white !border-slate-200 dark:!border-slate-800 !text-slate-600 dark:!text-slate-400 hover:!border-indigo-300 hover:!bg-slate-50/40 font-semibold";
+    return "!bg-white !border-slate-200 dark:!border-slate-800 !text-slate-600 dark:!text-slate-400 hover:!border-cyan-300 hover:!bg-slate-50/40 font-semibold";
   };
 
   const getStatusTriggerIcon = (status: string) => {
@@ -300,7 +322,7 @@ export default function RtInsidenPage() {
     if (status === "PROSES") return <Clock className={`${size} text-amber-500`} />;
     if (status === "SELESAI") return <CheckCircle2 className={`${size} text-emerald-500`} />;
     if (status === "DITUTUP") return <CheckCircle2 className={`${size} text-slate-500`} />;
-    return <Filter className={`${size} text-indigo-500`} />;
+    return <Filter className={`${size} text-cyan-500`} />;
   };
 
   // Dynamic Select Trigger styling to match active urgency theme
@@ -308,7 +330,7 @@ export default function RtInsidenPage() {
     if (urgency === "TINGGI") return "!bg-rose-50/70 !border-rose-300 !text-rose-700 hover:!bg-rose-100/80 dark:!bg-rose-950/20 dark:!border-rose-900/50 dark:!text-rose-400 font-extrabold shadow-sm";
     if (urgency === "SEDANG") return "!bg-amber-50/70 !border-amber-300 !text-amber-700 hover:!bg-amber-100/80 dark:!bg-amber-950/20 dark:!border-amber-900/50 dark:!text-amber-400 font-extrabold shadow-sm";
     if (urgency === "RENDAH") return "!bg-blue-50/70 !border-blue-300 !text-blue-700 hover:!bg-blue-100/80 dark:!bg-blue-950/20 dark:!border-blue-900/50 dark:!text-blue-400 font-extrabold shadow-sm";
-    return "!bg-white !border-slate-200 dark:!border-slate-800 !text-slate-600 dark:!text-slate-400 hover:!border-indigo-300 hover:!bg-slate-50/40 font-semibold";
+    return "!bg-white !border-slate-200 dark:!border-slate-800 !text-slate-600 dark:!text-slate-400 hover:!border-cyan-300 hover:!bg-slate-50/40 font-semibold";
   };
 
   const getUrgencyTriggerIcon = (urgency: string) => {
@@ -316,7 +338,7 @@ export default function RtInsidenPage() {
     if (urgency === "TINGGI") return <AlertTriangle className={`${size} text-rose-500`} />;
     if (urgency === "SEDANG") return <Clock className={`${size} text-amber-500`} />;
     if (urgency === "RENDAH") return <CheckCircle2 className={`${size} text-blue-500`} />;
-    return <Filter className={`${size} text-indigo-500`} />;
+    return <Filter className={`${size} text-cyan-500`} />;
   };
 
   // Filter & Search Logic
@@ -343,7 +365,7 @@ export default function RtInsidenPage() {
 
     // 3. Filter Urgency
     if (filterUrgency !== "all") {
-      const urgencyLabel = getUrgency(report.tipe_insiden, report.deskripsi).label.toUpperCase();
+      const urgencyLabel = getUrgency(report.tipe_insiden, report.deskripsi, report.urgensi).label.toUpperCase();
       if (urgencyLabel !== filterUrgency) {
         return false;
       }
@@ -380,11 +402,11 @@ export default function RtInsidenPage() {
       {/* ── Page Header ── */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30">
+          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-sm shadow-cyan-500/30">
             <ShieldAlert className="size-6" />
           </span>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-foreground">
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
               Manajemen Laporan Kejadian
             </h1>
             <p className="text-sm text-slate-500 dark:text-muted-foreground">
@@ -393,8 +415,11 @@ export default function RtInsidenPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-          <Button onClick={handleOpenCreate} className="gap-2 h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300 font-bold">
-            <Plus className="size-4.5 text-white" /> Buat Laporan Baru
+          <Button
+            onClick={handleOpenCreate}
+            className="h-10 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold shadow-md shadow-cyan-500/20 hover:shadow-lg transition-all text-xs flex items-center gap-1.5"
+          >
+            <Plus className="size-4 text-white" /> Buat Laporan Baru
           </Button>
         </div>
       </header>
@@ -412,49 +437,58 @@ export default function RtInsidenPage() {
       {/* ── Summary Metrics ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Total Laporan Baru */}
-        <div className="rounded-3xl border border-slate-200/80 border-t-4 border-t-rose-500 bg-white p-5 shadow-xs relative overflow-hidden flex items-center justify-between dark:bg-slate-950 dark:border-slate-800">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Laporan Baru</p>
-            <h3 className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1 tabular-nums">
-              {totalLaporanBaru} <span className="text-xs font-bold text-slate-400 uppercase tracking-normal">Laporan</span>
-            </h3>
+        <div className="relative overflow-hidden rounded-3xl border border-rose-200/50 dark:border-rose-950/30 bg-white dark:bg-card shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+          <div className="absolute top-0 left-0 right-0 h-1 rounded-t-3xl bg-gradient-to-r from-rose-500 to-rose-600" />
+          <div className="p-5 pt-6 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Laporan Baru</p>
+              <h3 className="text-2xl font-black tabular-nums text-rose-700 dark:text-rose-400 tracking-tight truncate">
+                {totalLaporanBaru} <span className="text-xs font-bold text-slate-400 uppercase tracking-normal">Laporan</span>
+              </h3>
+            </div>
+            <span className="inline-flex size-10 items-center justify-center rounded-2xl shrink-0 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-455 shadow-sm">
+              <AlertTriangle className="size-5" />
+            </span>
           </div>
-          <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-500 dark:bg-rose-950/50">
-            <AlertTriangle className="size-5.5" />
-          </span>
         </div>
 
         {/* Sedang Ditangani */}
-        <div className="rounded-3xl border border-slate-200/80 border-t-4 border-t-amber-500 bg-white p-5 shadow-xs relative overflow-hidden flex items-center justify-between dark:bg-slate-950 dark:border-slate-800">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Sedang Ditangani</p>
-            <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1 tabular-nums">
-              {sedangDitangani} <span className="text-xs font-bold text-slate-400 uppercase tracking-normal">Laporan</span>
-            </h3>
+        <div className="relative overflow-hidden rounded-3xl border border-amber-200/50 dark:border-amber-950/30 bg-white dark:bg-card shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+          <div className="absolute top-0 left-0 right-0 h-1 rounded-t-3xl bg-gradient-to-r from-amber-500 to-orange-600" />
+          <div className="p-5 pt-6 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Sedang Ditangani</p>
+              <h3 className="text-2xl font-black tabular-nums text-amber-700 dark:text-amber-400 tracking-tight truncate">
+                {sedangDitangani} <span className="text-xs font-bold text-slate-400 uppercase tracking-normal">Laporan</span>
+              </h3>
+            </div>
+            <span className="inline-flex size-10 items-center justify-center rounded-2xl shrink-0 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-450 shadow-sm">
+              <Clock className="size-5" />
+            </span>
           </div>
-          <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/50">
-            <Clock className="size-5.5" />
-          </span>
         </div>
 
         {/* Selesai Bulan Ini */}
-        <div className="rounded-3xl border border-slate-200/80 border-t-4 border-t-emerald-500 bg-white p-5 shadow-xs relative overflow-hidden flex items-center justify-between dark:bg-slate-950 dark:border-slate-800">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Selesai Bulan Ini</p>
-            <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">
-              {selesaiBulanIni} <span className="text-xs font-bold text-slate-400 uppercase tracking-normal">Laporan</span>
-            </h3>
+        <div className="relative overflow-hidden rounded-3xl border border-emerald-200/50 dark:border-emerald-950/30 bg-white dark:bg-card shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+          <div className="absolute top-0 left-0 right-0 h-1 rounded-t-3xl bg-gradient-to-r from-emerald-500 to-teal-600" />
+          <div className="p-5 pt-6 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Selesai Bulan Ini</p>
+              <h3 className="text-2xl font-black tabular-nums text-emerald-700 dark:text-emerald-450 tracking-tight truncate">
+                {selesaiBulanIni} <span className="text-xs font-bold text-slate-400 uppercase tracking-normal">Laporan</span>
+              </h3>
+            </div>
+            <span className="inline-flex size-10 items-center justify-center rounded-2xl shrink-0 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 shadow-sm">
+              <CheckCircle2 className="size-5" />
+            </span>
           </div>
-          <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-500 dark:bg-emerald-950/50">
-            <CheckCircle2 className="size-5.5" />
-          </span>
         </div>
       </div>
 
       {/* ── Search & Filter Panel ── */}
       <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm space-y-3 dark:bg-slate-900 dark:border-slate-800">
         <p className="text-sm font-bold text-slate-700 dark:text-slate-350 flex items-center gap-2">
-          <Search className="size-4 text-indigo-500" />
+          <Search className="size-4 text-cyan-500" />
           Cari & Saring Laporan Kejadian
         </p>
         <div className="flex flex-col md:flex-row gap-3">
@@ -531,7 +565,10 @@ export default function RtInsidenPage() {
         /* ── Flattened Incidents Table Card ── */
         <Card className="rounded-3xl border border-slate-200/70 bg-white shadow-sm overflow-hidden dark:bg-slate-900 dark:border-slate-800">
           <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4 px-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 shrink-0">
+                <ShieldAlert className="size-5.5" />
+              </span>
               <div>
                 <CardTitle className="text-base font-bold text-slate-800 dark:text-foreground">
                   Daftar Kasus Laporan Keamanan
@@ -568,7 +605,7 @@ export default function RtInsidenPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                 {paginatedReports.map((report) => {
-                  const urgency = getUrgency(report.tipe_insiden, report.deskripsi);
+                  const urgency = getUrgency(report.tipe_insiden, report.deskripsi, report.urgensi);
                   const isDelayed = isDelayedReport(report.status, report.tanggal_insiden);
 
                   return (
@@ -591,15 +628,15 @@ export default function RtInsidenPage() {
                       </td>
 
                       {/* Detail Kejadian */}
-                      <td className="py-4.5 px-4 align-middle">
+                      <td className="py-4.5 px-4 align-middle max-w-[300px]">
                         <div className="flex flex-col gap-1">
-                          <span className="text-sm font-bold text-slate-800 dark:text-foreground">
+                          <span className="text-sm font-bold text-slate-800 dark:text-foreground break-words line-clamp-1">
                             {report.tipe_insiden}
                           </span>
-                          <span className="text-xs text-slate-400 dark:text-slate-500 font-medium whitespace-pre-wrap leading-relaxed line-clamp-2">
+                          <span className="text-xs text-slate-400 dark:text-slate-500 font-medium whitespace-pre-wrap leading-relaxed line-clamp-2 break-all">
                             {report.deskripsi}
                           </span>
-                          <div className="flex items-center gap-1 text-xs text-slate-400 mt-1 font-medium">
+                          <div className="flex items-center gap-1 text-xs text-slate-400 mt-1 font-medium break-words">
                             <MapPin className="size-3.5 text-slate-400 shrink-0" />
                             <span className="whitespace-pre-wrap leading-relaxed">{report.lokasi}</span>
                           </div>
@@ -648,9 +685,9 @@ export default function RtInsidenPage() {
                             setSelectedReport(report);
                             setDetailOpen(true);
                           }}
-                          className="gap-1.5 h-8.5 rounded-xl border-slate-200 text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 font-semibold transition-all shrink-0 dark:border-slate-800 dark:text-slate-300"
+                          className="gap-1.5 h-8.5 rounded-xl border-slate-200 text-slate-700 hover:bg-cyan-50 hover:text-cyan-600 hover:border-cyan-200 font-semibold transition-all shrink-0 dark:border-slate-800 dark:text-slate-300"
                         >
-                          <Eye className="size-4" /> Tinjau & Kelola
+                          <Eye className="size-4 text-cyan-500" /> Tinjau & Kelola
                         </Button>
                       </td>
                     </tr>
@@ -678,7 +715,7 @@ export default function RtInsidenPage() {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="h-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-1 text-xs text-slate-700 dark:text-slate-350 outline-none transition-all duration-200 focus-visible:border-indigo-500"
+                      className="h-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-1 text-xs text-slate-700 dark:text-slate-355 outline-none transition-all duration-200 focus-visible:border-cyan-500"
                     >
                       {[5, 10, 20, 50].map((size) => (
                         <option key={size} value={size}>
@@ -730,7 +767,7 @@ export default function RtInsidenPage() {
         <DialogContent showCloseButton={false} className="sm:max-w-3xl rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden p-0 gap-0 animate-in fade-in zoom-in-95 duration-200">
           {/* Header with gradient pattern accent */}
           <div className="relative overflow-hidden bg-slate-50/70 dark:bg-slate-950/40 p-6 pt-7.5 pb-5 pr-14 border-b border-slate-100 dark:border-slate-800">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-500/10 to-violet-500/10 rounded-full blur-2xl" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-full blur-2xl" />
 
             {/* Custom Boxed Close Button */}
             <button
@@ -743,11 +780,8 @@ export default function RtInsidenPage() {
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="font-bold border-indigo-200/80 bg-indigo-50/50 text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-400">
-                    RT - Tinjau & Tindak Lanjut Kejadian
-                  </Badge>
                   {selectedReport && isDelayedReport(selectedReport.status, selectedReport.tanggal_insiden) && (
-                    <Badge className="bg-rose-500 hover:bg-rose-600 text-white border-0 font-extrabold text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-md shadow-sm shadow-rose-500/20 animate-pulse">
+                    <Badge className="bg-rose-500 hover:bg-rose-650 text-white border-0 font-extrabold text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-md shadow-sm shadow-rose-500/20 animate-pulse">
                       Butuh Tindak Lanjut RT
                     </Badge>
                   )}
@@ -755,7 +789,7 @@ export default function RtInsidenPage() {
               </div>
 
               <div className="flex items-center gap-2.5 flex-wrap pr-4">
-                <DialogTitle className="text-xl font-black text-slate-950 dark:text-white tracking-tight leading-none">
+                <DialogTitle className="text-xl font-black text-slate-955 dark:text-white tracking-tight leading-none">
                   {selectedReport?.tipe_insiden}
                 </DialogTitle>
                 {selectedReport && (
@@ -767,8 +801,8 @@ export default function RtInsidenPage() {
 
               {selectedReport && (
                 <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                  <Badge className={`${getUrgency(selectedReport.tipe_insiden, selectedReport.deskripsi).bg} ${getUrgency(selectedReport.tipe_insiden, selectedReport.deskripsi).color} text-[11px] font-extrabold rounded-lg border-0 px-2 py-0.5`}>
-                    Urgensi: {getUrgency(selectedReport.tipe_insiden, selectedReport.deskripsi).label}
+                  <Badge className={`${getUrgency(selectedReport.tipe_insiden, selectedReport.deskripsi, selectedReport.urgensi).bg} ${getUrgency(selectedReport.tipe_insiden, selectedReport.deskripsi, selectedReport.urgensi).color} text-[11px] font-extrabold rounded-lg border-0 px-2 py-0.5`}>
+                    Urgensi: {getUrgency(selectedReport.tipe_insiden, selectedReport.deskripsi, selectedReport.urgensi).label}
                   </Badge>
                 </div>
               )}
@@ -794,22 +828,22 @@ export default function RtInsidenPage() {
                   {/* Deskripsi */}
                   <div>
                     <h4 className="text-sm font-bold flex items-center gap-1.5 mb-2 text-slate-700 dark:text-slate-300">
-                      <FileText className="size-4.5 text-indigo-500 shrink-0" /> Deskripsi Laporan
+                      <FileText className="size-4.5 text-cyan-500 shrink-0" /> Deskripsi Laporan
                     </h4>
-                    <div className="p-4 bg-slate-50/50 dark:bg-slate-955/40 border border-slate-200/50 dark:border-slate-800 rounded-2xl text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium min-h-[100px] max-h-[140px] overflow-y-auto shadow-inner select-text scrollbar-thin">
+                    <div className="p-4 bg-slate-50/50 dark:bg-slate-955/40 border border-slate-200/50 dark:border-slate-800 rounded-2xl text-sm text-slate-700 dark:text-slate-350 leading-relaxed font-medium min-h-[100px] max-h-[140px] overflow-y-auto shadow-inner select-text scrollbar-thin break-all">
                       {selectedReport.deskripsi}
                     </div>
                   </div>
 
                   {/* Foto Bukti */}
                   <div>
-                    <h4 className="text-sm font-bold flex items-center gap-1.5 mb-2 text-slate-700 dark:text-slate-300">
-                      <Eye className="size-4.5 text-indigo-500 shrink-0" /> Bukti Kejadian (Foto)
+                    <h4 className="text-sm font-bold flex items-center gap-1.5 mb-2 text-slate-700 dark:text-slate-350">
+                      <Eye className="size-4.5 text-cyan-500 shrink-0" /> Bukti Kejadian (Foto)
                     </h4>
                     {selectedReport.foto_bukti_url && !imageError ? (
                       <div
                         onClick={() => setProofZoomOpen(true)}
-                        className="group relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-1.5 shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer"
+                        className="group relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 flex items-center justify-center p-1.5 shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer"
                       >
                         <div className="relative w-full h-36 overflow-hidden rounded-xl">
                           <img
@@ -819,7 +853,7 @@ export default function RtInsidenPage() {
                             className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                           />
                           <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 text-slate-800 font-bold text-xs shadow-lg transition-transform hover:scale-105">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 text-slate-850 font-bold text-xs shadow-lg transition-transform hover:scale-105">
                               <Eye className="size-3.5" /> Perbesar Foto
                             </span>
                           </div>
@@ -833,39 +867,51 @@ export default function RtInsidenPage() {
                   </div>
 
                   {/* Perbarui Status Form */}
-                  <div className="p-4 border border-indigo-100 bg-indigo-50/20 dark:bg-indigo-950/10 dark:border-indigo-900/30 rounded-2xl space-y-3">
-                    <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-250 flex items-center gap-1.5">
-                      <Clock className="size-4.5 text-indigo-500" /> Perbarui Status Penanganan
+                  <div className="p-4 border border-cyan-100 bg-cyan-50/20 dark:bg-cyan-950/10 dark:border-cyan-900/30 rounded-2xl space-y-3">
+                    <h4 className="text-sm font-bold text-cyan-900 dark:text-cyan-250 flex items-center gap-1.5">
+                      <Clock className="size-4.5 text-cyan-500" /> Perbarui Status Penanganan
                     </h4>
-                    
+
                     <div className="space-y-3.5">
                       <div className="space-y-1">
-                        <Label className="text-xs font-bold text-indigo-950 dark:text-indigo-200">Status Baru</Label>
-                        <Select value={updateStatus} onValueChange={(val) => setUpdateStatus(val as any)}>
-                          <SelectTrigger className="bg-white dark:bg-slate-900 h-9.5 text-xs">
+                        <Label className="text-xs font-bold text-cyan-950 dark:text-cyan-200">Status Baru</Label>
+                        <Select value={updateStatus} onValueChange={(val) => setUpdateStatus(val as any)} disabled={isUpdatingStatus}>
+                          <SelectTrigger className="bg-white dark:bg-slate-900 h-9.5 text-xs focus:ring-cyan-500">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="LAPORAN">Laporan Baru (Belum Ditangani)</SelectItem>
-                            <SelectItem value="PROSES">Sedang Ditangani</SelectItem>
-                            <SelectItem value="SELESAI">Selesai Ditangani</SelectItem>
-                            <SelectItem value="DITUTUP">Ditutup (Selesai/Batal)</SelectItem>
+                          <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100 dark:border-slate-800">
+                            <SelectItem value="LAPORAN" className="!text-xs !py-2 !px-3 !rounded-lg cursor-pointer">Laporan Baru (Belum Ditangani)</SelectItem>
+                            <SelectItem value="PROSES" className="!text-xs !py-2 !px-3 !rounded-lg cursor-pointer">Sedang Ditangani</SelectItem>
+                            <SelectItem value="SELESAI" className="!text-xs !py-2 !px-3 !rounded-lg cursor-pointer">Selesai Ditangani</SelectItem>
+                            <SelectItem value="DITUTUP" className="!text-xs !py-2 !px-3 !rounded-lg cursor-pointer">Ditutup (Selesai/Batal)</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
 
                       <div className="space-y-1">
-                        <Label className="text-xs font-bold text-indigo-950 dark:text-indigo-200">Tindakan / Solusi yang Diambil</Label>
+                        <Label className="text-xs font-bold text-cyan-955 dark:text-cyan-200">Tindakan / Solusi yang Diambil</Label>
                         <textarea
-                          className="flex min-h-18 max-h-28 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs focus-visible:outline-indigo-500"
+                          className="flex min-h-18 max-h-28 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs focus-visible:outline-cyan-500 focus:ring-cyan-500"
                           placeholder="Tuliskan tindakan atau solusi penanganan..."
                           value={tindakan}
                           onChange={(e) => setTindakan(e.target.value)}
+                          disabled={isUpdatingStatus}
                         />
                       </div>
 
-                      <Button onClick={handleUpdateStatus} className="w-full h-9 rounded-lg text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm">
-                        Simpan Perubahan Status
+                      <Button
+                        onClick={handleUpdateStatus}
+                        disabled={isUpdatingStatus}
+                        className="w-full h-9 rounded-lg text-xs font-bold bg-cyan-600 text-white hover:bg-cyan-700 shadow-sm flex items-center justify-center gap-1.5"
+                      >
+                        {isUpdatingStatus ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                            Menyimpan...
+                          </>
+                        ) : (
+                          "Simpan Perubahan Status"
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -874,7 +920,7 @@ export default function RtInsidenPage() {
                 {/* Right Side: Administrative Info & History */}
                 <div className="space-y-4">
                   {/* Administrative Card */}
-                  <div className="bg-slate-50/50 dark:bg-slate-950/30 border border-slate-200/60 dark:border-slate-800/80 rounded-3xl p-5 shadow-xs flex flex-col justify-between min-h-[220px]">
+                  <div className="bg-slate-50/50 dark:bg-slate-955/30 border border-slate-200/60 dark:border-slate-800/80 rounded-3xl p-5 shadow-xs flex flex-col justify-between min-h-[220px]">
                     <div>
                       <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4 border-b border-slate-200/60 dark:border-slate-800 pb-2.5">
                         Informasi Administratif
@@ -883,7 +929,7 @@ export default function RtInsidenPage() {
                       <div className="space-y-4 text-sm">
                         {/* Waktu */}
                         <div className="flex items-start gap-3">
-                          <span className="inline-flex size-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 shrink-0 mt-0.5 shadow-sm">
+                          <span className="inline-flex size-9 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600 dark:bg-cyan-955/50 dark:text-cyan-400 shrink-0 mt-0.5 shadow-sm">
                             <Calendar className="size-4.5" />
                           </span>
                           <div>
@@ -899,7 +945,7 @@ export default function RtInsidenPage() {
 
                         {/* Lokasi */}
                         <div className="flex items-start gap-3">
-                          <span className="inline-flex size-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-450 shrink-0 mt-0.5 shadow-sm">
+                          <span className="inline-flex size-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-955/50 dark:text-emerald-450 shrink-0 mt-0.5 shadow-sm">
                             <MapPin className="size-4.5" />
                           </span>
                           <div>
@@ -912,7 +958,7 @@ export default function RtInsidenPage() {
 
                         {/* Pelapor */}
                         <div className="flex items-start gap-3">
-                          <span className="inline-flex size-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400 shrink-0 mt-0.5 shadow-sm">
+                          <span className="inline-flex size-9 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600 dark:bg-cyan-950/50 dark:text-cyan-400 shrink-0 mt-0.5 shadow-sm">
                             <User className="size-4.5" />
                           </span>
                           <div>
@@ -926,7 +972,7 @@ export default function RtInsidenPage() {
                         {/* Kontak */}
                         {selectedReport.pelapor_no_hp && (
                           <div className="flex items-start gap-3">
-                            <span className="inline-flex size-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400 shrink-0 mt-0.5 shadow-sm">
+                            <span className="inline-flex size-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-955/50 dark:text-amber-400 shrink-0 mt-0.5 shadow-sm">
                               <Phone className="size-4.5" />
                             </span>
                             <div>
@@ -960,9 +1006,9 @@ export default function RtInsidenPage() {
                       <Button
                         variant="outline"
                         onClick={() => handleOpenEdit(selectedReport)}
-                        className="gap-2 h-10 rounded-xl border-slate-200 hover:bg-slate-50 font-bold dark:border-slate-800 text-xs"
+                        className="gap-2 h-10 rounded-xl border-slate-200 hover:bg-cyan-50 hover:text-cyan-600 hover:border-cyan-200 font-bold dark:border-slate-800 text-xs transition-colors"
                       >
-                        <PencilLine className="size-4 text-indigo-500" /> Edit Laporan
+                        <PencilLine className="size-4 text-cyan-500" /> Edit Laporan
                       </Button>
                       <Button
                         variant="outline"
@@ -1004,7 +1050,8 @@ export default function RtInsidenPage() {
                 placeholder="Contoh: Pencurian, Keributan Warga, Pohon Tumbang"
                 value={judul}
                 onChange={(e) => setJudul(e.target.value)}
-                className="h-10.5 rounded-xl text-sm border-slate-200 focus-visible:ring-indigo-500"
+                disabled={isSubmitting}
+                className="h-10.5 rounded-xl text-sm border-slate-200 focus-visible:ring-cyan-500"
               />
             </div>
             <div className="space-y-1.5">
@@ -1013,74 +1060,101 @@ export default function RtInsidenPage() {
                 placeholder="Detail lokasi spesifik kejadian..."
                 value={lokasi}
                 onChange={(e) => setLokasi(e.target.value)}
-                className="h-10.5 rounded-xl text-sm border-slate-200 focus-visible:ring-indigo-500"
+                disabled={isSubmitting}
+                className="h-10.5 rounded-xl text-sm border-slate-200 focus-visible:ring-cyan-500"
               />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-slate-500 dark:text-slate-350">Deskripsi / Kronologi Kejadian <span className="text-rose-500">*</span></Label>
               <textarea
-                className="min-h-24 w-full rounded-xl border border-slate-200 bg-transparent px-3.5 py-2 text-sm focus-visible:outline-indigo-500 dark:border-slate-800"
+                className="min-h-24 w-full rounded-xl border border-slate-200 bg-transparent px-3.5 py-2 text-sm focus-visible:outline-cyan-500 focus:ring-cyan-500 dark:border-slate-800"
                 placeholder="Jelaskan secara lengkap kronologi singkat kejadian..."
                 value={deskripsi}
                 onChange={(e) => setDeskripsi(e.target.value)}
+                disabled={isSubmitting}
               />
             </div>
-            {!isEdit && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-slate-500 dark:text-slate-350">Nama Pelapor <span className="text-rose-500">*</span></Label>
-                  <Input
-                    placeholder="Nama lengkap pelapor..."
-                    value={pelaporNama}
-                    onChange={(e) => setPelaporNama(e.target.value)}
-                    className="h-10.5 rounded-xl text-sm border-slate-200 focus-visible:ring-indigo-500"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-slate-500 dark:text-slate-350">No HP Pelapor (Opsional)</Label>
-                  <Input
-                    placeholder="08..."
-                    value={pelaporNoHp}
-                    onChange={(e) => setPelaporNoHp(e.target.value)}
-                    className="h-10.5 rounded-xl text-sm border-slate-200 focus-visible:ring-indigo-500"
-                  />
-                </div>
-              </div>
-            )}
-            {!isEdit && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-500 dark:text-slate-350">Urgensi Kejadian <span className="text-rose-500">*</span></Label>
+              <Select value={urgensi} onValueChange={(val) => setUrgensi(val as any)} disabled={isSubmitting}>
+                <SelectTrigger className="h-10.5 rounded-xl text-sm border-slate-200 focus:ring-cyan-500">
+                  <SelectValue placeholder="Pilih tingkat urgensi..." />
+                </SelectTrigger>
+                <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100 dark:border-slate-800">
+                  <SelectItem value="RENDAH" className="!text-sm !py-2 !px-3 !rounded-lg cursor-pointer">Rendah</SelectItem>
+                  <SelectItem value="SEDANG" className="!text-sm !py-2 !px-3 !rounded-lg cursor-pointer">Sedang</SelectItem>
+                  <SelectItem value="TINGGI" className="!text-sm !py-2 !px-3 !rounded-lg cursor-pointer">Tinggi</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-500 dark:text-slate-350">Foto Bukti Kejadian (Opsional)</Label>
-                <div className="relative flex items-center h-10.5 w-full rounded-xl border border-slate-200 bg-white dark:bg-slate-900 px-3.5 py-2 text-sm transition-all duration-200 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/25">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    onChange={(e) => {
-                      const selectedFile = e.target.files?.[0] ?? null;
-                      setFile(selectedFile);
-                      setFileName(selectedFile ? selectedFile.name : "");
-                    }}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  />
-                  <div className="flex items-center gap-2.5 w-full pointer-events-none select-none">
-                    <span className="font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors">
-                      Pilih Foto
-                    </span>
-                    <span className="text-slate-300 dark:text-slate-600 font-light">|</span>
-                    <span className="text-slate-400 dark:text-slate-500 truncate flex-1">
-                      {fileName || "Belum ada file terpilih"}
-                    </span>
-                  </div>
+                <Label className="text-xs font-bold text-slate-500 dark:text-slate-350">Nama Pelapor <span className="text-rose-500">*</span></Label>
+                <Input
+                  placeholder="Nama lengkap pelapor..."
+                  value={pelaporNama}
+                  onChange={(e) => setPelaporNama(e.target.value)}
+                  disabled={isSubmitting}
+                  className="h-10.5 rounded-xl text-sm border-slate-200 focus-visible:ring-cyan-500"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-500 dark:text-slate-350">No HP Pelapor (Opsional)</Label>
+                <Input
+                  placeholder="0859..."
+                  value={pelaporNoHp}
+                  onChange={(e) => setPelaporNoHp(e.target.value)}
+                  disabled={isSubmitting}
+                  className="h-10.5 rounded-xl text-sm border-slate-200 focus-visible:ring-cyan-500"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-500 dark:text-slate-350">
+                Foto Bukti Kejadian {isEdit ? "(Opsional, pilih untuk mengganti)" : "(Opsional)"}
+              </Label>
+              <div className="relative flex items-center h-10.5 w-full rounded-xl border border-slate-200 bg-white dark:bg-slate-900 px-3.5 py-2 text-sm transition-all duration-200 focus-within:border-cyan-500 focus-within:ring-2 focus-within:ring-cyan-500/25">
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  onChange={(e) => {
+                    const selectedFile = e.target.files?.[0] ?? null;
+                    setFile(selectedFile);
+                    setFileName(selectedFile ? selectedFile.name : "");
+                  }}
+                  disabled={isSubmitting}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <div className="flex items-center gap-2.5 w-full pointer-events-none select-none">
+                  <span className="font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors">
+                    Pilih Foto
+                  </span>
+                  <span className="text-slate-300 dark:text-slate-600 font-light">|</span>
+                  <span className="text-slate-400 dark:text-slate-500 truncate flex-1">
+                    {fileName || "Belum ada file terpilih"}
+                  </span>
                 </div>
               </div>
-            )}
+            </div>
           </div>
           <DialogFooter className="pt-2 border-t border-slate-100 dark:border-slate-800 gap-2">
-            <Button variant="outline" onClick={() => setModalOpen(false)} className="rounded-xl h-11 px-5 font-semibold dark:border-slate-800 w-full sm:w-auto">
+            <Button variant="outline" onClick={() => setModalOpen(false)} className="rounded-xl h-11 px-5 font-semibold dark:border-slate-800 w-full sm:w-auto" disabled={isSubmitting}>
               Batal
             </Button>
-            <Button onClick={submit} className="rounded-xl h-11 px-5 font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-md w-full sm:w-auto">
-              {isEdit ? "Simpan Perubahan" : "Kirim Laporan"}
+            <Button
+              onClick={submit}
+              disabled={isSubmitting}
+              className="rounded-xl h-11 px-5 font-bold bg-cyan-600 text-white hover:bg-cyan-700 shadow-md shadow-cyan-500/20 hover:shadow-lg transition-all w-full sm:w-auto flex items-center justify-center gap-1.5"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  Mengirim...
+                </>
+              ) : (
+                isEdit ? "Simpan Perubahan" : "Kirim Laporan"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

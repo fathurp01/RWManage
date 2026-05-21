@@ -10,15 +10,18 @@ interface CreateLaporanBody {
   deskripsi?: string;
   pelapor_nama?: string;
   pelapor_no_hp?: string;
+  urgensi?: string;
 }
 
 interface UpdateLaporanBody {
   tipe_insiden?: string;
-  tanggal_insiden?: string;
   lokasi?: string;
   deskripsi?: string;
   status?: StatusInsiden;
   tindakan_diambil?: string;
+  urgensi?: string;
+  pelapor_nama?: string;
+  pelapor_no_hp?: string | null;
 }
 
 export const createLaporanInsiden = async (
@@ -33,6 +36,7 @@ export const createLaporanInsiden = async (
       deskripsi,
       pelapor_nama,
       pelapor_no_hp,
+      urgensi,
     } = req.body as CreateLaporanBody;
 
     if (
@@ -88,6 +92,7 @@ export const createLaporanInsiden = async (
         pelapor_no_hp: pelapor_no_hp || null,
         foto_bukti_url,
         status: "LAPORAN",
+        urgensi: urgensi || "RENDAH",
       },
     });
 
@@ -186,7 +191,7 @@ export const updateLaporanInsiden = async (
   try {
     const raw = (req.params as Record<string, unknown>)?.laporan_id;
     const laporan_id = Array.isArray(raw) ? raw[0] : (raw as string | undefined);
-    const { tipe_insiden, tanggal_insiden, lokasi, deskripsi, status, tindakan_diambil } =
+    const { tipe_insiden, lokasi, deskripsi, status, tindakan_diambil, urgensi, pelapor_nama, pelapor_no_hp } =
       req.body as UpdateLaporanBody;
 
     if (!laporan_id) {
@@ -233,16 +238,18 @@ export const updateLaporanInsiden = async (
     const updated = await prisma.laporanInsiden.update({
       where: { id: laporan_id },
       data: {
-        ...(tipe_insiden && { tipe_insiden }),
-        ...(tanggal_insiden && { tanggal_insiden: new Date(tanggal_insiden) }),
-        ...(lokasi && { lokasi }),
-        ...(deskripsi && { deskripsi }),
+        ...(tipe_insiden && { tipe_insiden: tipe_insiden.trim() }),
+        ...(lokasi && { lokasi: lokasi.trim() }),
+        ...(deskripsi && { deskripsi: deskripsi.trim() }),
         ...(status && { status }),
         ...(tindakan_diambil && {
-          tindakan_diambil,
+          tindakan_diambil: tindakan_diambil.trim(),
           ditindaklanjuti_tanggal: new Date(),
         }),
         ...(foto_bukti_url && { foto_bukti_url }),
+        ...(urgensi && { urgensi }),
+        ...(pelapor_nama && { pelapor_nama: pelapor_nama.trim() }),
+        ...(pelapor_no_hp !== undefined && { pelapor_no_hp: pelapor_no_hp?.trim() || null }),
       },
     });
 
@@ -429,6 +436,7 @@ export const createLaporanInsidenForRt = async (
       deskripsi,
       pelapor_nama,
       pelapor_no_hp,
+      urgensi,
     } = req.body as CreateLaporanBody;
 
     if (
@@ -494,6 +502,7 @@ export const createLaporanInsidenForRt = async (
         pelapor_no_hp: pelapor_no_hp || null,
         foto_bukti_url,
         status: "LAPORAN",
+        urgensi: urgensi || "RENDAH",
       },
     });
 
@@ -555,7 +564,7 @@ export const getLaporanInsidenListForRt = async (
 
     const laporan = await prisma.laporanInsiden.findMany({
       where: {
-        wilayah_rw_id: blok.wilayah_rw_id,
+        blok_wilayah_id: blok_wilayah_id,
         ...(status && { status }),
         ...(tanggal_mulai && tanggal_akhir
           ? {
@@ -590,7 +599,7 @@ export const updateLaporanInsidenForRt = async (
   try {
     const raw = (req.params as Record<string, unknown>)?.laporan_id;
     const laporan_id = Array.isArray(raw) ? raw[0] : (raw as string | undefined);
-    const { tipe_insiden, tanggal_insiden, lokasi, deskripsi, status, tindakan_diambil } =
+    const { tipe_insiden, lokasi, deskripsi, status, tindakan_diambil, urgensi, pelapor_nama, pelapor_no_hp } =
       req.body as UpdateLaporanBody;
 
     if (!laporan_id) {
@@ -628,7 +637,7 @@ export const updateLaporanInsidenForRt = async (
     const laporan = await prisma.laporanInsiden.findFirst({
       where: {
         id: laporan_id,
-        wilayah_rw_id: blok.wilayah_rw_id,
+        blok_wilayah_id: blok_wilayah_id,
       },
     });
 
@@ -647,16 +656,18 @@ export const updateLaporanInsidenForRt = async (
     const updated = await prisma.laporanInsiden.update({
       where: { id: laporan_id },
       data: {
-        ...(tipe_insiden && { tipe_insiden }),
-        ...(tanggal_insiden && { tanggal_insiden: new Date(tanggal_insiden) }),
-        ...(lokasi && { lokasi }),
-        ...(deskripsi && { deskripsi }),
+        ...(tipe_insiden && { tipe_insiden: tipe_insiden.trim() }),
+        ...(lokasi && { lokasi: lokasi.trim() }),
+        ...(deskripsi && { deskripsi: deskripsi.trim() }),
         ...(status && { status }),
         ...(tindakan_diambil && {
-          tindakan_diambil,
+          tindakan_diambil: tindakan_diambil.trim(),
           ditindaklanjuti_tanggal: new Date(),
         }),
         ...(foto_bukti_url && { foto_bukti_url }),
+        ...(urgensi && { urgensi }),
+        ...(pelapor_nama && { pelapor_nama: pelapor_nama.trim() }),
+        ...(pelapor_no_hp !== undefined && { pelapor_no_hp: pelapor_no_hp?.trim() || null }),
       },
     });
 
@@ -717,7 +728,7 @@ export const deleteLaporanInsidenForRt = async (
     const laporan = await prisma.laporanInsiden.findFirst({
       where: {
         id: laporan_id,
-        wilayah_rw_id: blok.wilayah_rw_id,
+        blok_wilayah_id: blok_wilayah_id,
       },
     });
 
@@ -845,6 +856,7 @@ export const exportLaporanPdf = async (req: Request, res: Response): Promise<voi
     doc.text(`Tipe Insiden: ${laporan.tipe_insiden}`);
     doc.text(`Tanggal Insiden: ${laporan.tanggal_insiden?.toISOString().split('T')[0] || ''}`);
     doc.text(`Lokasi: ${laporan.lokasi}`);
+    doc.text(`Urgensi: ${laporan.urgensi || 'RENDAH'}`);
     doc.moveDown();
 
     doc.text('Deskripsi:');
@@ -1043,7 +1055,7 @@ export const exportGroupedLaporanPdf = async (
           doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(8.5).text(`${itemIdx + 1}. ${item.tipe_insiden}`, 52, boxY + 4);
           
           // Urgency Dynamic Level
-          const urgency = getUrgencyHelper(item.tipe_insiden, item.deskripsi);
+          const urgency = (item as any).urgensi || getUrgencyHelper(item.tipe_insiden, item.deskripsi);
           let urgencyColor = urgency === 'TINGGI' ? '#be123c' : urgency === 'SEDANG' ? '#b45309' : '#1d4ed8';
           doc.fillColor(urgencyColor).font('Helvetica-Bold').fontSize(8).text(`URGENSI: ${urgency}`, 440, boxY + 4);
 

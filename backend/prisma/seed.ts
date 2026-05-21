@@ -736,6 +736,7 @@ async function main() {
     data: [
       {
         wilayah_rw_id: wilayahRwId,
+        blok_wilayah_id: blokA.id,
         tipe_insiden: 'Penerangan jalan mati',
         tanggal_insiden: new Date(currentYear, 1, 10, 19, 30, 0),
         lokasi: 'Gang Melati Blok A',
@@ -747,6 +748,7 @@ async function main() {
       },
       {
         wilayah_rw_id: wilayahRwId,
+        blok_wilayah_id: blokB.id,
         tipe_insiden: 'Genangan air',
         tanggal_insiden: new Date(currentYear, 1, 12, 7, 45, 0),
         lokasi: 'Depan Pos RW',

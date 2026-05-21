@@ -165,6 +165,7 @@ export const createRtLaporanInsidenSchema = z.object({
   deskripsi: z.string().trim().min(5).max(5000),
   pelapor_nama: z.string().trim().min(2).max(150),
   pelapor_no_hp: z.string().trim().min(8).max(20).optional(),
+  urgensi: z.enum(["RENDAH", "SEDANG", "TINGGI"]).default("RENDAH"),
 });
 
 export const getRtLaporanInsidenQuerySchema = z.object({
@@ -181,6 +182,9 @@ export const updateRtLaporanInsidenSchema = z
     deskripsi: z.string().trim().min(5).max(5000).optional(),
     status: z.enum(["LAPORAN", "PROSES", "SELESAI", "DITUTUP"]).optional(),
     tindakan_diambil: z.string().trim().max(1000).optional(),
+    urgensi: z.enum(["RENDAH", "SEDANG", "TINGGI"]).optional(),
+    pelapor_nama: z.string().trim().min(2).max(150).optional(),
+    pelapor_no_hp: z.string().trim().min(8).max(20).optional().nullable(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "Minimal satu field harus dikirim untuk update.",
@@ -520,6 +524,7 @@ export const cekKodeUnikQuerySchema = z.object({
     deskripsi: z.string().trim().min(5).max(5000),
     pelapor_nama: z.string().trim().min(2).max(150),
     pelapor_no_hp: z.string().trim().min(8).max(20).optional(),
+    urgensi: z.enum(["RENDAH", "SEDANG", "TINGGI"]).default("RENDAH"),
   });
 
   export const getLaporanInsidenQuerySchema = z.object({
@@ -535,6 +540,9 @@ export const cekKodeUnikQuerySchema = z.object({
     deskripsi: z.string().trim().min(5).max(5000).optional(),
     status: z.enum(["LAPORAN", "PROSES", "SELESAI", "DITUTUP"]).optional(),
     tindakan_diambil: z.string().trim().max(1000).optional(),
+    urgensi: z.enum(["RENDAH", "SEDANG", "TINGGI"]).optional(),
+    pelapor_nama: z.string().trim().min(2).max(150).optional(),
+    pelapor_no_hp: z.string().trim().min(8).max(20).optional().nullable(),
   }).refine((value) => Object.keys(value).length > 0, {
     message: "Minimal satu field harus dikirim untuk update.",
   });

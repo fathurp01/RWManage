@@ -80,7 +80,12 @@ export default function RwMonitoringLaporanPage() {
   };
 
   // Urgency detection helpers
-  const getUrgency = (tipe: string, deskripsi: string): { label: string; color: string; bg: string } => {
+  const getUrgency = (tipe: string, deskripsi: string, storedUrgency?: string): { label: string; color: string; bg: string } => {
+    const u = (storedUrgency || "").toUpperCase();
+    if (u === "TINGGI") return { label: "Tinggi", color: "text-rose-700 dark:text-rose-400", bg: "bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-950/30" };
+    if (u === "SEDANG") return { label: "Sedang", color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-50 border border-amber-200 text-amber-700 dark:bg-amber-950/30" };
+    if (u === "RENDAH") return { label: "Rendah", color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-950/30" };
+
     const t = (tipe || "").toLowerCase();
     const d = (deskripsi || "").toLowerCase();
 
@@ -154,8 +159,8 @@ export default function RwMonitoringLaporanPage() {
     const noRt = report.blok_wilayah.no_rt
       ? `RT ${report.blok_wilayah.no_rt.padStart(3, '0')}`
       : "";
-    const namaBlok = report.blok_wilayah.nama_blok;
-    return noRt ? `${noRt} (${namaBlok})` : namaBlok;
+    const namaBlok = `Blok ${report.blok_wilayah.nama_blok}`;
+    return noRt ? `${namaBlok} . ${noRt}` : namaBlok;
   };
 
   // Status friendly display mapping
@@ -301,7 +306,7 @@ export default function RwMonitoringLaporanPage() {
 
     // 3. Filter Urgency
     if (filterUrgency !== "all") {
-      const urgencyLabel = getUrgency(report.tipe_insiden, report.deskripsi).label.toUpperCase();
+      const urgencyLabel = getUrgency(report.tipe_insiden, report.deskripsi, report.urgensi).label.toUpperCase();
       if (urgencyLabel !== filterUrgency) {
         return false;
       }
@@ -559,7 +564,7 @@ export default function RwMonitoringLaporanPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                 {paginatedReports.map((report) => {
-                  const urgency = getUrgency(report.tipe_insiden, report.deskripsi);
+                  const urgency = getUrgency(report.tipe_insiden, report.deskripsi, report.urgensi);
                   const isDelayed = isDelayedReport(report.status, report.tanggal_insiden);
 
                   return (
@@ -591,15 +596,15 @@ export default function RwMonitoringLaporanPage() {
                       </td>
 
                       {/* Detail Kejadian */}
-                      <td className="py-4.5 px-4 align-middle">
+                      <td className="py-4.5 px-4 align-middle max-w-[300px]">
                         <div className="flex flex-col gap-1">
-                          <span className="text-sm font-bold text-slate-800 dark:text-foreground">
+                          <span className="text-sm font-bold text-slate-800 dark:text-foreground break-words line-clamp-1">
                             {report.tipe_insiden}
                           </span>
-                          <span className="text-xs text-slate-400 dark:text-slate-500 font-medium whitespace-pre-wrap leading-relaxed">
+                          <span className="text-xs text-slate-400 dark:text-slate-500 font-medium whitespace-pre-wrap leading-relaxed line-clamp-2 break-all">
                             {report.deskripsi}
                           </span>
-                          <div className="flex items-center gap-1 text-xs text-slate-400 mt-1 font-medium">
+                          <div className="flex items-center gap-1 text-xs text-slate-400 mt-1 font-medium break-words">
                             <MapPin className="size-3.5 text-slate-400 shrink-0" />
                             <span className="whitespace-pre-wrap leading-relaxed">{report.lokasi}</span>
                           </div>
@@ -738,9 +743,6 @@ export default function RwMonitoringLaporanPage() {
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="font-bold border-indigo-200/80 bg-indigo-50/50 text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-400">
-                    Tinjau Kejadian
-                  </Badge>
                   {selectedReport && isDelayedReport(selectedReport.status, selectedReport.tanggal_insiden) && (
                     <Badge className="bg-rose-500 hover:bg-rose-600 text-white border-0 font-extrabold text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-md shadow-sm shadow-rose-500/20 animate-pulse">
                       Perlu Tindakan RT
@@ -762,8 +764,8 @@ export default function RwMonitoringLaporanPage() {
 
               {selectedReport && (
                 <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                  <Badge className={`${getUrgency(selectedReport.tipe_insiden, selectedReport.deskripsi).bg} ${getUrgency(selectedReport.tipe_insiden, selectedReport.deskripsi).color} text-[11px] font-extrabold rounded-lg border-0 px-2 py-0.5`}>
-                    Urgensi: {getUrgency(selectedReport.tipe_insiden, selectedReport.deskripsi).label}
+                  <Badge className={`${getUrgency(selectedReport.tipe_insiden, selectedReport.deskripsi, selectedReport.urgensi).bg} ${getUrgency(selectedReport.tipe_insiden, selectedReport.deskripsi, selectedReport.urgensi).color} text-[11px] font-extrabold rounded-lg border-0 px-2 py-0.5`}>
+                    Urgensi: {getUrgency(selectedReport.tipe_insiden, selectedReport.deskripsi, selectedReport.urgensi).label}
                   </Badge>
                   <Badge className="bg-slate-100 border border-slate-200/60 text-slate-600 dark:bg-slate-800 dark:border-slate-700/60 dark:text-slate-350 text-[11px] font-extrabold rounded-lg px-2 py-0.5">
                     Wilayah: {getRtLabel(selectedReport)}
@@ -793,7 +795,7 @@ export default function RwMonitoringLaporanPage() {
                     <h4 className="text-sm font-bold flex items-center gap-1.5 mb-2 text-slate-700 dark:text-slate-300">
                       <FileText className="size-4.5 text-indigo-500 shrink-0" /> Deskripsi Kejadian Laporan
                     </h4>
-                    <div className="p-4.5 bg-slate-50/50 dark:bg-slate-950/40 border border-slate-200/50 dark:border-slate-800 rounded-2xl text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium min-h-[120px] max-h-[160px] overflow-y-auto shadow-inner select-text scrollbar-thin">
+                    <div className="p-4.5 bg-slate-50/50 dark:bg-slate-955/40 border border-slate-200/50 dark:border-slate-800 rounded-2xl text-sm text-slate-700 dark:text-slate-305 leading-relaxed font-medium min-h-[120px] max-h-[160px] overflow-y-auto shadow-inner select-text scrollbar-thin break-all">
                       {selectedReport.deskripsi}
                     </div>
                   </div>

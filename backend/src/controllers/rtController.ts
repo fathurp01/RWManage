@@ -633,7 +633,7 @@ export const getLaporanInsidenForRt = async (req: Request, res: Response): Promi
     const { status, tanggal_mulai, tanggal_akhir } = req.query as { status?: StatusInsiden; tanggal_mulai?: string; tanggal_akhir?: string };
     const data = await prisma.laporanInsiden.findMany({
       where: {
-        wilayah_rw_id: wilayah.id,
+        blok_wilayah_id: blok.id,
         ...(status ? { status } : {}),
         ...(tanggal_mulai && tanggal_akhir
           ? { tanggal_insiden: { gte: new Date(tanggal_mulai), lte: new Date(tanggal_akhir) } }
@@ -667,23 +667,25 @@ export const createLaporanInsidenForRt = async (req: Request, res: Response): Pr
       return;
     }
 
-    const { tipe_insiden, tanggal_insiden, lokasi, deskripsi, pelapor_nama, pelapor_no_hp } = req.body as {
+    const { tipe_insiden, tanggal_insiden, lokasi, deskripsi, pelapor_nama, pelapor_no_hp, urgensi } = req.body as {
       tipe_insiden?: string;
       tanggal_insiden?: string;
       lokasi?: string;
       deskripsi?: string;
       pelapor_nama?: string;
       pelapor_no_hp?: string;
+      urgensi?: string;
     };
 
     if (!tipe_insiden || !tanggal_insiden || !lokasi || !deskripsi || !pelapor_nama) {
-      res.status(400).json({ success: false, message: "tipe_insiden, tanggal_insiden, lokasi, deskripsi, dan pelapor_nama wajib diisi." });
+      res.status(400).json({ success: false, message: "tipe_insiden, tanggal_insiden, lokasi, deskripsi, and pelapor_nama wajib diisi." });
       return;
     }
 
     const foto_bukti_url = (req as any).file?.filename ? `/uploads/${(req as any).file.filename}` : null;
     const created = await prisma.laporanInsiden.create({
       data: {
+        blok_wilayah_id: blok.id,
         wilayah_rw_id: wilayah.id,
         tipe_insiden: tipe_insiden.trim(),
         tanggal_insiden: new Date(tanggal_insiden),
@@ -692,6 +694,7 @@ export const createLaporanInsidenForRt = async (req: Request, res: Response): Pr
         pelapor_nama: pelapor_nama.trim(),
         pelapor_no_hp: pelapor_no_hp?.trim() || null,
         foto_bukti_url,
+        urgensi: urgensi || "RENDAH",
       },
     });
 
@@ -724,18 +727,20 @@ export const updateLaporanInsidenForRt = async (req: Request, res: Response): Pr
     }
 
     const blok = await getRtBlockContext(req);
-    if (!blok || existing.wilayah_rw_id !== blok.wilayah_rw_id) {
+    if (!blok || existing.blok_wilayah_id !== blok.id) {
       res.status(403).json({ success: false, message: "Akses ditolak." });
       return;
     }
 
-    const { tipe_insiden, tanggal_insiden, lokasi, deskripsi, status, tindakan_diambil } = req.body as {
+    const { tipe_insiden, lokasi, deskripsi, status, tindakan_diambil, urgensi, pelapor_nama, pelapor_no_hp } = req.body as {
       tipe_insiden?: string;
-      tanggal_insiden?: string;
       lokasi?: string;
       deskripsi?: string;
       status?: StatusInsiden;
       tindakan_diambil?: string;
+      urgensi?: string;
+      pelapor_nama?: string;
+      pelapor_no_hp?: string | null;
     };
 
     const foto_bukti_url = (req as any).file?.filename ? `/uploads/${(req as any).file.filename}` : undefined;
@@ -744,12 +749,14 @@ export const updateLaporanInsidenForRt = async (req: Request, res: Response): Pr
       where: { id: laporan_id },
       data: {
         ...(tipe_insiden ? { tipe_insiden: tipe_insiden.trim() } : {}),
-        ...(tanggal_insiden ? { tanggal_insiden: new Date(tanggal_insiden) } : {}),
         ...(lokasi ? { lokasi: lokasi.trim() } : {}),
         ...(deskripsi ? { deskripsi: deskripsi.trim() } : {}),
         ...(status ? { status } : {}),
         ...(tindakan_diambil ? { tindakan_diambil: tindakan_diambil.trim(), ditindaklanjuti_tanggal: new Date() } : {}),
         ...(foto_bukti_url ? { foto_bukti_url } : {}),
+        ...(urgensi ? { urgensi } : {}),
+        ...(pelapor_nama ? { pelapor_nama: pelapor_nama.trim() } : {}),
+        ...(pelapor_no_hp !== undefined ? { pelapor_no_hp: pelapor_no_hp?.trim() || null } : {}),
       },
     });
 
@@ -783,7 +790,7 @@ export const deleteLaporanInsidenForRt = async (req: Request, res: Response): Pr
     }
 
     const blok = await getRtBlockContext(req);
-    if (!blok || existing.wilayah_rw_id !== blok.wilayah_rw_id) {
+    if (!blok || existing.blok_wilayah_id !== blok.id) {
       res.status(403).json({ success: false, message: "Akses ditolak." });
       return;
     }
