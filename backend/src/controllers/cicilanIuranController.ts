@@ -310,6 +310,9 @@ export const getCicilanIuranList = async (
       },
       include: {
         iuran: true,
+        pembayaran: {
+          orderBy: { tanggal_bayar: "asc" },
+        },
       },
       orderBy: { created_at: "desc" },
     });
@@ -352,10 +355,30 @@ export const updateCicilanStatus = async (
       return;
     }
 
+    const { nominal } = req.body as { nominal?: number | string };
+    if (nominal === undefined) {
+      res.status(400).json({
+        success: false,
+        message: "Nominal pembayaran wajib diisi.",
+      });
+      return;
+    }
+
+    const nominalNum = Number(nominal);
+    if (isNaN(nominalNum) || nominalNum <= 0) {
+      res.status(400).json({
+        success: false,
+        message: "Nominal pembayaran harus berupa angka positif.",
+      });
+      return;
+    }
+
     const cicilan = await prisma.cicilanIuran.findUnique({
       where: { id: cicilan_id },
       select: {
         id: true,
+        total_cicilan: true,
+        sudah_lunas: true,
         warga: {
           select: {
             nama_kk: true,
@@ -376,6 +399,11 @@ export const updateCicilanStatus = async (
             nominal: true,
           },
         },
+        pembayaran: {
+          select: {
+            nominal: true,
+          },
+        },
       },
     });
 
@@ -383,6 +411,14 @@ export const updateCicilanStatus = async (
       res.status(404).json({
         success: false,
         message: "Cicilan tidak ditemukan.",
+      });
+      return;
+    }
+
+    if (cicilan.sudah_lunas) {
+      res.status(400).json({
+        success: false,
+        message: "Cicilan ini sudah lunas.",
       });
       return;
     }
@@ -405,63 +441,114 @@ export const updateCicilanStatus = async (
       return;
     }
 
+    const totalTerbayar = cicilan.pembayaran.reduce(
+      (acc, p) => acc + Number(p.nominal),
+      0
+    );
+    const totalCicilan = Number(cicilan.total_cicilan);
+    const sisaCicilan = totalCicilan - totalTerbayar;
+
+    if (nominalNum > sisaCicilan + 0.01) {
+      res.status(400).json({
+        success: false,
+        message: `Nominal pembayaran tidak boleh melebihi sisa cicilan (Sisa: Rp ${sisaCicilan.toLocaleString("id-ID")}).`,
+      });
+      return;
+    }
+
+    const isLunas = (totalTerbayar + nominalNum) >= totalCicilan - 0.01;
+    const actualPaymentNominal = isLunas ? sisaCicilan : nominalNum;
+
     const paymentDate = new Date();
     const { randomBytes } = require("crypto");
     const year2 = String(paymentDate.getFullYear()).slice(-2);
     const month2 = String(paymentDate.getMonth() + 1).padStart(2, "0");
-    const suffixIur = randomBytes(3).toString("hex").toUpperCase();
-    const kodeIuran = `IUR-${year2}${month2}-${suffixIur}`;
 
     const suffixKas = randomBytes(3).toString("hex").toUpperCase();
     const kodeKas = `KRT-${year2}${month2}-${suffixKas}`;
 
     const updated = await prisma.$transaction(async (tx) => {
-      const updatedCicilan = await tx.cicilanIuran.update({
-        where: { id: cicilan_id },
-        data: { sudah_lunas: true },
+      // 1. Catat pembayaran cicilan
+      await tx.pembayaranCicilan.create({
+        data: {
+          cicilan_id,
+          nominal: new Prisma.Decimal(actualPaymentNominal),
+          tanggal_bayar: paymentDate,
+          keterangan: `Pembayaran cicilan ke-${cicilan.pembayaran.length + 1}`,
+        },
       });
 
       const pengaturan = await tx.pengaturanIuranRW.findUnique({
         where: { wilayah_rw_id: cicilan.warga.blok_wilayah.wilayah_rw_id },
       });
 
-      const nominalBayar = Number(cicilan.iuran.nominal);
       const pRt = Number(pengaturan?.persen_rt ?? 70);
       const pRw = Number(pengaturan?.persen_rw ?? 30);
 
-      const nominal_kas_rt = new Prisma.Decimal((nominalBayar * pRt) / 100);
-      const nominal_kas_rw = new Prisma.Decimal((nominalBayar * pRw) / 100);
-      const nominalDecimal = new Prisma.Decimal(nominalBayar);
+      // Pembagian 70% (atau persen_rt) langsung masuk ke Kas RT
+      const nominalKasRtForThisPayment = new Prisma.Decimal(actualPaymentNominal).mul(pRt).div(100);
 
-      await tx.iuranWarga.update({
-        where: { id: cicilan.iuran.id },
-        data: {
-          status: StatusIuran.LUNAS,
-          tanggal_bayar: paymentDate,
-          kode_unik: kodeIuran,
-          nominal_kas_rt,
-          nominal_kas_rw,
-          nominal: nominalDecimal,
-        },
-      });
-
+      // 2. Masukkan ke kas RT
       await tx.kasRT.create({
         data: {
           blok_wilayah_id: cicilan.warga.blok_wilayah_id,
           jenis_transaksi: "MASUK",
           tanggal: paymentDate,
-          keterangan: `Cicilan iuran warga ${cicilan.warga.nama_kk} bln ${cicilan.iuran.bulan}/${cicilan.iuran.tahun}`,
-          nominal: nominal_kas_rt,
+          keterangan: `Cicilan parsial iuran warga ${cicilan.warga.nama_kk} bln ${cicilan.iuran.bulan}/${cicilan.iuran.tahun}`,
+          nominal: nominalKasRtForThisPayment,
           kode_unik: kodeKas,
         },
       });
+
+      let updatedCicilan;
+
+      if (isLunas) {
+        // 3. Update status cicilan menjadi lunas
+        updatedCicilan = await tx.cicilanIuran.update({
+          where: { id: cicilan_id },
+          data: { sudah_lunas: true },
+          include: {
+            pembayaran: {
+              orderBy: { tanggal_bayar: "asc" },
+            },
+          },
+        });
+
+        // 4. Update status IuranWarga menjadi LUNAS
+        const suffixIur = randomBytes(3).toString("hex").toUpperCase();
+        const kodeIuran = `IUR-${year2}${month2}-${suffixIur}`;
+
+        const nominalKasRtTotal = new Prisma.Decimal(totalCicilan).mul(pRt).div(100);
+        const nominalKasRwTotal = new Prisma.Decimal(totalCicilan).mul(pRw).div(100);
+
+        await tx.iuranWarga.update({
+          where: { id: cicilan.iuran.id },
+          data: {
+            status: StatusIuran.LUNAS,
+            tanggal_bayar: paymentDate,
+            kode_unik: kodeIuran,
+            nominal_kas_rt: nominalKasRtTotal,
+            nominal_kas_rw: nominalKasRwTotal,
+            nominal: new Prisma.Decimal(totalCicilan),
+          },
+        });
+      } else {
+        updatedCicilan = await tx.cicilanIuran.findUnique({
+          where: { id: cicilan_id },
+          include: {
+            pembayaran: {
+              orderBy: { tanggal_bayar: "asc" },
+            },
+          },
+        });
+      }
 
       return updatedCicilan;
     });
 
     res.status(200).json({
       success: true,
-      message: "Cicilan berhasil ditandai lunas.",
+      message: isLunas ? "Cicilan berhasil dilunasi." : "Pembayaran cicilan berhasil dicatat.",
       data: updated,
     });
   } catch (error) {

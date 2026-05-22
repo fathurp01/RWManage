@@ -18,28 +18,39 @@ const SUPERADMIN_DASHBOARD_PATH = "/dashboard/superadmin";
 const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api").replace(/\/$/, "");
 
 const fetchSessionUser = async (request: NextRequest): Promise<AuthUser | null> => {
-  const cookieHeader = request.headers.get("cookie") ?? "";
+  try {
+    const cookieHeader = request.headers.get("cookie") ?? "";
 
-  const response = await fetch(`${apiBase}/auth/me`, {
-    method: "GET",
-    headers: {
-      cookie: cookieHeader,
-    },
-    cache: "no-store",
-  });
+    // Replace localhost with 127.0.0.1 for server-side fetches inside Middleware 
+    // to avoid Node/Next.js dual-stack IPv4/IPv6 DNS resolution failures (fetch failed)
+    const targetUrl = apiBase.includes("://localhost:")
+      ? `${apiBase.replace("://localhost:", "://127.0.0.1:")}/auth/me`
+      : `${apiBase}/auth/me`;
 
-  if (!response.ok) {
+    const response = await fetch(targetUrl, {
+      method: "GET",
+      headers: {
+        cookie: cookieHeader,
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = (await response.json()) as { data?: { user?: AuthUser } };
+    const user = payload?.data?.user;
+
+    if (!user || !isValidRole(user.role) || !isValidStatusAkun(user.status_akun)) {
+      return null;
+    }
+
+    return user;
+  } catch (error) {
+    console.error("Middleware fetchSessionUser error:", error);
     return null;
   }
-
-  const payload = (await response.json()) as { data?: { user?: AuthUser } };
-  const user = payload?.data?.user;
-
-  if (!user || !isValidRole(user.role) || !isValidStatusAkun(user.status_akun)) {
-    return null;
-  }
-
-  return user;
 };
 
 const redirectToLogin = (request: NextRequest, reason?: string) => {

@@ -17,10 +17,12 @@ interface CreateTransaksiZisBody {
 
 interface GetDashboardZisQuery {
   masjid_id?: string;
+  tahun?: string | number;
 }
 
 interface GetTransaksiZisQuery {
   masjid_id?: string;
+  search?: string;
   start_date?: string;
   end_date?: string;
   page?: string | number;
@@ -357,7 +359,7 @@ export const getDashboardZisWithClient = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { masjid_id } = req.query as GetDashboardZisQuery;
+    const { masjid_id, tahun } = req.query as GetDashboardZisQuery;
 
     const authorizedMasjidId = await getAuthorizedMasjidId(client, req, masjid_id);
     if (!authorizedMasjidId) {
@@ -391,10 +393,27 @@ export const getDashboardZisWithClient = async (
       return;
     }
 
+    let whereTransaksi: Prisma.TransaksiZisWhereInput = { masjid_id: authorizedMasjidId };
+    let whereDistribusi: Prisma.PencatatanDistribusiWhereInput = { masjid_id: authorizedMasjidId };
+
+    if (tahun) {
+      const yr = Number(tahun);
+      const startOfYear = new Date(yr, 0, 1);
+      const endOfYear = new Date(yr, 11, 31, 23, 59, 59, 999);
+      whereTransaksi.waktu_transaksi = {
+        gte: startOfYear,
+        lte: endOfYear,
+      };
+      whereDistribusi.tanggal = {
+        gte: startOfYear,
+        lte: endOfYear,
+      };
+    }
+
     // Aggregate sum + total KK & jiwa
     const [aggregate, countResult] = await Promise.all([
       client.transaksiZis.aggregate({
-        where: { masjid_id: authorizedMasjidId },
+        where: whereTransaksi,
         _sum: {
           total_beras_kg: true,
           nominal_zakat: true,
@@ -419,7 +438,7 @@ export const getDashboardZisWithClient = async (
     // Deduct distributed amounts
     const sumDistribusi = await client.pencatatanDistribusi.groupBy({
       by: ["kategori", "jenis"],
-      where: { masjid_id: authorizedMasjidId },
+      where: whereDistribusi,
       _sum: { nominal: true }
     });
 
@@ -443,11 +462,44 @@ export const getDashboardZisWithClient = async (
     distribusiBerasKg.fisabilillah = Math.max(0, roundTo2(distribusiBerasKg.fisabilillah - used.FISABILILLAH.beras));
     distribusiBerasKg.lainnya = Math.max(0, roundTo2(distribusiBerasKg.lainnya - used.LAINNYA.beras));
 
+    // Extract unique years from all transactions and distributions for this masjid
+    const yearsSet = new Set<number>();
+    const currentYear = new Date().getFullYear();
+    yearsSet.add(currentYear);
+
+    const [allTrxDates, allDistDates] = await Promise.all([
+      client.transaksiZis.findMany({
+        where: { masjid_id: authorizedMasjidId },
+        select: { waktu_transaksi: true },
+      }),
+      client.pencatatanDistribusi.findMany({
+        where: { masjid_id: authorizedMasjidId },
+        select: { tanggal: true },
+      }),
+    ]);
+
+    allTrxDates.forEach((t) => {
+      const yr = new Date(t.waktu_transaksi).getFullYear();
+      if (!Number.isNaN(yr)) {
+        yearsSet.add(yr);
+      }
+    });
+
+    allDistDates.forEach((d) => {
+      const yr = new Date(d.tanggal).getFullYear();
+      if (!Number.isNaN(yr)) {
+        yearsSet.add(yr);
+      }
+    });
+
+    const availableYears = Array.from(yearsSet).sort((a, b) => b - a);
+
     const totalDanaDistribusi = totalUangZakat + totalInfaq;
 
     res.status(200).json({
       success: true,
       message: "Dashboard ZIS berhasil diambil.",
+      years: availableYears,
       data: {
         masjid_id: authorizedMasjidId,
         pengaturan_zis: pengaturan,
@@ -477,7 +529,7 @@ export const getDashboardZisWithClient = async (
         },
       },
     });
-  } catch {
+  } catch (err) {
     res.status(500).json({
       success: false,
       message: "Terjadi kesalahan saat mengambil dashboard ZIS.",
@@ -499,7 +551,7 @@ export const getTransaksiZisList = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { masjid_id, start_date, end_date, page, limit } = req.query as GetTransaksiZisQuery;
+    const { masjid_id, search, start_date, end_date, page, limit } = req.query as GetTransaksiZisQuery;
 
     const authorizedMasjidId = await getAuthorizedMasjidId(prisma, req, masjid_id);
     if (!authorizedMasjidId) {
@@ -525,6 +577,15 @@ export const getTransaksiZisList = async (
               ...(startParsed ? { gte: startParsed } : {}),
               ...(endParsed ? { lte: endParsed } : {}),
             },
+          }
+        : {}),
+      ...(search?.trim()
+        ? {
+            OR: [
+              { nama_kk: { contains: search.trim(), mode: "insensitive" } },
+              { alamat_muzaqi: { contains: search.trim(), mode: "insensitive" } },
+              { kode_unik: { contains: search.trim(), mode: "insensitive" } },
+            ],
           }
         : {}),
     };
@@ -1472,7 +1533,7 @@ export const getPencatatanDistribusiList = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { masjid_id, kategori, jenis } = req.query;
+    const { masjid_id, kategori, jenis, tahun } = req.query;
 
     const authorizedMasjidId = await getAuthorizedMasjidId(prisma, req, masjid_id as string);
     if (!authorizedMasjidId) {
@@ -1480,11 +1541,23 @@ export const getPencatatanDistribusiList = async (
       return;
     }
 
+    let dateFilter = {};
+    if (tahun) {
+      const yr = Number(tahun);
+      dateFilter = {
+        tanggal: {
+          gte: new Date(yr, 0, 1),
+          lte: new Date(yr, 11, 31, 23, 59, 59, 999),
+        },
+      };
+    }
+
     const records = await prisma.pencatatanDistribusi.findMany({
       where: {
         masjid_id: authorizedMasjidId,
         ...(kategori ? { kategori: kategori as any } : {}),
         ...(jenis ? { jenis: jenis as any } : {}),
+        ...dateFilter,
       },
       orderBy: { tanggal: "desc" },
     });

@@ -13,7 +13,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 interface ReceiptPayload {
-  sumber: "iuran_warga" | "kas_rw" | "transaksi_zis";
+  sumber: "iuran_warga" | "kas_rw" | "transaksi_zis" | "kas_rt" | "kas_masjid";
   detail: Record<string, unknown>;
 }
 
@@ -70,10 +70,21 @@ const safeText = (value: unknown): string => {
   return String(value);
 };
 
-const sumberLabels: Record<ReceiptPayload["sumber"], { label: string; variant: "rw" | "masjid" }> = {
+const ensureAbsoluteUrl = (url: unknown): string => {
+  if (!url) return "";
+  const str = String(url).trim();
+  if (/^https?:\/\//i.test(str)) {
+    return str;
+  }
+  return `https://${str}`;
+};
+
+const sumberLabels: Record<ReceiptPayload["sumber"], { label: string; variant: "rw" | "masjid" | "rt" }> = {
   iuran_warga: { label: "Iuran Warga RW", variant: "rw" },
   kas_rw: { label: "Kas RW", variant: "rw" },
   transaksi_zis: { label: "Transaksi ZIS Masjid", variant: "masjid" },
+  kas_rt: { label: "Kas RT", variant: "rt" },
+  kas_masjid: { label: "Kas Masjid", variant: "masjid" },
 };
 
 export default function TransparansiPage() {
@@ -123,7 +134,6 @@ export default function TransparansiPage() {
   const receipt = formState.receipt;
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(/\/api\/?$/, "");
 
-  const selectClass = "h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 dark:border-white/10 px-3.5 py-2.5 text-sm text-foreground outline-none transition-all duration-200 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 disabled:opacity-50";
 
   return (
     <div className="flex flex-col min-h-screen hero-gradient">
@@ -218,8 +228,10 @@ export default function TransparansiPage() {
               {/* Paper header */}
               <div className={cn(
                 "px-6 py-5 text-white text-center transition-colors duration-300",
-                receipt.sumber === "transaksi_zis" 
+                receipt.sumber === "transaksi_zis" || receipt.sumber === "kas_masjid" 
                   ? "bg-linear-to-r from-emerald-600 to-teal-600" 
+                  : receipt.sumber === "kas_rt"
+                  ? "bg-linear-to-r from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/25"
                   : "bg-linear-to-r from-indigo-600 to-violet-600"
               )}>
                 <div className="flex justify-center mb-2">
@@ -288,13 +300,14 @@ export default function TransparansiPage() {
                               </a>,
                             ] as [string, React.ReactNode],
                           ]
-                        : receipt.detail.bukti_url
+                        : []),
+                      ...(receipt.detail.bukti_url
                         ? [
                             [
                               "Bukti Link",
                               <a
                                 key="link"
-                                href={String(receipt.detail.bukti_url)}
+                                href={ensureAbsoluteUrl(receipt.detail.bukti_url)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline break-all"
@@ -303,7 +316,65 @@ export default function TransparansiPage() {
                               </a>,
                             ] as [string, React.ReactNode],
                           ]
-                        : [["Bukti", "Tanpa bukti"] as [string, React.ReactNode]]),
+                        : []),
+                      ...(!receipt.detail.bukti_foto_url && !receipt.detail.bukti_url
+                        ? [["Bukti", "Tanpa bukti"] as [string, React.ReactNode]]
+                        : []),
+                    ]}
+                  />
+                ) : null}
+
+                {receipt.sumber === "kas_rt" ? (
+                  <ReceiptList
+                    items={[
+                      ["Kode Unik", safeText(receipt.detail.kode_unik)],
+                      ["Jenis Transaksi", safeText(receipt.detail.jenis_transaksi)],
+                      ["Nominal", formatCurrency(receipt.detail.nominal)],
+                      ["Tanggal", formatDateTime(receipt.detail.tanggal)],
+                      [
+                        "RT / Blok",
+                        `RT ${safeText(
+                          ((receipt.detail.blok_wilayah as Record<string, unknown>) || {}).no_rt
+                        )} - ${safeText(
+                          ((receipt.detail.blok_wilayah as Record<string, unknown>) || {}).nama_blok
+                        )}`,
+                      ],
+                      ["Keterangan", safeText(receipt.detail.keterangan)],
+                      ...(receipt.detail.bukti_foto_url
+                        ? [
+                            [
+                              "Bukti Foto",
+                              <a
+                                key="bukti-foto"
+                                href={`${baseUrl}${receipt.detail.bukti_foto_url}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-cyan-600 dark:text-cyan-400 font-bold hover:underline"
+                              >
+                                Lihat Foto Bukti →
+                              </a>,
+                            ] as [string, React.ReactNode],
+                          ]
+                        : []),
+                      ...(receipt.detail.bukti_url
+                        ? [
+                            [
+                              "Bukti Link",
+                              <a
+                                key="bukti-link"
+                                href={ensureAbsoluteUrl(receipt.detail.bukti_url)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-cyan-600 dark:text-cyan-400 font-bold hover:underline break-all"
+                              >
+                                {String(receipt.detail.bukti_url)}
+                              </a>,
+                            ] as [string, React.ReactNode],
+                          ]
+                        : []),
+                      ...(!receipt.detail.bukti_foto_url && !receipt.detail.bukti_url
+                        ? [["Bukti", "Tanpa bukti"] as [string, React.ReactNode]]
+                        : []),
                     ]}
                   />
                 ) : null}
@@ -321,6 +392,53 @@ export default function TransparansiPage() {
                       ["Nominal Infaq", formatCurrency(receipt.detail.nominal_infaq)],
                       ["Beras (kg)", safeText(receipt.detail.total_beras_kg)],
                       ["Waktu", formatDateTime(receipt.detail.waktu_transaksi)],
+                    ]}
+                  />
+                ) : null}
+
+                {receipt.sumber === "kas_masjid" ? (
+                  <ReceiptList
+                    items={[
+                      ["Kode Unik", safeText(receipt.detail.kode_unik)],
+                      ["Jenis Transaksi", safeText(receipt.detail.jenis_transaksi)],
+                      ["Nominal", formatCurrency(receipt.detail.nominal)],
+                      ["Tanggal", formatDateTime(receipt.detail.tanggal)],
+                      ["Keterangan", safeText(receipt.detail.keterangan)],
+                      ...(receipt.detail.bukti_foto_url
+                        ? [
+                            [
+                              "Bukti Foto",
+                              <a
+                                key="foto"
+                                href={`${baseUrl}${receipt.detail.bukti_foto_url}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+                              >
+                                Lihat Foto Bukti →
+                              </a>,
+                            ] as [string, React.ReactNode],
+                          ]
+                        : []),
+                      ...(receipt.detail.bukti_url
+                        ? [
+                            [
+                              "Bukti Link",
+                              <a
+                                key="link"
+                                href={ensureAbsoluteUrl(receipt.detail.bukti_url)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline break-all"
+                              >
+                                {String(receipt.detail.bukti_url)}
+                              </a>,
+                            ] as [string, React.ReactNode],
+                          ]
+                        : []),
+                      ...(!receipt.detail.bukti_foto_url && !receipt.detail.bukti_url
+                        ? [["Bukti", "Tanpa bukti"] as [string, React.ReactNode]]
+                        : []),
                     ]}
                   />
                 ) : null}

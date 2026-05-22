@@ -923,7 +923,7 @@ export default function RwMasjidManagementPage() {
                 <SelectValue placeholder="Semua Blok" />
               </SelectTrigger>
               <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100">
-                <SelectItem value="ALL" className="!text-sm !py-2 !px-3 !rounded-lg">Semua Blok</SelectItem>
+                <SelectItem value="ALL" className="!text-sm !py-2 !px-3 !rounded-lg">Semua Blok/RT</SelectItem>
                 {blokOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value} className="!text-sm !py-2 !px-3 !rounded-lg">
                     {option.label}
@@ -931,24 +931,7 @@ export default function RwMasjidManagementPage() {
                 ))}
               </SelectContent>
             </Select>
-            {/* Filter RT */}
-            <Select value={filterRt} onValueChange={setFilterRt}>
-              <SelectTrigger className={`!h-11 !rounded-xl text-sm !w-auto min-w-[140px] font-medium transition-all ${filterRt !== "ALL"
-                ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm"
-                : "!bg-white !border-slate-200 !text-slate-600 hover:!border-indigo-300"
-                }`}>
-                <GitBranch className={`size-4 mr-1 shrink-0 ${filterRt !== "ALL" ? "text-indigo-500" : "text-slate-400"}`} />
-                <SelectValue placeholder="Semua RT" />
-              </SelectTrigger>
-              <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100">
-                <SelectItem value="ALL" className="!text-sm !py-2 !px-3 !rounded-lg">Semua RT</SelectItem>
-                {rtOptions.map((rt) => (
-                  <SelectItem key={rt!} value={rt!} className="!text-sm !py-2 !px-3 !rounded-lg">
-                    RT {rt!.padStart(3, "0")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
             {/* Reset */}
             {isFiltering && (
               <Button

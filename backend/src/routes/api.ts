@@ -139,12 +139,15 @@ import {
   createJadwalRonda,
   updateJadwalRonda,
   deleteJadwalRonda,
+  exportLaporanPdfForRt,
+  exportGroupedLaporanPdfForRt,
   getPetugasForJadwal,
   addPetugasToJadwal,
   removePetugasFromJadwal,
   markPresenceRonda,
   getPresenceForJadwal,
 } from "../controllers/rtController";
+
 import {
   getPengaturanIuranRW,
   getPengaturanIuranHistory,
@@ -162,6 +165,8 @@ import {
   submitSetoran,
   getSetoranForRW,
   approveSetoran,
+  updateSetoranRT,
+  deleteSetoranRT,
 } from "../controllers/setoranIuranController";
 import {
   updateKasRTSchema,
@@ -1115,6 +1120,23 @@ router.delete(
   deleteLaporanInsidenForRt
 );
 router.get(
+  "/rt/laporan-insiden/export-pdf-grouped",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  exportGroupedLaporanPdfForRt
+);
+router.get(
+  "/rt/laporan-insiden/:laporan_id/export-pdf",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateParams(rtLaporanInsidenParamsSchema),
+  exportLaporanPdfForRt
+);
+router.get(
   "/rt/audit-logs",
   rwActionRateLimit,
   verifyToken,
@@ -1178,24 +1200,7 @@ router.post(
   upsertPengaturanIuranRW
 );
 
-// ==================== KAS RT ROUTES ====================
-router.get(
-  "/rt/kas",
-  rwActionRateLimit,
-  verifyToken,
-  checkRole(["RT", "RW"]),
-  checkApproval,
-  getKasRT
-);
-router.post(
-  "/rt/kas",
-  rwActionRateLimit,
-  verifyToken,
-  checkRole(["RT"]),
-  checkApproval,
-  validateBody(createKasRTSchema),
-  createKasRT
-);
+
 router.get(
   "/rw/kas-rt-summary",
   rwActionRateLimit,
@@ -1261,6 +1266,23 @@ router.post(
   checkApproval,
   upload.single("bukti_foto"),
   submitSetoran
+);
+router.put(
+  "/rt/setoran/:setoran_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  upload.single("bukti_foto"),
+  updateSetoranRT
+);
+router.delete(
+  "/rt/setoran/:setoran_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  deleteSetoranRT
 );
 router.get(
   "/rw/setoran-rt",
@@ -1712,6 +1734,7 @@ router.post(
   verifyToken,
   checkRole(["PENGURUS_MASJID"]),
   checkApproval,
+  upload.single("bukti_foto"),
   validateBody(createKasMasjidSchema),
   createKasMasjid
 );
@@ -1730,6 +1753,7 @@ router.patch(
   verifyToken,
   checkRole(["PENGURUS_MASJID"]),
   checkApproval,
+  upload.single("bukti_foto"),
   validateParams(kasMasjidParamsSchema),
   validateBody(updateKasMasjidSchema),
   updateKasMasjid

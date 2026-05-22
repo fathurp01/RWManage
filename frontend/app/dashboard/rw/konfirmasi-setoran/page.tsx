@@ -1,10 +1,55 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { api, getApiError } from "@/lib/axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, CheckCircle2, Clock, MapPin, Receipt, ArrowRight, ChevronLeft, ChevronRight, BadgeCheck } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
+  CheckCircle2,
+  Clock,
+  MapPin,
+  Receipt,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  BadgeCheck,
+  Search,
+  RotateCcw,
+  X,
+} from "lucide-react";
+
+interface BlokWilayah {
+  id: string;
+  nama_blok: string;
+  no_rt: string | null;
+}
+
+interface BlokListResponse {
+  success: boolean;
+  data: {
+    wilayah_rw: {
+      id: string;
+      nama_kompleks: string;
+      no_rw: string;
+    };
+    blok_list: BlokWilayah[];
+  };
+}
 
 interface SetoranItem {
   id: string;
@@ -19,6 +64,43 @@ interface SetoranItem {
   bukti_url: string | null;
 }
 
+const formatAreaCode = (value: string | null | undefined): string => {
+  if (!value) return "-";
+  const normalized = value.trim();
+  if (/^\d+$/.test(normalized)) {
+    const parsed = Number.parseInt(normalized, 10);
+    if (!Number.isNaN(parsed) && parsed >= 0 && parsed <= 99) {
+      return String(parsed).padStart(3, "0");
+    }
+    return String(parsed);
+  }
+  return normalized;
+};
+
+const formatBlokName = (value: string): string => {
+  const trimmed = value.trim();
+  if (/^blok\s+/i.test(trimmed)) return trimmed;
+  return `Blok ${trimmed}`;
+};
+
+const formatBlokLabel = (blok: BlokWilayah) => {
+  const rtPart = blok.no_rt ? `RT ${formatAreaCode(blok.no_rt)}` : "Tanpa RT";
+  return `${formatBlokName(blok.nama_blok)} — ${rtPart}`;
+};
+
+const getProofUrl = (url: string | null | undefined): string => {
+  if (!url) return "";
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api").replace(/\/api\/?$/, "");
+  if (trimmed.startsWith("/")) {
+    return `${apiBaseUrl}${trimmed}`;
+  }
+  return `${apiBaseUrl}/${trimmed}`;
+};
+
 export default function KonfirmasiSetoranPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<SetoranItem[]>([]);
@@ -26,12 +108,23 @@ export default function KonfirmasiSetoranPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
 
+  const [blokList, setBlokList] = useState<BlokWilayah[]>([]);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterBlokId, setFilterBlokId] = useState("ALL");
+
   const itemsPerPage = 3;
   const historyItemsPerPage = 8;
 
   useEffect(() => {
     loadData();
+    loadBlok();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setHistoryPage(1);
+  }, [searchTerm, filterBlokId]);
 
   const loadData = async () => {
     try {
@@ -48,10 +141,21 @@ export default function KonfirmasiSetoranPage() {
     }
   };
 
+  const loadBlok = async () => {
+    try {
+      const response = await api.get<BlokListResponse>("/rw/blok-wilayah");
+      if (response.data.success) {
+        setBlokList(response.data.data.blok_list ?? []);
+      }
+    } catch (error) {
+      console.error("Failed to load blok wilayah:", error);
+    }
+  };
+
   const handleApprove = async (id: string) => {
     try {
       setProcessing(id);
-      const res = await api.post(`/rw/setoran-rt/${id}/approve`);
+      const res = await api.post(`/rw/setoran-rt/${id}/approve`, { status: "TERKONFIRMASI" });
       if (res.data.success) {
         toast.success("Setoran berhasil dikonfirmasi!");
         loadData();
@@ -64,8 +168,49 @@ export default function KonfirmasiSetoranPage() {
     }
   };
 
-  const pendingSetoran = data.filter((s) => s.status === "PENDING");
-  const historySetoran = data.filter((s) => s.status === "TERKONFIRMASI");
+  const blokOptions = useMemo(() => {
+    return blokList.map((blok) => ({
+      value: blok.id,
+      label: formatBlokLabel(blok),
+    }));
+  }, [blokList]);
+
+  const isFiltering = searchTerm !== "" || filterBlokId !== "ALL";
+
+  const filteredData = useMemo(() => {
+    return data.filter((item) => {
+      // Search filter: matches nama_blok, no_rt, nominal, or date
+      const matchSearch = (() => {
+        if (!searchTerm.trim()) return true;
+        const q = searchTerm.toLowerCase();
+        const blokName = item.blok_wilayah.nama_blok.toLowerCase();
+        const rtNum = (item.blok_wilayah.no_rt ?? "").toLowerCase();
+        const nominalStr = String(item.nominal).toLowerCase();
+
+        const dateObj = new Date(item.tanggal_setor);
+        const isInvalidDate = Number.isNaN(dateObj.getTime());
+        const dateStrLong = isInvalidDate ? "" : dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }).toLowerCase();
+        const dateStrShort = isInvalidDate ? "" : dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }).toLowerCase();
+
+        return (
+          blokName.includes(q) ||
+          rtNum.includes(q) ||
+          `rt ${rtNum}`.includes(q) ||
+          nominalStr.includes(q) ||
+          dateStrLong.includes(q) ||
+          dateStrShort.includes(q)
+        );
+      })();
+
+      // Blok filter
+      const matchBlok = filterBlokId === "ALL" || item.blok_wilayah_id === filterBlokId;
+
+      return matchSearch && matchBlok;
+    });
+  }, [data, searchTerm, filterBlokId]);
+
+  const pendingSetoran = useMemo(() => filteredData.filter((s) => s.status === "PENDING"), [filteredData]);
+  const historySetoran = useMemo(() => filteredData.filter((s) => s.status === "TERKONFIRMASI"), [filteredData]);
 
   // Pagination Logic for Pending items (Left Side)
   const totalPages = Math.ceil(pendingSetoran.length / itemsPerPage);
@@ -102,6 +247,8 @@ export default function KonfirmasiSetoranPage() {
         </div>
       </header>
 
+
+
       {/* ── Alert Info Antrean ── */}
       {!loading && pendingSetoran.length > 0 && (
         <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/50 px-4 py-3 shadow-xs">
@@ -111,6 +258,55 @@ export default function KonfirmasiSetoranPage() {
           </p>
         </div>
       )}
+
+      {/* ── Cari & Saring Setoran (styled like masjid page) ── */}
+      <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm space-y-3">
+        <p className="text-sm font-bold text-slate-700 flex items-center gap-2">
+          <Search className="size-4 text-indigo-500" />
+          Cari & Saring Setoran
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Search */}
+          <div className="relative flex-1 min-w-0">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Cari nama blok, RT, nominal, atau tanggal..."
+              className="pl-10 h-11 rounded-xl text-base w-full"
+            />
+          </div>
+          {/* Filter blok */}
+          <Select value={filterBlokId} onValueChange={setFilterBlokId}>
+            <SelectTrigger className={`!h-11 !rounded-xl text-sm !w-auto min-w-[170px] font-medium transition-all ${filterBlokId !== "ALL"
+              ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm"
+              : "!bg-white !border-slate-200 !text-slate-600 hover:!border-indigo-300"
+              }`}>
+              <MapPin className={`size-4 mr-1 shrink-0 ${filterBlokId !== "ALL" ? "text-indigo-500" : "text-slate-400"}`} />
+              <SelectValue placeholder="Semua Blok" />
+            </SelectTrigger>
+            <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100">
+              <SelectItem value="ALL" className="!text-sm !py-2 !px-3 !rounded-lg">Semua Blok / RT</SelectItem>
+              {blokOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value} className="!text-sm !py-2 !px-3 !rounded-lg">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {/* Reset */}
+          {isFiltering && (
+            <Button
+              variant="outline"
+              onClick={() => { setSearchTerm(""); setFilterBlokId("ALL"); }}
+              className="h-11 px-4 rounded-xl text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100 hover:border-rose-300 shrink-0 font-semibold shadow-sm transition-all"
+            >
+              <RotateCcw className="size-4 mr-2" />
+              Reset
+            </Button>
+          )}
+        </div>
+      </div>
 
       {loading ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center shadow-sm">
@@ -213,14 +409,35 @@ export default function KonfirmasiSetoranPage() {
                     <div className="bg-slate-50 border-t border-slate-100 px-4.5 py-2.5 flex items-center justify-between gap-3">
                       <div>
                         {item.bukti_url && (
-                          <a
-                            href={item.bukti_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-[13px] font-bold text-slate-700 hover:text-slate-900 transition-colors bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs"
-                          >
-                            <Receipt className="size-3.5 text-slate-500" /> Lihat Bukti
-                          </a>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1.5 text-[13px] font-bold text-slate-700 hover:text-slate-900 transition-colors bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs cursor-pointer outline-none"
+                              >
+                                <Receipt className="size-3.5 text-slate-500" /> Lihat Bukti
+                              </button>
+                            </DialogTrigger>
+                            <DialogContent showCloseButton={false} className="max-w-[90vw] md:max-w-4xl p-0 bg-transparent border-none ring-0 shadow-none focus:outline-none flex items-center justify-center">
+                              <DialogTitle className="sr-only">Bukti Transfer</DialogTitle>
+                              <div className="relative max-w-full max-h-[85vh] overflow-hidden rounded-2xl">
+                                <img
+                                  src={getProofUrl(item.bukti_url)}
+                                  alt="Bukti Transfer"
+                                  className="max-h-[85vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
+                                />
+                                <DialogClose asChild>
+                                  <button
+                                    type="button"
+                                    className="absolute top-4 right-4 z-50 inline-flex size-9 items-center justify-center rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-xs transition-all border border-white/10 cursor-pointer outline-none"
+                                  >
+                                    <X className="size-4.5" />
+                                    <span className="sr-only">Close</span>
+                                  </button>
+                                </DialogClose>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         )}
                       </div>
                       <Button

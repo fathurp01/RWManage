@@ -44,7 +44,7 @@ export const authRateLimit = createLimiter(
   "Terlalu banyak percobaan autentikasi. Coba lagi nanti."
 );
 
-export const loginRateLimit = createStrictLimiter(
+export const loginRateLimit = createLimiter(
   15 * 60 * 1000,
   5,
   "Terlalu banyak percobaan. Silakan coba lagi dalam 15 menit."

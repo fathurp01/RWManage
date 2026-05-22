@@ -31,8 +31,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
-import { Pencil, Trash2, BookOpenText, TrendingUp, TrendingDown, Wallet, Search, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Pencil, Trash2, BookOpenText, TrendingUp, TrendingDown, Wallet, Search, Plus, ChevronLeft, ChevronRight, Calendar, RotateCcw, X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface KasItem {
   id: string;
@@ -77,6 +85,28 @@ const toDateInputValue = (value: string) => {
   return parsed.toISOString().slice(0, 10);
 };
 
+const ensureAbsoluteUrl = (url: string | null | undefined): string => {
+  if (!url) return "";
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+};
+
+const getProofUrl = (url: string | null | undefined): string => {
+  if (!url) return "";
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(/\/api\/?$/, "");
+  if (trimmed.startsWith("/")) {
+    return `${apiBaseUrl}${trimmed}`;
+  }
+  return `${apiBaseUrl}/${trimmed}`;
+};
+
 const formatDate = (value: string) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -109,7 +139,8 @@ export default function KasRwDashboardPage() {
 
   const [kasItems, setKasItems] = useState<KasItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeSearch, setActiveSearch] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [selectedYear, setSelectedYear] = useState<string>("");
   const [summary, setSummary] = useState({
     total_masuk: 0,
     total_keluar: 0,
@@ -123,22 +154,134 @@ export default function KasRwDashboardPage() {
   const [pageSize, setPageSize] = useState(10);
   const [showAddForm, setShowAddForm] = useState(false);
 
+  const monthNames = [
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
+  ];
+
+  const getCardLabel = useCallback((baseLabel: string) => {
+    if (selectedMonth !== "" && selectedYear !== "") {
+      return `${baseLabel} ${monthNames[Number(selectedMonth)]} ${selectedYear}`;
+    }
+    if (selectedMonth !== "") {
+      return `${baseLabel} Bulan ${monthNames[Number(selectedMonth)]}`;
+    }
+    if (selectedYear !== "") {
+      return `${baseLabel} Tahun ${selectedYear}`;
+    }
+    const currentYear = new Date().getFullYear();
+    return `${baseLabel} Tahun ${currentYear}`;
+  }, [selectedMonth, selectedYear]);
+
+  const yearOptions = useMemo(() => {
+    const yearsSet = new Set<number>();
+    kasItems.forEach((item) => {
+      const parsed = new Date(item.tanggal);
+      if (!Number.isNaN(parsed.getTime())) {
+        yearsSet.add(parsed.getFullYear());
+      }
+    });
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  }, [kasItems]);
+
+  const totalMasukFiltered = useMemo(() => {
+    return kasItems
+      .filter((item) => {
+        if (item.jenis_transaksi !== "MASUK") return false;
+        const dateObj = new Date(item.tanggal);
+        if (Number.isNaN(dateObj.getTime())) return false;
+        const itemMonth = dateObj.getMonth();
+        const itemYear = dateObj.getFullYear();
+
+        const isFilterActive = selectedMonth !== "" || selectedYear !== "";
+
+        if (isFilterActive) {
+          if (selectedMonth !== "" && itemMonth !== Number(selectedMonth)) return false;
+          if (selectedYear !== "" && itemYear !== Number(selectedYear)) return false;
+        } else {
+          // Default ke tahun sekarang jika filter tidak aktif
+          const currentYear = new Date().getFullYear();
+          if (itemYear !== currentYear) return false;
+        }
+        return true;
+      })
+      .reduce((acc, item) => acc + Number(item.nominal || 0), 0);
+  }, [kasItems, selectedMonth, selectedYear]);
+
+  const totalKeluarFiltered = useMemo(() => {
+    return kasItems
+      .filter((item) => {
+        if (item.jenis_transaksi !== "KELUAR") return false;
+        const dateObj = new Date(item.tanggal);
+        if (Number.isNaN(dateObj.getTime())) return false;
+        const itemMonth = dateObj.getMonth();
+        const itemYear = dateObj.getFullYear();
+
+        const isFilterActive = selectedMonth !== "" || selectedYear !== "";
+
+        if (isFilterActive) {
+          if (selectedMonth !== "" && itemMonth !== Number(selectedMonth)) return false;
+          if (selectedYear !== "" && itemYear !== Number(selectedYear)) return false;
+        } else {
+          // Default ke tahun sekarang jika filter tidak aktif
+          const currentYear = new Date().getFullYear();
+          if (itemYear !== currentYear) return false;
+        }
+        return true;
+      })
+      .reduce((acc, item) => acc + Number(item.nominal || 0), 0);
+  }, [kasItems, selectedMonth, selectedYear]);
+
+  const filteredItems = useMemo(() => {
+    return kasItems.filter((item) => {
+      // Date filters
+      const dateObj = new Date(item.tanggal);
+      if (Number.isNaN(dateObj.getTime())) return false;
+      const itemMonth = dateObj.getMonth();
+      const itemYear = dateObj.getFullYear();
+
+      if (selectedMonth !== "" && itemMonth !== Number(selectedMonth)) return false;
+      if (selectedYear !== "" && itemYear !== Number(selectedYear)) return false;
+
+      // Search term filter
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        const matchesSearch =
+          item.keterangan.toLowerCase().includes(term) ||
+          item.kode_unik.toLowerCase().includes(term);
+        if (!matchesSearch) return false;
+      }
+
+      return true;
+    });
+  }, [kasItems, selectedMonth, selectedYear, searchTerm]);
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [kasItems.length, activeSearch]);
+  }, [filteredItems.length]);
 
   const paginatedItems = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     const end = start + pageSize;
-    return kasItems.slice(start, end);
-  }, [kasItems, currentPage, pageSize]);
+    return filteredItems.slice(start, end);
+  }, [filteredItems, currentPage, pageSize]);
 
   const totalPages = useMemo(() => {
-    return Math.max(1, Math.ceil(kasItems.length / pageSize));
-  }, [kasItems.length, pageSize]);
+    return Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  }, [filteredItems.length, pageSize]);
 
   const fetchKas = useCallback(
-    async (search: string) => {
+    async () => {
       if (!wilayahRwId) {
         return;
       }
@@ -148,7 +291,6 @@ export default function KasRwDashboardPage() {
         const response = await api.get<KasResponse>("/rw/kas", {
           params: {
             wilayah_rw_id: wilayahRwId,
-            ...(search.trim() ? { search: search.trim() } : {}),
           },
         });
 
@@ -173,7 +315,7 @@ export default function KasRwDashboardPage() {
       return;
     }
 
-    fetchKas("").catch(() => {
+    fetchKas().catch(() => {
       toast.error("Gagal memuat buku kas RW.");
       setIsLoading(false);
     });
@@ -230,12 +372,12 @@ export default function KasRwDashboardPage() {
 
         await api.post("/rw/kas", payload, {
           headers: {
-            "Content-Type": "multipart/form-data",
+            "Content-Type": undefined,
           },
         });
 
         toast.success("Transaksi kas berhasil ditambahkan.");
-        await fetchKas(activeSearch);
+        await fetchKas();
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
@@ -252,24 +394,13 @@ export default function KasRwDashboardPage() {
     initialState
   );
 
-  const [filterState, filterAction, isFiltering] = useActionState<ActionState, FormData>(
-    async (_previousState, formData) => {
-      const search = String(formData.get("search") ?? "").trim();
-      setActiveSearch(search);
-      await fetchKas(search);
-
-      return { message: "", fieldErrors: {} };
-    },
-    initialState
-  );
-
-  const disabled = isLoading || isCreating || isFiltering;
+  const disabled = isLoading || isCreating;
 
   const summaryCards = useMemo(
     () => [
       {
-        label: "Total Masuk",
-        value: formatRupiah(summary.total_masuk),
+        label: getCardLabel("Total Masuk"),
+        value: formatRupiah(totalMasukFiltered),
         icon: TrendingUp,
         gradient: "from-emerald-500 to-teal-600",
         iconBg: "bg-emerald-50 dark:bg-emerald-950/40",
@@ -278,8 +409,8 @@ export default function KasRwDashboardPage() {
         valueColor: "text-emerald-700 dark:text-emerald-400",
       },
       {
-        label: "Total Keluar",
-        value: formatRupiah(summary.total_keluar),
+        label: getCardLabel("Total Keluar"),
+        value: formatRupiah(totalKeluarFiltered),
         icon: TrendingDown,
         gradient: "from-rose-500 to-red-600",
         iconBg: "bg-rose-50 dark:bg-rose-950/40",
@@ -298,7 +429,7 @@ export default function KasRwDashboardPage() {
         valueColor: "text-indigo-700 dark:text-indigo-400",
       },
     ],
-    [summary]
+    [summary, totalMasukFiltered, totalKeluarFiltered, getCardLabel]
   );
 
   if (!wilayahRwId) {
@@ -441,9 +572,9 @@ export default function KasRwDashboardPage() {
                 <Input
                   id="bukti_url"
                   name="bukti_url"
-                  type="url"
-                  placeholder="https://..."
-                  disabled={disabled}
+                  type="text"
+                  placeholder="https://... atau link lainnya"
+                  disabled={isCreating}
                 />
               </div>
 
@@ -473,7 +604,7 @@ export default function KasRwDashboardPage() {
                     </span>
                   </div>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">Pilih salah satu: Link atau Foto. Foto akan diprioritaskan.</p>
+                <p className="text-xs text-slate-400 mt-1">Bisa mengisi keduanya sekaligus — Link dan Foto akan ditampilkan bersama.</p>
               </div>
 
               {createState.message ? (
@@ -498,24 +629,121 @@ export default function KasRwDashboardPage() {
           <CardDescription className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Cari dan kelola transaksi yang sudah tercatat.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <form action={filterAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            {/* Search Input */}
             <div className="flex-1 space-y-1.5">
-              <Label htmlFor="search" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Cari Transaksi</Label>
-              <Input
-                id="search"
-                name="search"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Cari dari keterangan atau kode unik"
-                disabled={disabled}
-              />
+              <Label
+                htmlFor="search"
+                className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+              >
+                Cari Transaksi
+              </Label>
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                <Input
+                  id="search"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Cari dari keterangan atau kode unik"
+                  className="pl-10 h-10 rounded-xl text-sm"
+                  disabled={isLoading}
+                />
+              </div>
             </div>
-            <Button type="submit" variant="outline" size="default" disabled={disabled} className="w-full sm:w-auto whitespace-nowrap">
-              {isFiltering ? "Memuat..." : "Terapkan"}
-            </Button>
-          </form>
 
-          {filterState.message ? <p className="text-sm text-destructive">{filterState.message}</p> : null}
+            {/* Filter Bulan */}
+            <div className="w-full lg:w-48 space-y-1.5">
+              <Label
+                htmlFor="filter-bulan"
+                className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+              >
+                Bulan
+              </Label>
+              <Select
+                value={selectedMonth === "" ? "ALL" : selectedMonth}
+                onValueChange={(value) => setSelectedMonth(value === "ALL" ? "" : value)}
+              >
+                <SelectTrigger
+                  id="filter-bulan"
+                  className={`!h-10 !rounded-xl text-sm w-full font-medium transition-all ${
+                    selectedMonth !== ""
+                      ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm"
+                      : "!bg-white dark:!bg-input/20 !border-slate-200 dark:!border-white/10 !text-slate-600 dark:!text-slate-300 hover:!border-indigo-300"
+                  }`}
+                >
+                  <Calendar className={`size-4 mr-1 shrink-0 ${selectedMonth !== "" ? "text-indigo-500" : "text-slate-400"}`} />
+                  <SelectValue placeholder="Semua Bulan" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100 dark:border-white/8 bg-white dark:bg-card">
+                  <SelectItem value="ALL" className="!text-sm !py-2 !px-3 !rounded-lg">Semua Bulan</SelectItem>
+                  <SelectItem value="0" className="!text-sm !py-2 !px-3 !rounded-lg">Januari</SelectItem>
+                  <SelectItem value="1" className="!text-sm !py-2 !px-3 !rounded-lg">Februari</SelectItem>
+                  <SelectItem value="2" className="!text-sm !py-2 !px-3 !rounded-lg">Maret</SelectItem>
+                  <SelectItem value="3" className="!text-sm !py-2 !px-3 !rounded-lg">April</SelectItem>
+                  <SelectItem value="4" className="!text-sm !py-2 !px-3 !rounded-lg">Mei</SelectItem>
+                  <SelectItem value="5" className="!text-sm !py-2 !px-3 !rounded-lg">Juni</SelectItem>
+                  <SelectItem value="6" className="!text-sm !py-2 !px-3 !rounded-lg">Juli</SelectItem>
+                  <SelectItem value="7" className="!text-sm !py-2 !px-3 !rounded-lg">Agustus</SelectItem>
+                  <SelectItem value="8" className="!text-sm !py-2 !px-3 !rounded-lg">September</SelectItem>
+                  <SelectItem value="9" className="!text-sm !py-2 !px-3 !rounded-lg">Oktober</SelectItem>
+                  <SelectItem value="10" className="!text-sm !py-2 !px-3 !rounded-lg">November</SelectItem>
+                  <SelectItem value="11" className="!text-sm !py-2 !px-3 !rounded-lg">Desember</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Filter Tahun */}
+            <div className="w-full lg:w-44 space-y-1.5">
+              <Label
+                htmlFor="filter-tahun"
+                className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+              >
+                Tahun
+              </Label>
+              <Select
+                value={selectedYear === "" ? "ALL" : selectedYear}
+                onValueChange={(value) => setSelectedYear(value === "ALL" ? "" : value)}
+              >
+                <SelectTrigger
+                  id="filter-tahun"
+                  className={`!h-10 !rounded-xl text-sm w-full font-medium transition-all ${
+                    selectedYear !== ""
+                      ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm"
+                      : "!bg-white dark:!bg-input/20 !border-slate-200 dark:!border-white/10 !text-slate-600 dark:!text-slate-300 hover:!border-indigo-300"
+                  }`}
+                >
+                  <Calendar className={`size-4 mr-1 shrink-0 ${selectedYear !== "" ? "text-indigo-500" : "text-slate-400"}`} />
+                  <SelectValue placeholder="Semua Tahun" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100 dark:border-white/8 bg-white dark:bg-card">
+                  <SelectItem value="ALL" className="!text-sm !py-2 !px-3 !rounded-lg">Semua Tahun</SelectItem>
+                  {yearOptions.map((year) => (
+                    <SelectItem key={year} value={String(year)} className="!text-sm !py-2 !px-3 !rounded-lg">
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Reset Button */}
+            {(searchTerm || selectedMonth !== "" || selectedYear !== "") && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setSearchTerm("");
+                  setSelectedMonth("");
+                  setSelectedYear("");
+                }}
+                className="h-10 px-4 rounded-xl text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100 hover:border-rose-300 shrink-0 font-semibold shadow-sm transition-all w-full lg:w-auto whitespace-nowrap"
+                disabled={isLoading}
+              >
+                <RotateCcw className="size-4 mr-2" />
+                Reset Filter
+              </Button>
+            )}
+          </div>
 
           <div className="rounded-2xl border border-slate-100 dark:border-white/8 overflow-hidden">
             <Table>
@@ -549,26 +777,52 @@ export default function KasRwDashboardPage() {
                       </TableCell>
                       <TableCell>
                         <p className="font-semibold text-slate-900 dark:text-foreground text-sm">{item.keterangan}</p>
-                        {item.bukti_foto_url ? (
-                          <a
-                            href={`${baseUrl}${item.bukti_foto_url}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline underline-offset-4"
-                          >
-                            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            Lihat Foto Bukti →
-                          </a>
-                        ) : item.bukti_url ? (
-                          <a
-                            href={item.bukti_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline underline-offset-4"
-                          >
-                            <span className="size-1.5 rounded-full bg-indigo-500" />
-                            Lihat Link Bukti →
-                          </a>
+                        {(item.bukti_foto_url || item.bukti_url) ? (
+                          <div className="flex flex-col gap-1 mt-1 text-left items-start">
+                            {item.bukti_foto_url && (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline underline-offset-4 cursor-pointer outline-none bg-transparent border-none p-0"
+                                  >
+                                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Lihat Foto Bukti →
+                                  </button>
+                                </DialogTrigger>
+                                <DialogContent showCloseButton={false} className="max-w-[90vw] md:max-w-4xl p-0 bg-transparent border-none ring-0 shadow-none focus:outline-none flex items-center justify-center">
+                                  <DialogTitle className="sr-only">Bukti Transfer</DialogTitle>
+                                  <div className="relative max-w-full max-h-[85vh] overflow-hidden rounded-2xl">
+                                    <img
+                                      src={getProofUrl(item.bukti_foto_url)}
+                                      alt="Bukti Transfer"
+                                      className="max-h-[85vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
+                                    />
+                                    <DialogClose asChild>
+                                      <button
+                                        type="button"
+                                        className="absolute top-4 right-4 z-50 inline-flex size-9 items-center justify-center rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-xs transition-all border border-white/10 cursor-pointer outline-none"
+                                      >
+                                        <X className="size-4.5" />
+                                        <span className="sr-only">Close</span>
+                                      </button>
+                                    </DialogClose>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            )}
+                            {item.bukti_url && (
+                              <a
+                                href={ensureAbsoluteUrl(item.bukti_url)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline underline-offset-4"
+                              >
+                                <span className="size-1.5 rounded-full bg-indigo-500" />
+                                Lihat Link Bukti →
+                              </a>
+                            )}
+                          </div>
                         ) : (
                           <p className="text-xs text-slate-400 dark:text-muted-foreground">Tanpa bukti</p>
                         )}
@@ -583,8 +837,8 @@ export default function KasRwDashboardPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1.5">
-                          <EditKasDialog item={item} onSaved={() => fetchKas(activeSearch)} disabled={disabled} />
-                          <DeleteKasDialog itemId={item.id} onDeleted={() => fetchKas(activeSearch)} disabled={disabled} />
+                          <EditKasDialog item={item} onSaved={fetchKas} disabled={disabled} />
+                          <DeleteKasDialog itemId={item.id} onDeleted={fetchKas} disabled={disabled} />
                         </div>
                       </TableCell>
                     </TableRow>
@@ -595,11 +849,11 @@ export default function KasRwDashboardPage() {
           </div>
 
           {/* Pagination Controls */}
-          {kasItems.length > 0 && (
+          {filteredItems.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 dark:border-white/8">
               {/* Info text */}
               <div className="text-sm text-slate-500 dark:text-muted-foreground select-none">
-                Menampilkan <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.min(kasItems.length, (currentPage - 1) * pageSize + 1)}</span> - <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.min(kasItems.length, currentPage * pageSize)}</span> dari <span className="font-semibold text-slate-700 dark:text-slate-200">{kasItems.length}</span> transaksi
+                Menampilkan <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.min(filteredItems.length, (currentPage - 1) * pageSize + 1)}</span> - <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.min(filteredItems.length, currentPage * pageSize)}</span> dari <span className="font-semibold text-slate-700 dark:text-slate-200">{filteredItems.length}</span> transaksi
               </div>
 
               {/* Controls */}
@@ -711,9 +965,8 @@ function EditKasDialog({
         payload.append("keterangan", keterangan);
         payload.append("nominal", nominal);
 
-        if (buktiUrl) {
-          payload.append("bukti_url", buktiUrl);
-        }
+        // Always send bukti_url so user can add or clear it independently of foto
+        payload.append("bukti_url", buktiUrl);
 
         const buktiFoto = formData.get("bukti_foto") as File;
         if (buktiFoto && buktiFoto.size > 0) {
@@ -722,7 +975,7 @@ function EditKasDialog({
 
         await api.patch(`/rw/kas/${itemId}`, payload, {
           headers: {
-            "Content-Type": "multipart/form-data",
+            "Content-Type": undefined,
           },
         });
 
@@ -800,7 +1053,7 @@ function EditKasDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor={`bukti-${item.id}`}>Link Bukti</Label>
-            <Input id={`bukti-${item.id}`} name="bukti_url" type="url" defaultValue={item.bukti_url ?? ""} placeholder="https://..." disabled={isEditing} />
+            <Input id={`bukti-${item.id}`} name="bukti_url" type="text" defaultValue={item.bukti_url ?? ""} placeholder="https://... atau link lainnya" disabled={isEditing} />
           </div>
 
           <div className="space-y-1.5">
@@ -830,8 +1083,9 @@ function EditKasDialog({
               </div>
             </div>
             {item.bukti_foto_url && (
-              <p className="text-[10px] text-emerald-600 font-medium">Sudah ada foto terunggah.</p>
+              <p className="text-[10px] text-emerald-600 font-medium">Sudah ada foto terunggah. Upload baru akan mengganti foto lama.</p>
             )}
+            <p className="text-xs text-slate-400 mt-0.5">Link dan Foto bisa diisi bersamaan.</p>
           </div>
 
           {editState.message ? <p className="text-sm text-destructive">{editState.message}</p> : null}

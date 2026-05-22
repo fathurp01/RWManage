@@ -25,6 +25,11 @@ const badgeVariants = cva(
           "dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/40",
           "glow-rw",
         ].join(" "),
+        rt: [
+          "bg-cyan-50 text-cyan-700 border-cyan-200/60",
+          "dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-800/40",
+          "glow-rt",
+        ].join(" "),
         masjid: [
           "bg-emerald-50 text-emerald-700 border-emerald-200/60",
           "dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40",

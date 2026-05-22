@@ -118,7 +118,8 @@ export const createKasRT = async (req: Request, res: Response): Promise<void> =>
           keterangan,
           nominal: Number(nominal),
           tanggal: tanggal ? new Date(tanggal) : new Date(),
-          bukti_url: foto_bukti_url || bukti_url || null,
+          bukti_url: bukti_url || null,
+          bukti_foto_url: foto_bukti_url || null,
           kode_unik,
         },
       });
@@ -159,41 +160,103 @@ export const getAllKasRTSummary = async (req: Request, res: Response): Promise<v
       return;
     }
 
+    const queryMonth = req.query.month !== undefined && req.query.month !== "" ? Number(req.query.month) : undefined;
+    const queryYear = req.query.year !== undefined && req.query.year !== "" ? Number(req.query.year) : undefined;
+
+    const currentYear = new Date().getFullYear();
+    const isFilterActive = queryMonth !== undefined || queryYear !== undefined;
+
     // Hitung per RT
     const blokIds = rwWilayah.blok_wilayah.map(b => b.id);
     
-    // Summary Kas per RT
-    const kasSummary = await prisma.kasRT.groupBy({
-      by: ['blok_wilayah_id', 'jenis_transaksi'],
-      where: { blok_wilayah_id: { in: blokIds } },
-      _sum: { nominal: true },
+    // Fetch all KasRT items to do flexible filtering
+    const kasRTList = await prisma.kasRT.findMany({
+      where: { blok_wilayah_id: { in: blokIds } }
     });
+
+    // Extract unique years from all transactions
+    const yearsSet = new Set<number>();
+    kasRTList.forEach(t => {
+      const yr = new Date(t.tanggal).getFullYear();
+      if (!Number.isNaN(yr)) {
+        yearsSet.add(yr);
+      }
+    });
+    yearsSet.add(currentYear);
+    const availableYears = Array.from(yearsSet).sort((a, b) => b - a);
 
     // Summary Iuran per RT (untuk melihat tingkat kepatuhan bayar)
     const iuranData = await prisma.iuranWarga.findMany({
       where: { warga: { blok_wilayah_id: { in: blokIds } } },
       select: {
+        bulan: true,
+        tahun: true,
         status: true,
         warga: { select: { blok_wilayah_id: true } }
       }
     });
 
     const results = rwWilayah.blok_wilayah.map(blok => {
-      const masuk = Number(kasSummary.find(s => s.blok_wilayah_id === blok.id && s.jenis_transaksi === "MASUK")?._sum.nominal || 0);
-      const keluar = Number(kasSummary.find(s => s.blok_wilayah_id === blok.id && s.jenis_transaksi === "KELUAR")?._sum.nominal || 0);
+      let masuk = 0;
+      let keluar = 0;
+      let allTimeMasuk = 0;
+      let allTimeKeluar = 0;
+
+      const blokTransactions = kasRTList.filter(t => t.blok_wilayah_id === blok.id);
+
+      blokTransactions.forEach(t => {
+        const nominal = Number(t.nominal);
+        if (t.jenis_transaksi === "MASUK") {
+          allTimeMasuk += nominal;
+        } else {
+          allTimeKeluar += nominal;
+        }
+
+        const dateObj = new Date(t.tanggal);
+        const itemMonth = dateObj.getMonth(); // 0-11
+        const itemYear = dateObj.getFullYear();
+
+        let matchesFilter = true;
+        if (isFilterActive) {
+          if (queryMonth !== undefined && itemMonth !== queryMonth) matchesFilter = false;
+          if (queryYear !== undefined && itemYear !== queryYear) matchesFilter = false;
+        } else {
+          if (itemYear !== currentYear) matchesFilter = false;
+        }
+
+        if (matchesFilter) {
+          if (t.jenis_transaksi === "MASUK") {
+            masuk += nominal;
+          } else {
+            keluar += nominal;
+          }
+        }
+      });
       
-      const iuranRT = iuranData.filter(i => i.warga.blok_wilayah_id === blok.id);
+      const iuranRT = iuranData.filter(i => {
+        if (i.warga.blok_wilayah_id !== blok.id) return false;
+        
+        let matchesFilter = true;
+        if (isFilterActive) {
+          if (queryMonth !== undefined && i.bulan !== (queryMonth + 1)) matchesFilter = false;
+          if (queryYear !== undefined && i.tahun !== queryYear) matchesFilter = false;
+        } else {
+          if (i.tahun !== currentYear) matchesFilter = false;
+        }
+        return matchesFilter;
+      });
+
       const totalIuran = iuranRT.length;
       const lunasIuran = iuranRT.filter(i => i.status === StatusIuran.LUNAS).length;
       const persentaseBayar = totalIuran > 0 ? (lunasIuran / totalIuran) * 100 : 0;
 
       return {
-        blok_wilayah_id: blok.id, // Changed to match frontend expectation
+        blok_wilayah_id: blok.id,
         nama_blok: blok.nama_blok,
         no_rt: blok.no_rt,
         total_masuk: masuk,
         total_keluar: keluar,
-        saldo: masuk - keluar,
+        saldo: allTimeMasuk - allTimeKeluar,
         persentase_bayar: persentaseBayar,
         persentase_serapan: masuk > 0 ? ((keluar / masuk) * 100) : 0
       };
@@ -201,7 +264,8 @@ export const getAllKasRTSummary = async (req: Request, res: Response): Promise<v
 
     res.status(200).json({
       success: true,
-      data: results
+      data: results,
+      years: availableYears
     });
 
   } catch (error) {
@@ -217,7 +281,7 @@ export const updateKasRT = async (req: Request, res: Response): Promise<void> =>
     }
 
     const { kas_id } = req.params as { kas_id: string };
-    const { keterangan, nominal, tanggal, bukti_url } = req.body;
+    const { jenis_transaksi, keterangan, nominal, tanggal, bukti_url } = req.body;
     const foto_bukti_url = (req as any).file?.filename ? `/uploads/${(req as any).file.filename}` : undefined;
 
     const existing = await prisma.kasRT.findUnique({ where: { id: kas_id } });
@@ -234,10 +298,12 @@ export const updateKasRT = async (req: Request, res: Response): Promise<void> =>
     const updated = await prisma.kasRT.update({
       where: { id: kas_id },
       data: {
+        jenis_transaksi: jenis_transaksi || existing.jenis_transaksi,
         keterangan: keterangan || existing.keterangan,
         nominal: nominal !== undefined ? Number(nominal) : existing.nominal,
         tanggal: tanggal ? new Date(tanggal) : existing.tanggal,
-        bukti_url: foto_bukti_url || (bukti_url !== undefined ? bukti_url : existing.bukti_url),
+        bukti_url: bukti_url !== undefined ? (bukti_url || null) : existing.bukti_url,
+        bukti_foto_url: foto_bukti_url !== undefined ? foto_bukti_url : existing.bukti_foto_url,
       },
     });
 

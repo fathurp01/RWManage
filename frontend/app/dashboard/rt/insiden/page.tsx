@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { rtClient, type RtInsidenRecord, type RtStatusInsiden } from "@/lib/api/rt";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,6 +18,7 @@ import {
   Phone,
   User,
   Calendar,
+  FileDown,
   Plus,
   PencilLine,
   Trash2,
@@ -46,6 +48,9 @@ export default function RtInsidenPage() {
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
+
+  // Selection for Export
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Detail Modal States
   const [detailOpen, setDetailOpen] = useState(false);
@@ -94,6 +99,7 @@ export default function RtInsidenPage() {
   // Reset page to 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedIds(new Set());
   }, [searchQuery, filterStatus, filterUrgency]);
 
   // Fetch all reports using stabilized empty dependencies
@@ -119,6 +125,86 @@ export default function RtInsidenPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleExportSelective = async () => {
+    if (selectedIds.size === 0) {
+      toast.error("Pilih minimal satu laporan untuk diekspor");
+      return;
+    }
+
+    toast.info(`Mengekspor ${selectedIds.size} laporan terpilih secara kolektif...`);
+
+    try {
+      const idsQueryParam = Array.from(selectedIds).join(",");
+      const blob = await rtClient.exportPdfGrouped({ ids: idsQueryParam });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Laporan_Kejadian_RT_Terpilih_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Ekspor laporan berhasil diselesaikan dengan Kop Surat resmi RT");
+      setSelectedIds(new Set());
+    } catch (error) {
+      toast.error("Gagal mengekspor laporan: " + getApiError(error).message);
+    }
+  };
+
+  const handleExportSingle = async (report: RtInsidenRecord) => {
+    toast.info(`Mengekspor laporan "${report.tipe_insiden}"...`);
+    try {
+      const blob = await rtClient.exportPdf(report.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Laporan_Kejadian_RT_${report.tipe_insiden.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("Ekspor laporan berhasil diselesaikan dengan Kop Surat resmi RT");
+    } catch (error) {
+      toast.error("Gagal mengekspor laporan: " + getApiError(error).message);
+    }
+  };
+
+  const handleExportAll = async () => {
+    if (reports.length === 0) {
+      toast.error("Tidak ada laporan untuk diekspor");
+      return;
+    }
+
+    toast.info("Mengekspor seluruh laporan kejadian...");
+
+    try {
+      const blob = await rtClient.exportPdfGrouped();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Laporan_Kejadian_RT_Seluruhnya_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Seluruh laporan berhasil diekspor dengan Kop Surat resmi RT");
+    } catch (error) {
+      toast.error("Gagal mengekspor laporan: " + getApiError(error).message);
+    }
+  };
 
   const handleOpenCreate = () => {
     setIsEdit(false);
@@ -382,6 +468,14 @@ export default function RtInsidenPage() {
     return filteredReports.slice(start, end);
   }, [filteredReports, currentPage, pageSize]);
 
+  const selectAll = () => {
+    if (selectedIds.size === filteredReports.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredReports.map(r => r.id)));
+    }
+  };
+
   const isFiltering = searchQuery.trim() !== "" || filterStatus !== "all" || filterUrgency !== "all";
 
   // Calculate Metrics from raw reports
@@ -414,7 +508,23 @@ export default function RtInsidenPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+          <Button
+            onClick={handleExportAll}
+            className="gap-1.5 h-10 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white border-0 shadow-md shadow-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/30 transition-all duration-300 font-bold text-xs"
+          >
+            <FileDown className="size-4 text-white" /> Export Semua PDF
+          </Button>
+
+          {selectedIds.size > 0 && (
+            <Button
+              onClick={handleExportSelective}
+              className="gap-1.5 h-10 px-4 rounded-xl font-bold bg-cyan-600 text-white hover:bg-cyan-700 transition-all shadow-md shadow-cyan-500/20 hover:shadow-lg text-xs"
+            >
+              <FileDown className="size-4" /> Export Terpilih ({selectedIds.size})
+            </Button>
+          )}
+
           <Button
             onClick={handleOpenCreate}
             className="h-10 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold shadow-md shadow-cyan-500/20 hover:shadow-lg transition-all text-xs flex items-center gap-1.5"
@@ -565,17 +675,30 @@ export default function RtInsidenPage() {
         /* ── Flattened Incidents Table Card ── */
         <Card className="rounded-3xl border border-slate-200/70 bg-white shadow-sm overflow-hidden dark:bg-slate-900 dark:border-slate-800">
           <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4 px-6">
-            <div className="flex items-center gap-3">
-              <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 shrink-0">
-                <ShieldAlert className="size-5.5" />
-              </span>
-              <div>
-                <CardTitle className="text-base font-bold text-slate-800 dark:text-foreground">
-                  Daftar Kasus Laporan Keamanan
-                </CardTitle>
-                <CardDescription className="text-sm text-slate-450 mt-0.5">
-                  Menampilkan {paginatedReports.length} dari {filteredReports.length} laporan aktif. Pilih laporan untuk meninjau detail dan menindaklanjuti.
-                </CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-600 dark:bg-cyan-950/40 dark:text-cyan-400 shrink-0">
+                  <ShieldAlert className="size-5.5" />
+                </span>
+                <div>
+                  <CardTitle className="text-base font-bold text-slate-800 dark:text-foreground">
+                    Daftar Kasus Laporan Keamanan
+                  </CardTitle>
+                  <CardDescription className="text-sm text-slate-450 mt-0.5">
+                    Menampilkan {paginatedReports.length} dari {filteredReports.length} laporan aktif. Pilih laporan untuk diekspor kolektif atau klik detail.
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800 px-4 py-2 rounded-xl self-start sm:self-auto cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-950 transition-colors">
+                <Checkbox
+                  id="selectAll"
+                  checked={selectedIds.size === filteredReports.length && filteredReports.length > 0}
+                  onCheckedChange={selectAll}
+                  className="size-4.5 rounded border-slate-300 bg-white"
+                />
+                <label htmlFor="selectAll" className="text-xs font-bold text-slate-600 dark:text-slate-400 cursor-pointer select-none">
+                  Pilih Semua Hasil Saringan ({filteredReports.length})
+                </label>
               </div>
             </div>
           </CardHeader>
@@ -583,6 +706,9 @@ export default function RtInsidenPage() {
             <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                  <th className="py-4 px-6 w-12 text-center">
+                    {/* Checkbox Header */}
+                  </th>
                   <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 w-36">
                     Tgl Laporan
                   </th>
@@ -611,8 +737,17 @@ export default function RtInsidenPage() {
                   return (
                     <tr
                       key={report.id}
-                      className="hover:bg-slate-50/30 dark:hover:bg-slate-955/20 transition-colors"
+                      className={`hover:bg-slate-50/30 dark:hover:bg-slate-955/20 transition-colors ${selectedIds.has(report.id) ? "bg-cyan-50/20 dark:bg-cyan-955/5" : ""}`}
                     >
+                      {/* Checkbox Column */}
+                      <td className="py-4.5 px-6 text-center align-middle">
+                        <Checkbox
+                          checked={selectedIds.has(report.id)}
+                          onCheckedChange={() => toggleSelect(report.id)}
+                          className="size-4.5 rounded border-slate-300 bg-white"
+                        />
+                      </td>
+
                       {/* Tanggal Laporan */}
                       <td className="py-4.5 px-6 align-middle">
                         <span className="text-sm font-semibold text-slate-700 dark:text-slate-350 block">
@@ -1024,9 +1159,20 @@ export default function RtInsidenPage() {
             </div>
           )}
 
-          <DialogFooter className="border-t border-slate-100 dark:border-slate-800 p-6 gap-2 bg-slate-50/50 dark:bg-slate-950/20">
+          <DialogFooter className="border-t border-slate-100 dark:border-slate-800 p-6 gap-2 bg-slate-50/50 dark:bg-slate-955/20 flex-col sm:flex-row">
             <Button variant="outline" onClick={() => setDetailOpen(false)} className="rounded-xl h-11 px-6 font-semibold dark:border-slate-800 w-full sm:w-auto">
               Tutup
+            </Button>
+            <Button
+              className="gap-2 rounded-xl h-11 px-6 font-bold bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white border-0 shadow-md shadow-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/30 transition-all duration-300 w-full sm:w-auto flex items-center justify-center"
+              onClick={() => {
+                if (selectedReport) {
+                  handleExportSingle(selectedReport);
+                  setDetailOpen(false);
+                }
+              }}
+            >
+              <FileDown className="size-4" /> Export Laporan Ini
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1162,7 +1308,11 @@ export default function RtInsidenPage() {
 
       {/* ── Evidence Zoom Modal Dialog (Lightbox) ── */}
       <Dialog open={proofZoomOpen} onOpenChange={setProofZoomOpen}>
-        <DialogContent showCloseButton={false} className="max-w-4xl p-0 overflow-hidden bg-slate-950 border-0 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <DialogContent showCloseButton={false} className="max-w-5xl sm:max-w-5xl p-0 overflow-hidden bg-slate-955 border-0 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          {/* Visually hidden accessibility headings for screen readers */}
+          <DialogTitle className="sr-only">Bukti Kejadian Laporan</DialogTitle>
+          <DialogDescription className="sr-only">Detail zoom foto bukti kejadian laporan insiden</DialogDescription>
+
           <div className="relative w-full max-h-[85vh] flex items-center justify-center bg-slate-955 p-2 select-none">
             {/* Custom Boxed Close Button for Zoom Dialog */}
             <button

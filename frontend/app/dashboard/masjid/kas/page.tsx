@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useCallback, useEffect, useMemo, useState } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api, getApiError, type FieldErrors } from "@/lib/axios";
 import { useAuth } from "@/context/AuthContext";
@@ -31,19 +31,21 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   Banknote,
   CalendarRange,
   Pencil,
   Plus,
-  Search,
   Trash2,
   ChevronLeft,
   ChevronRight,
   TrendingDown,
   TrendingUp,
   Wallet,
+  X,
+  RotateCcw,
 } from "lucide-react";
 
 interface KasMasjidItem {
@@ -54,6 +56,7 @@ interface KasMasjidItem {
   keterangan: string;
   nominal: number | string;
   bukti_url: string | null;
+  bukti_foto_url: string | null;
   kode_unik: string;
 }
 
@@ -93,6 +96,15 @@ const formatDate = (value: string) => {
   }).format(parsed);
 };
 
+const formatDateForLabel = (dateStr: string) => {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+};
+
 const toDateInputValue = (value: string) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -115,18 +127,52 @@ const formatRupiah = (value: number | string): string => {
   }).format(numericValue);
 };
 
+const ensureAbsoluteUrl = (url: string | null | undefined): string => {
+  if (!url) return "";
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+};
+
+const getProofUrl = (url: string | null | undefined): string => {
+  if (!url) return "";
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(/\/api\/?$/, "");
+  if (trimmed.startsWith("/")) {
+    return `${apiBaseUrl}${trimmed}`;
+  }
+  return `${apiBaseUrl}/${trimmed}`;
+};
+
+const isImageFile = (url: string | null | undefined): boolean => {
+  if (!url) return false;
+  const cleanUrl = url.trim().toLowerCase();
+  const extensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp"];
+  const hasImageExtension = extensions.some(ext => cleanUrl.endsWith(ext) || cleanUrl.includes(ext + "?") || cleanUrl.includes(ext + "#"));
+  const isUploadPath = cleanUrl.startsWith("/uploads/") || cleanUrl.includes("/uploads/");
+  return hasImageExtension || isUploadPath;
+};
+
 export default function KasMasjidDashboardPage() {
   const { user } = useAuth();
   const masjidId = user?.masjid_ids?.[0] ?? "";
 
   const [kasItems, setKasItems] = useState<KasMasjidItem[]>([]);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [createFileName, setCreateFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [startDateTerm, setStartDateTerm] = useState("");
   const [endDateTerm, setEndDateTerm] = useState("");
+  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
+  const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
 
-  const [activeSearch, setActiveSearch] = useState("");
-  const [activeStartDate, setActiveStartDate] = useState("");
-  const [activeEndDate, setActiveEndDate] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
   const [summary, setSummary] = useState({
     total_masuk: 0,
@@ -151,20 +197,53 @@ export default function KasMasjidDashboardPage() {
     }
   }, [kasItems.length, itemsPerPage, totalPages, currentPage]);
 
+  const loadAvailableYears = useCallback(async () => {
+    if (!masjidId) return;
+    try {
+      const response = await api.get<KasMasjidResponse>("/masjid/kas", {
+        params: { masjid_id: masjidId },
+      });
+      const items = response.data.data.items ?? [];
+      const yearsSet = new Set<number>();
+      yearsSet.add(new Date().getFullYear());
+      items.forEach((item) => {
+        const yr = new Date(item.tanggal).getFullYear();
+        if (!Number.isNaN(yr)) {
+          yearsSet.add(yr);
+        }
+      });
+      setAvailableYears(Array.from(yearsSet).sort((a, b) => b - a));
+    } catch (e) {
+      console.error("Failed to load available years", e);
+    }
+  }, [masjidId]);
+
+  useEffect(() => {
+    loadAvailableYears();
+  }, [loadAvailableYears]);
+
   const fetchKasMasjid = useCallback(
-    async (search: string, startDate: string, endDate: string) => {
+    async (search: string, startDate: string, endDate: string, year: string) => {
       if (!masjidId) {
         return;
       }
 
       setIsLoading(true);
       try {
+        let finalStartDate = startDate;
+        let finalEndDate = endDate;
+
+        if (!startDate && !endDate && year) {
+          finalStartDate = `${year}-01-01`;
+          finalEndDate = `${year}-12-31`;
+        }
+
         const response = await api.get<KasMasjidResponse>("/masjid/kas", {
           params: {
             masjid_id: masjidId,
             ...(search.trim() ? { search: search.trim() } : {}),
-            ...(startDate ? { start_date: new Date(`${startDate}T00:00:00.000Z`).toISOString() } : {}),
-            ...(endDate ? { end_date: new Date(`${endDate}T23:59:59.999Z`).toISOString() } : {}),
+            ...(finalStartDate ? { start_date: new Date(`${finalStartDate}T00:00:00.000Z`).toISOString() } : {}),
+            ...(finalEndDate ? { end_date: new Date(`${finalEndDate}T23:59:59.999Z`).toISOString() } : {}),
           },
         });
 
@@ -182,16 +261,29 @@ export default function KasMasjidDashboardPage() {
     [masjidId]
   );
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, startDateTerm, endDateTerm, selectedYear]);
+
+  // Fetch data on filter change (realtime)
   useEffect(() => {
     if (!masjidId) {
       return;
     }
 
-    fetchKasMasjid("", "", "").catch(() => {
+    fetchKasMasjid(debouncedSearchTerm, startDateTerm, endDateTerm, selectedYear).catch(() => {
       toast.error("Gagal memuat buku kas masjid.");
-      setIsLoading(false);
     });
-  }, [fetchKasMasjid, masjidId]);
+  }, [debouncedSearchTerm, startDateTerm, endDateTerm, selectedYear, fetchKasMasjid, masjidId]);
 
   const [createState, createAction, isCreating] = useActionState<ActionState, FormData>(
     async (_previousState, formData) => {
@@ -224,17 +316,38 @@ export default function KasMasjidDashboardPage() {
       }
 
       try {
-        await api.post("/masjid/kas", {
-          masjid_id: masjidId,
-          jenis_transaksi: jenisTransaksi,
-          tanggal: tanggal ? new Date(`${tanggal}T00:00:00.000Z`).toISOString() : undefined,
-          keterangan,
-          nominal: Number(nominal),
-          ...(buktiUrl ? { bukti_url: buktiUrl } : {}),
+        const payload = new FormData();
+        payload.append("masjid_id", masjidId);
+        payload.append("jenis_transaksi", jenisTransaksi);
+        if (tanggal) {
+          payload.append("tanggal", new Date(`${tanggal}T00:00:00.000Z`).toISOString());
+        }
+        payload.append("keterangan", keterangan);
+        payload.append("nominal", nominal);
+
+        if (buktiUrl) {
+          payload.append("bukti_url", buktiUrl);
+        }
+
+        const buktiFoto = formData.get("bukti_foto") as File;
+        if (buktiFoto && buktiFoto.size > 0) {
+          payload.append("bukti_foto", buktiFoto);
+        }
+
+        await api.post("/masjid/kas", payload, {
+          headers: {
+            "Content-Type": undefined,
+          },
         });
 
         toast.success("Transaksi kas masjid berhasil ditambahkan.");
-        await fetchKasMasjid(activeSearch, activeStartDate, activeEndDate);
+        setShowAddForm(false);
+        await fetchKasMasjid(searchTerm, startDateTerm, endDateTerm, selectedYear);
+        await loadAvailableYears();
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        setCreateFileName("");
         setCurrentPage(1);
 
         return { message: "", fieldErrors: {} };
@@ -247,29 +360,30 @@ export default function KasMasjidDashboardPage() {
     initialState
   );
 
-  const [filterState, filterAction, isFiltering] = useActionState<ActionState, FormData>(
-    async (_previousState, formData) => {
-      const search = String(formData.get("search") ?? "").trim();
-      const startDate = String(formData.get("start_date") ?? "").trim();
-      const endDate = String(formData.get("end_date") ?? "").trim();
+  const disabled = isLoading || isCreating;
 
-      setActiveSearch(search);
-      setActiveStartDate(startDate);
-      setActiveEndDate(endDate);
-
-      await fetchKasMasjid(search, startDate, endDate);
-      setCurrentPage(1);
-      return { message: "", fieldErrors: {} };
-    },
-    initialState
-  );
-
-  const disabled = isLoading || isCreating || isFiltering;
+  const labelSuffix = useMemo(() => {
+    if (startDateTerm || endDateTerm) {
+      const startFormatted = formatDateForLabel(startDateTerm);
+      const endFormatted = formatDateForLabel(endDateTerm);
+      if (startFormatted && endFormatted) {
+        return ` (${startFormatted} - ${endFormatted})`;
+      } else if (startFormatted) {
+        return ` (>= ${startFormatted})`;
+      } else if (endFormatted) {
+        return ` (<= ${endFormatted})`;
+      }
+    }
+    if (selectedYear) {
+      return ` ${selectedYear}`;
+    }
+    return "";
+  }, [selectedYear, startDateTerm, endDateTerm]);
 
   const summaryCards = useMemo(
     () => [
       {
-        label: "Total Masuk",
+        label: `Total Masuk${labelSuffix}`,
         value: formatRupiah(summary.total_masuk),
         icon: TrendingUp,
         gradient: "from-emerald-500 to-teal-600",
@@ -279,7 +393,7 @@ export default function KasMasjidDashboardPage() {
         valueColor: "text-emerald-700 dark:text-emerald-400",
       },
       {
-        label: "Total Keluar",
+        label: `Total Keluar${labelSuffix}`,
         value: formatRupiah(summary.total_keluar),
         icon: TrendingDown,
         gradient: "from-rose-500 to-red-600",
@@ -289,7 +403,7 @@ export default function KasMasjidDashboardPage() {
         valueColor: "text-rose-700 dark:text-rose-400",
       },
       {
-        label: "Saldo Bersih",
+        label: `Saldo Bersih${labelSuffix}`,
         value: formatRupiah(summary.saldo),
         icon: Wallet,
         gradient: "from-indigo-500 to-violet-600",
@@ -299,7 +413,7 @@ export default function KasMasjidDashboardPage() {
         valueColor: "text-indigo-700 dark:text-indigo-400",
       },
     ],
-    [summary]
+    [summary, labelSuffix]
   );
 
   if (!masjidId) {
@@ -319,19 +433,43 @@ export default function KasMasjidDashboardPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <header className="flex flex-col gap-1">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30">
             <Banknote className="size-5" />
           </span>
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground mt-0.5">
               Buku Kas Masjid
             </h1>
             <p className="text-sm text-slate-500 dark:text-muted-foreground">
               Kelola transaksi operasional masuk dan keluar
             </p>
           </div>
+        </div>
+        <div className="shrink-0">
+          <Button
+            type="button"
+            onClick={() => setShowAddForm(!showAddForm)}
+            className={
+              showAddForm
+                ? "gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white border-0 shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 transition-all duration-300 rounded-xl h-11 px-5 font-bold"
+                : "gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border-0 shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30 transition-all duration-300 rounded-xl h-11 px-5 font-bold"
+            }
+            variant="default"
+          >
+            {showAddForm ? (
+              <>
+                <X className="size-4" />
+                Tutup Form
+              </>
+            ) : (
+              <>
+                <Plus className="size-4" />
+                Tambah Kas Masjid
+              </>
+            )}
+          </Button>
         </div>
       </header>
 
@@ -359,95 +497,145 @@ export default function KasMasjidDashboardPage() {
         ))}
       </section>
 
+      {showAddForm && (
+        <Card>
+          <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="size-4 text-slate-400" />
+              Tambah Transaksi Kas Masjid
+            </CardTitle>
+            <CardDescription>Catat pemasukan dan pengeluaran operasional masjid.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-5">
+            <form action={createAction} className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="jenis_transaksi" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Jenis Transaksi</Label>
+                <select id="jenis_transaksi" name="jenis_transaksi" defaultValue="MASUK" className={selectClass} disabled={disabled}>
+                  <option value="MASUK">MASUK</option>
+                  <option value="KELUAR">KELUAR</option>
+                </select>
+                {createState.fieldErrors.jenis_transaksi ? (
+                  <p className="text-xs text-destructive">{createState.fieldErrors.jenis_transaksi}</p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="tanggal" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Tanggal</Label>
+                <Input id="tanggal" name="tanggal" type="date" disabled={disabled} />
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="keterangan" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Keterangan</Label>
+                <Input
+                  id="keterangan"
+                  name="keterangan"
+                  placeholder="Contoh: Pembelian alat kebersihan masjid"
+                  aria-invalid={Boolean(createState.fieldErrors.keterangan)}
+                  disabled={disabled}
+                />
+                {createState.fieldErrors.keterangan ? (
+                  <p className="text-xs text-destructive">{createState.fieldErrors.keterangan}</p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="nominal" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Nominal (Rp)</Label>
+                <Input
+                  id="nominal"
+                  name="nominal"
+                  type="number"
+                  min={0}
+                  step={1000}
+                  aria-invalid={Boolean(createState.fieldErrors.nominal)}
+                  disabled={disabled}
+                />
+                {createState.fieldErrors.nominal ? (
+                  <p className="text-xs text-destructive">{createState.fieldErrors.nominal}</p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="bukti_url" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Link Bukti (opsional)</Label>
+                <Input
+                  id="bukti_url"
+                  name="bukti_url"
+                  type="text"
+                  placeholder="https://..."
+                  disabled={disabled}
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="bukti_foto" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Upload Foto Bukti (opsional)</Label>
+                <div className="relative flex items-center h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 px-3.5 py-2 text-sm transition-all duration-200 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25">
+                  <input
+                    id="bukti_foto"
+                    name="bukti_foto"
+                    type="file"
+                    accept="image/*"
+                    disabled={disabled}
+                    ref={fileInputRef}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      setCreateFileName(file ? file.name : "");
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:pointer-events-none"
+                  />
+                  <div className="flex items-center gap-2.5 w-full pointer-events-none select-none">
+                    <span className="font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors">
+                      Choose File
+                    </span>
+                    <span className="text-slate-300 dark:text-slate-600 font-light">|</span>
+                    <span className="text-slate-400 dark:text-slate-500 truncate flex-1">
+                      {createFileName || "No file chosen"}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Bisa mengisi keduanya sekaligus — Link dan Foto akan ditampilkan bersama.</p>
+              </div>
+
+              {createState.message ? (
+                <p className="sm:col-span-2 text-sm text-destructive">{createState.message}</p>
+              ) : null}
+
+              <Button type="submit" variant="masjid" size="default" className="sm:col-span-2 w-full sm:w-auto" disabled={disabled}>
+                {isCreating ? "Menyimpan..." : "Simpan Transaksi"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
-        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="size-4 text-slate-400" />
-            Tambah Transaksi Kas Masjid
-          </CardTitle>
-          <CardDescription>Catat pemasukan dan pengeluaran operasional masjid.</CardDescription>
+        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4 flex flex-row items-center justify-between gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarRange className="size-4 text-slate-400" />
+              Riwayat Buku Kas Masjid{labelSuffix}
+            </CardTitle>
+            <CardDescription>Filter berdasarkan keyword dan rentang tanggal.</CardDescription>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Tahun:</span>
+            <select
+              className="h-9 w-32 rounded-lg border border-emerald-500 dark:border-emerald-400 bg-emerald-50/10 dark:bg-emerald-950/10 px-2.5 text-sm font-semibold text-emerald-700 dark:text-emerald-300 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all cursor-pointer shadow-xs hover:bg-emerald-50/20 dark:hover:bg-emerald-950/20"
+              value={selectedYear}
+              onChange={(e) => {
+                setSelectedYear(e.target.value);
+              }}
+            >
+              <option value="">Semua Tahun</option>
+              {availableYears.map((yr) => (
+                <option key={yr} value={String(yr)}>
+                  {yr}
+                </option>
+              ))}
+            </select>
+          </div>
         </CardHeader>
-        <CardContent className="pt-5">
-          <form action={createAction} className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="jenis_transaksi" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Jenis Transaksi</Label>
-              <select id="jenis_transaksi" name="jenis_transaksi" defaultValue="MASUK" className={selectClass} disabled={disabled}>
-                <option value="MASUK">MASUK</option>
-                <option value="KELUAR">KELUAR</option>
-              </select>
-              {createState.fieldErrors.jenis_transaksi ? (
-                <p className="text-xs text-destructive">{createState.fieldErrors.jenis_transaksi}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="tanggal" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Tanggal</Label>
-              <Input id="tanggal" name="tanggal" type="date" disabled={disabled} />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="keterangan" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Keterangan</Label>
-              <Input
-                id="keterangan"
-                name="keterangan"
-                placeholder="Contoh: Pembelian alat kebersihan masjid"
-                aria-invalid={Boolean(createState.fieldErrors.keterangan)}
-                disabled={disabled}
-              />
-              {createState.fieldErrors.keterangan ? (
-                <p className="text-xs text-destructive">{createState.fieldErrors.keterangan}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="nominal" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Nominal (Rp)</Label>
-              <Input
-                id="nominal"
-                name="nominal"
-                type="number"
-                min={0}
-                step={1000}
-                aria-invalid={Boolean(createState.fieldErrors.nominal)}
-                disabled={disabled}
-              />
-              {createState.fieldErrors.nominal ? (
-                <p className="text-xs text-destructive">{createState.fieldErrors.nominal}</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="bukti_url" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Link Bukti (opsional)</Label>
-              <Input
-                id="bukti_url"
-                name="bukti_url"
-                type="url"
-                placeholder="https://..."
-                disabled={disabled}
-              />
-            </div>
-
-            {createState.message ? (
-              <p className="sm:col-span-2 text-sm text-destructive">{createState.message}</p>
-            ) : null}
-
-            <Button type="submit" variant="masjid" size="default" className="sm:col-span-2 w-full sm:w-auto" disabled={disabled}>
-              {isCreating ? "Menyimpan..." : "Simpan Transaksi"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle className="flex items-center gap-2">
-            <CalendarRange className="size-4 text-slate-400" />
-            Riwayat Buku Kas Masjid
-          </CardTitle>
-          <CardDescription>Filter berdasarkan keyword dan rentang tanggal.</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-5 space-y-4">
-          <form action={filterAction} className="grid gap-3 md:grid-cols-4 md:items-end">
-            <div className="md:col-span-2 space-y-1.5">
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="flex-1 space-y-1.5">
               <Label htmlFor="search" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Cari Transaksi</Label>
               <Input
                 id="search"
@@ -455,23 +643,56 @@ export default function KasMasjidDashboardPage() {
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Keterangan atau kode unik"
-                disabled={disabled}
+                className={`transition-all duration-200 ${searchTerm
+                    ? "border-emerald-500 dark:border-emerald-400 focus-visible:ring-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-950/10"
+                    : ""
+                  }`}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="w-full lg:w-48 space-y-1.5">
               <Label htmlFor="start_date" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Dari Tanggal</Label>
-              <Input id="start_date" name="start_date" type="date" value={startDateTerm} onChange={(event) => setStartDateTerm(event.target.value)} disabled={disabled} />
+              <Input
+                id="start_date"
+                name="start_date"
+                type="date"
+                value={startDateTerm}
+                onChange={(event) => setStartDateTerm(event.target.value)}
+                className={`transition-all duration-200 ${startDateTerm
+                    ? "border-emerald-500 dark:border-emerald-400 focus-visible:ring-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-950/10"
+                    : ""
+                  }`}
+              />
             </div>
-            <div className="space-y-1.5">
+            <div className="w-full lg:w-48 space-y-1.5">
               <Label htmlFor="end_date" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Sampai Tanggal</Label>
-              <Input id="end_date" name="end_date" type="date" value={endDateTerm} onChange={(event) => setEndDateTerm(event.target.value)} disabled={disabled} />
+              <Input
+                id="end_date"
+                name="end_date"
+                type="date"
+                value={endDateTerm}
+                onChange={(event) => setEndDateTerm(event.target.value)}
+                className={`transition-all duration-200 ${endDateTerm
+                    ? "border-emerald-500 dark:border-emerald-400 focus-visible:ring-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-950/10"
+                    : ""
+                  }`}
+              />
             </div>
-            <Button type="submit" variant="outline" size="default" disabled={disabled} className="md:col-span-4 w-full md:w-auto">
-              {isFiltering ? "Memuat..." : "Terapkan Filter"}
-            </Button>
-          </form>
-
-          {filterState.message ? <p className="text-sm text-destructive">{filterState.message}</p> : null}
+            {(searchTerm || startDateTerm || endDateTerm) && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setSearchTerm("");
+                  setStartDateTerm("");
+                  setEndDateTerm("");
+                }}
+                className="h-10 px-4 rounded-xl text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100 hover:border-rose-300 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-950/30 shrink-0 font-semibold shadow-sm transition-all w-full lg:w-auto whitespace-nowrap"
+              >
+                <RotateCcw className="size-4 mr-2" />
+                Reset Filter
+              </Button>
+            )}
+          </div>
 
           <div className="rounded-2xl border border-slate-100 dark:border-white/8 overflow-hidden">
             <Table>
@@ -488,7 +709,7 @@ export default function KasMasjidDashboardPage() {
               <TableBody>
                 {kasItems.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-10 text-center text-sm text-slate-500 dark:text-muted-foreground">
+                     <TableCell colSpan={6} className="py-10 text-center text-sm text-slate-500 dark:text-muted-foreground">
                       {isLoading ? "Memuat data kas masjid..." : "Belum ada transaksi untuk filter ini."}
                     </TableCell>
                   </TableRow>
@@ -505,17 +726,87 @@ export default function KasMasjidDashboardPage() {
                       </TableCell>
                       <TableCell>
                         <p className="font-semibold text-slate-900 dark:text-foreground text-sm">{item.keterangan}</p>
-                        {item.bukti_url ? (
-                          <a
-                            href={item.bukti_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline underline-offset-4"
-                          >
-                            Lihat Bukti →
-                          </a>
+                        {(item.bukti_foto_url || item.bukti_url) ? (
+                          <div className="flex flex-col gap-1 text-left items-start mt-1">
+                            {item.bukti_foto_url && (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline underline-offset-4 cursor-pointer outline-none bg-transparent border-none p-0"
+                                  >
+                                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Lihat Foto Bukti →
+                                  </button>
+                                </DialogTrigger>
+                                <DialogContent showCloseButton={false} className="max-w-[90vw] md:max-w-4xl p-0 bg-transparent border-none ring-0 shadow-none focus:outline-none flex items-center justify-center">
+                                  <DialogTitle className="sr-only">Bukti Foto</DialogTitle>
+                                  <div className="relative max-w-full max-h-[85vh] overflow-hidden rounded-2xl">
+                                    <img
+                                      src={getProofUrl(item.bukti_foto_url)}
+                                      alt="Bukti Foto"
+                                      className="max-h-[85vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
+                                    />
+                                    <DialogClose asChild>
+                                      <button
+                                        type="button"
+                                        className="absolute top-4 right-4 z-50 inline-flex size-9 items-center justify-center rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-xs transition-all border border-white/10 cursor-pointer outline-none"
+                                      >
+                                        <X className="size-4.5" />
+                                        <span className="sr-only">Close</span>
+                                      </button>
+                                    </DialogClose>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            )}
+                            {item.bukti_url && (
+                              isImageFile(item.bukti_url) ? (
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline underline-offset-4 cursor-pointer outline-none bg-transparent border-none p-0"
+                                    >
+                                      <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                      Lihat Link Bukti (Foto) →
+                                    </button>
+                                  </DialogTrigger>
+                                  <DialogContent showCloseButton={false} className="max-w-[90vw] md:max-w-4xl p-0 bg-transparent border-none ring-0 shadow-none focus:outline-none flex items-center justify-center">
+                                    <DialogTitle className="sr-only">Bukti Link</DialogTitle>
+                                    <div className="relative max-w-full max-h-[85vh] overflow-hidden rounded-2xl">
+                                      <img
+                                        src={getProofUrl(item.bukti_url)}
+                                        alt="Bukti Link"
+                                        className="max-h-[85vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
+                                      />
+                                      <DialogClose asChild>
+                                        <button
+                                          type="button"
+                                          className="absolute top-4 right-4 z-50 inline-flex size-9 items-center justify-center rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-xs transition-all border border-white/10 cursor-pointer outline-none"
+                                        >
+                                          <X className="size-4.5" />
+                                          <span className="sr-only">Close</span>
+                                        </button>
+                                      </DialogClose>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                              ) : (
+                                <a
+                                  href={ensureAbsoluteUrl(item.bukti_url)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline underline-offset-4"
+                                >
+                                  <span className="size-1.5 rounded-full bg-emerald-500" />
+                                  Lihat Link Bukti →
+                                </a>
+                              )
+                            )}
+                          </div>
                         ) : (
-                          <p className="text-xs text-slate-400 dark:text-muted-foreground">Tanpa bukti</p>
+                          <p className="text-xs text-slate-400 dark:text-muted-foreground mt-0.5">Tanpa bukti</p>
                         )}
                       </TableCell>
                       <TableCell className="font-bold tabular-nums text-slate-900 dark:text-foreground whitespace-nowrap">
@@ -528,8 +819,22 @@ export default function KasMasjidDashboardPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1.5">
-                          <EditKasMasjidDialog item={item} onSaved={() => fetchKasMasjid(activeSearch, activeStartDate, activeEndDate)} disabled={disabled} />
-                          <DeleteKasMasjidDialog itemId={item.id} onDeleted={() => fetchKasMasjid(activeSearch, activeStartDate, activeEndDate)} disabled={disabled} />
+                          <EditKasMasjidDialog
+                            item={item}
+                            onSaved={async () => {
+                              await fetchKasMasjid(searchTerm, startDateTerm, endDateTerm, selectedYear);
+                              await loadAvailableYears();
+                            }}
+                            disabled={disabled}
+                          />
+                          <DeleteKasMasjidDialog
+                            itemId={item.id}
+                            onDeleted={async () => {
+                              await fetchKasMasjid(searchTerm, startDateTerm, endDateTerm, selectedYear);
+                              await loadAvailableYears();
+                            }}
+                            disabled={disabled}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>
@@ -608,6 +913,17 @@ function EditKasMasjidDialog({
   disabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [editFileName, setEditFileName] = useState<string>("");
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setEditFileName("");
+      if (editFileInputRef.current) {
+        editFileInputRef.current.value = "";
+      }
+    }
+  }, [open]);
 
   const [editState, editAction, isEditing] = useActionState<ActionState, FormData>(
     async (_previousState, formData) => {
@@ -628,12 +944,24 @@ function EditKasMasjidDialog({
       }
 
       try {
-        await api.patch(`/masjid/kas/${itemId}`, {
-          jenis_transaksi: jenisTransaksi,
-          tanggal: tanggal ? new Date(`${tanggal}T00:00:00.000Z`).toISOString() : undefined,
-          keterangan,
-          nominal: Number(nominal),
-          ...(buktiUrl ? { bukti_url: buktiUrl } : {}),
+        const payload = new FormData();
+        payload.append("jenis_transaksi", jenisTransaksi);
+        if (tanggal) {
+          payload.append("tanggal", new Date(`${tanggal}T00:00:00.000Z`).toISOString());
+        }
+        payload.append("keterangan", keterangan);
+        payload.append("nominal", nominal);
+        payload.append("bukti_url", buktiUrl);
+
+        const buktiFoto = formData.get("bukti_foto") as File;
+        if (buktiFoto && buktiFoto.size > 0) {
+          payload.append("bukti_foto", buktiFoto);
+        }
+
+        await api.patch(`/masjid/kas/${itemId}`, payload, {
+          headers: {
+            "Content-Type": undefined,
+          },
         });
 
         toast.success("Transaksi kas masjid berhasil diperbarui.");
@@ -710,7 +1038,39 @@ function EditKasMasjidDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor={`bukti-${item.id}`}>Link Bukti</Label>
-            <Input id={`bukti-${item.id}`} name="bukti_url" type="url" defaultValue={item.bukti_url ?? ""} placeholder="https://..." disabled={isEditing} />
+            <Input id={`bukti-${item.id}`} name="bukti_url" type="text" defaultValue={item.bukti_url ?? ""} placeholder="https://..." disabled={isEditing} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor={`foto-${item.id}`}>Ganti Foto Bukti (opsional)</Label>
+            <div className="relative flex items-center h-10 w-full rounded-xl border border-input bg-white dark:bg-input/20 px-3.5 py-2 text-sm transition-all duration-200 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25">
+              <input
+                id={`foto-${item.id}`}
+                name="bukti_foto"
+                type="file"
+                accept="image/*"
+                disabled={isEditing}
+                ref={editFileInputRef}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  setEditFileName(file ? file.name : "");
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:pointer-events-none"
+              />
+              <div className="flex items-center gap-2.5 w-full pointer-events-none select-none">
+                <span className="font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors">
+                  Choose File
+                </span>
+                <span className="text-slate-300 dark:text-slate-600 font-light">|</span>
+                <span className="text-slate-400 dark:text-slate-500 truncate flex-1">
+                  {editFileName || "No file chosen"}
+                </span>
+              </div>
+            </div>
+            {item.bukti_foto_url && (
+              <p className="text-[10px] text-emerald-600 font-medium">Sudah ada foto terunggah. Upload baru akan mengganti foto lama.</p>
+            )}
+            <p className="text-xs text-slate-400 mt-0.5">Link dan Foto bisa diisi bersamaan.</p>
           </div>
 
           {editState.message ? <p className="text-sm text-destructive">{editState.message}</p> : null}

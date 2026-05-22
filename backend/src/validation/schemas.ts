@@ -259,7 +259,7 @@ export const createKasRWSchema = z.object({
   tanggal: z.string().datetime().optional(),
   keterangan: z.string().trim().min(1).max(5000),
   nominal: z.coerce.number().positive(),
-  bukti_url: z.string().trim().url().or(z.literal("")).optional(),
+  bukti_url: z.string().trim().max(2048).nullable().optional(),
   bukti_foto_url: z.string().trim().optional(),
 });
 
@@ -279,7 +279,7 @@ export const updateKasRWSchema = z
     tanggal: z.string().datetime().optional(),
     keterangan: z.string().trim().min(1).max(5000).optional(),
     nominal: z.coerce.number().positive().optional(),
-    bukti_url: z.string().trim().url().or(z.literal("")).optional(),
+    bukti_url: z.string().trim().max(2048).nullable().optional(),
     bukti_foto_url: z.string().trim().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
@@ -292,7 +292,8 @@ export const createKasMasjidSchema = z.object({
   tanggal: z.string().datetime().optional(),
   keterangan: z.string().trim().min(1).max(5000),
   nominal: z.coerce.number().positive(),
-  bukti_url: z.string().trim().url().optional(),
+  bukti_url: z.string().trim().max(2048).nullable().optional(),
+  bukti_foto_url: z.string().trim().optional(),
 });
 
 export const getKasMasjidQuerySchema = z.object({
@@ -313,7 +314,8 @@ export const updateKasMasjidSchema = z
     tanggal: z.string().datetime().optional(),
     keterangan: z.string().trim().min(1).max(5000).optional(),
     nominal: z.coerce.number().positive().optional(),
-    bukti_url: z.string().trim().url().optional(),
+    bukti_url: z.string().trim().max(2048).nullable().optional(),
+    bukti_foto_url: z.string().trim().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "Minimal satu field harus dikirim untuk update.",
@@ -364,6 +366,7 @@ export const createTransaksiZisSchema = z.object({
 
 export const getDashboardZisQuerySchema = z.object({
   masjid_id: uuidSchema.optional(),
+  tahun: z.coerce.number().int().min(2000).max(3000).optional(),
 });
 
 export const getRecentTransaksiZisQuerySchema = z.object({
@@ -372,6 +375,7 @@ export const getRecentTransaksiZisQuerySchema = z.object({
 
 export const getTransaksiZisListQuerySchema = z.object({
   masjid_id: uuidSchema.optional(),
+  search: z.string().trim().optional(),
   start_date: z.string().datetime().optional(),
   end_date: z.string().datetime().optional(),
   page: z.coerce.number().int().min(1).optional(),
@@ -648,7 +652,8 @@ export const createKasRTSchema = z.object({
   keterangan: z.string().trim().min(1).max(5000),
   nominal: z.coerce.number().positive(),
   tanggal: z.string().datetime().optional(),
-  bukti_url: z.string().trim().url().or(z.literal("")).optional(),
+  bukti_url: z.string().trim().max(2048).nullable().optional(),
+  bukti_foto_url: z.string().trim().optional(),
 });
 
 export const updateKasRTSchema = z.object({
@@ -656,7 +661,8 @@ export const updateKasRTSchema = z.object({
   keterangan: z.string().trim().min(1).max(5000).optional(),
   nominal: z.coerce.number().positive().optional(),
   tanggal: z.string().datetime().optional(),
-  bukti_url: z.string().trim().url().or(z.literal("")).optional(),
+  bukti_url: z.string().trim().max(2048).nullable().optional(),
+  bukti_foto_url: z.string().trim().optional(),
 }).refine((value) => Object.keys(value).length > 0, {
   message: "Minimal satu field harus dikirim untuk update.",
 });

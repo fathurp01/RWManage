@@ -301,4 +301,19 @@ export const rtClient = {
     const res = await api.post<{ data: RtPresensiRonda }>(`/rt/jadwal-ronda/${jadwal_id}/presensi`, payload);
     return res.data.data;
   },
+
+  async exportPdf(laporan_id: string): Promise<Blob> {
+    const res = await api.get(`/rt/laporan-insiden/${laporan_id}/export-pdf`, {
+      responseType: 'blob'
+    });
+    return res.data;
+  },
+
+  async exportPdfGrouped(params?: { ids?: string }): Promise<Blob> {
+    const res = await api.get("/rt/laporan-insiden/export-pdf-grouped", {
+      params,
+      responseType: 'blob'
+    });
+    return res.data;
+  }
 };

@@ -34,8 +34,8 @@ export default function RwMonitoringRondaPage() {
   }, [filterRt, filterKeaktifan, searchOfficer, sortOption]);
 
   // Month & Year Selector for Performance Report
-  const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1));
-  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
+  const [selectedMonth] = useState<string>(String(new Date().getMonth() + 1));
+  const [selectedYear] = useState<string>(String(new Date().getFullYear()));
 
   // Pagination States for Rapor Bulanan
   const [raporCurrentPage, setRaporCurrentPage] = useState<number>(1);
@@ -212,40 +212,11 @@ export default function RwMonitoringRondaPage() {
           </span>
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
-              Monitoring Ronda
+              Monitoring Ronda - {monthNames.find(m => m.value === selectedMonth)?.label} {selectedYear}
             </h1>
             <p className="text-sm text-slate-500 dark:text-muted-foreground">
               Pantau jadwal patroli ronda, tingkat keaktifan, dan rapor keamanan bulanan dari seluruh RT
             </p>
-          </div>
-        </div>
-
-        {/* Selectors Periode Laporan Premium & Menonjol */}
-        <div className="flex items-center gap-3 bg-gradient-to-r from-slate-50 to-indigo-50/30 border border-indigo-100/80 p-1.5 rounded-2xl shadow-xs">
-          <div className="flex items-center gap-2 pl-2 text-indigo-600 dark:text-indigo-400">
-            <Calendar className="size-4.5 stroke-[2.2px]" />
-            <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline-block">Periode:</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[155px] h-11 rounded-xl border-slate-200 bg-white text-[14px] font-bold text-slate-800 shadow-2xs hover:bg-slate-50 hover:border-indigo-300 transition-all focus:ring-2 focus:ring-indigo-500/20">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="!rounded-xl !p-1.5 shadow-lg border border-slate-100">
-                {monthNames.map(m => (
-                  <SelectItem key={m.value} value={m.value} className="!text-sm !py-2.5 !px-3.5 !rounded-lg font-medium">{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-[105px] h-11 rounded-xl border-slate-200 bg-white text-[14px] font-bold text-slate-800 shadow-2xs hover:bg-slate-50 hover:border-indigo-300 transition-all focus:ring-2 focus:ring-indigo-500/20">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="!rounded-xl !p-1.5 shadow-lg border border-slate-100">
-                <SelectItem value="2026" className="!text-sm !py-2.5 !px-3.5 !rounded-lg font-medium">2026</SelectItem>
-                <SelectItem value="2027" className="!text-sm !py-2.5 !px-3.5 !rounded-lg font-medium">2027</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
       </header>

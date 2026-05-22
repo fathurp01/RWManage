@@ -37,6 +37,10 @@ jest.mock("../src/lib/prisma", () => {
       create: jest.Mock;
       findUnique: jest.Mock;
     };
+    kasRT: {
+      create: jest.Mock;
+      findUnique: jest.Mock;
+    };
     transaksiZis: {
       create: jest.Mock;
       findUnique: jest.Mock;
@@ -82,6 +86,10 @@ jest.mock("../src/lib/prisma", () => {
       create: jest.fn(),
       findUnique: jest.fn(),
     },
+    kasRT: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+    },
     transaksiZis: {
       create: jest.fn(),
       findUnique: jest.fn(),
@@ -112,6 +120,7 @@ type MockedPrisma = {
   warga: { create: jest.Mock; findMany: jest.Mock };
   iuranWarga: { createMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
   kasRW: { create: jest.Mock; findUnique: jest.Mock };
+  kasRT: { create: jest.Mock; findUnique: jest.Mock };
   transaksiZis: { create: jest.Mock; findUnique: jest.Mock; aggregate: jest.Mock };
   pengaturanZis: { findUnique: jest.Mock };
   $transaction: jest.Mock;
@@ -152,6 +161,7 @@ const resetMocks = () => {
   if (mockedPrisma.iuranWarga?.createMany?.mockClear) mockedPrisma.iuranWarga.createMany.mockClear();
   if (mockedPrisma.iuranWarga?.update?.mockClear) mockedPrisma.iuranWarga.update.mockClear();
   if (mockedPrisma.kasRW?.findUnique?.mockClear) mockedPrisma.kasRW.findUnique.mockClear();
+  if (mockedPrisma.kasRT?.findUnique?.mockClear) mockedPrisma.kasRT.findUnique.mockClear();
   if (mockedPrisma.transaksiZis?.findUnique?.mockClear) mockedPrisma.transaksiZis.findUnique.mockClear();
   if (mockedPrisma.transaksiZis?.aggregate?.mockClear) mockedPrisma.transaksiZis.aggregate.mockClear();
   if (mockedPrisma.pengaturanZis?.findUnique?.mockClear) mockedPrisma.pengaturanZis.findUnique.mockClear();
@@ -413,6 +423,7 @@ describe("Backend security suite", () => {
   it("returns 404 for non-existent kode_unik", async () => {
     mockedPrisma.iuranWarga.findUnique.mockResolvedValueOnce(null);
     mockedPrisma.kasRW.findUnique.mockResolvedValueOnce(null);
+    mockedPrisma.kasRT.findUnique.mockResolvedValueOnce(null);
     mockedPrisma.transaksiZis.findUnique.mockResolvedValueOnce(null);
 
     const response = await request(app).get("/api/public/cek-kode/NONEXISTENT");

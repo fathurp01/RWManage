@@ -136,6 +136,8 @@ function DistribusiCard({
 
 export default function DistribusiPage() {
   const { user } = useAuth();
+  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
+  const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
   const [data, setData] = useState<DashboardZisPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -180,12 +182,17 @@ export default function DistribusiPage() {
   // Fetch data
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedYear]);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get("/zis/dashboard");
+      const dashboardUrl = selectedYear ? `/zis/dashboard?tahun=${selectedYear}` : "/zis/dashboard";
+      const response = await api.get(dashboardUrl);
+      if (response.data.success && response.data.years) {
+        setAvailableYears(response.data.years);
+      }
+      
       const payload = response.data.data as DashboardZisPayload;
       setData(payload);
       setEditPersentase({
@@ -195,7 +202,8 @@ export default function DistribusiPage() {
         persen_lainnya: payload.pengaturan_zis.persen_lainnya,
       });
       // Fetch real distribution records
-      const recordsRes = await api.get(`/zis/distribusi?masjid_id=${payload.masjid_id}`);
+      const recordsUrl = `/zis/distribusi?masjid_id=${payload.masjid_id}${selectedYear ? `&tahun=${selectedYear}` : ""}`;
+      const recordsRes = await api.get(recordsUrl);
       if (recordsRes.data.success) {
         setDistribusiRecords(recordsRes.data.data);
       }
@@ -358,7 +366,7 @@ export default function DistribusiPage() {
             <div className="flex items-center gap-2 mb-0.5">
             </div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
-              Manajemen Distribusi
+              Manajemen Distribusi{selectedYear ? ` - ${selectedYear}` : ""}
             </h1>
             <p className="text-sm text-slate-500 dark:text-muted-foreground">
               Kelola distribusi zakat kepada penerima manfaat
@@ -369,10 +377,27 @@ export default function DistribusiPage() {
 
       {/* Summary Cards */}
       <Card>
-        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
-          <CardTitle>Ringkasan Dana Distribusi</CardTitle>
+        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4 flex flex-row items-center justify-between gap-4">
+          <CardTitle>Ringkasan Dana Distribusi{selectedYear ? ` - ${selectedYear}` : ""}</CardTitle>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Tahun:</span>
+            <select
+              className="h-9 w-32 rounded-lg border border-emerald-500 dark:border-emerald-400 bg-emerald-50/10 dark:bg-emerald-950/10 px-2.5 text-sm font-semibold text-emerald-700 dark:text-emerald-300 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all cursor-pointer shadow-xs hover:bg-emerald-50/20 dark:hover:bg-emerald-950/20"
+              value={selectedYear}
+              onChange={(e) => {
+                setSelectedYear(e.target.value);
+              }}
+            >
+              <option value="">Semua Tahun</option>
+              {availableYears.map((yr) => (
+                <option key={yr} value={String(yr)}>
+                  {yr}
+                </option>
+              ))}
+            </select>
+          </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6">
+        <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="space-y-1">
             <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground uppercase">Total Zakat Uang</p>
             <p className="text-lg font-bold text-slate-900 dark:text-foreground">
@@ -440,7 +465,7 @@ export default function DistribusiPage() {
         <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <CardTitle>Pencatatan Distribusi</CardTitle>
+              <CardTitle>Pencatatan Distribusi{selectedYear ? ` - ${selectedYear}` : ""}</CardTitle>
               <CardDescription className="mt-0.5">
                 Catat setiap distribusi yang dilakukan kepada penerima
               </CardDescription>

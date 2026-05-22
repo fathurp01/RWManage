@@ -417,7 +417,7 @@ export default function DashboardRwIndexPage() {
               {/* Card Ringkasan & Donut Chart Iuran */}
               <Card className="border-slate-200/80 dark:border-white/5 shadow-xs">
                 <CardHeader className="border-b border-slate-100 dark:border-white/5 pb-4">
-                  <CardTitle className="text-base font-extrabold">Status Penerimaan Iuran</CardTitle>
+                  <CardTitle className="text-base font-extrabold">Status Penerimaan Iuran {tahun}</CardTitle>
                   <CardDescription>Rasio kepatuhan iuran warga aktif periode berjalan</CardDescription>
                 </CardHeader>
                 <CardContent>

@@ -333,15 +333,23 @@ export default function RwMonitoringLaporanPage() {
 
   const isFiltering = searchQuery.trim() !== "" || filterStatus !== "all" || filterUrgency !== "all";
 
+  const monthNames = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
   // Calculate Metrics from raw reports
   const totalLaporanBaru = reports.filter(r => r.status === "LAPORAN").length;
+
   const sedangDitangani = reports.filter(r => r.status === "PROSES").length;
 
   const selesaiBulanIni = reports.filter(r => {
     if (r.status !== "SELESAI") return false;
     const date = r.ditindaklanjuti_tanggal ? new Date(r.ditindaklanjuti_tanggal) : new Date(r.updated_at || r.created_at);
-    const now = new Date();
-    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   }).length;
 
   const totalDelayedCount = reports.filter(r => isDelayedReport(r.status, r.tanggal_insiden)).length;
@@ -356,7 +364,7 @@ export default function RwMonitoringLaporanPage() {
           </span>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-foreground">
-              Monitoring Laporan Kejadian
+              Monitoring Laporan Kejadian - {monthNames[currentMonth]} {currentYear}
             </h1>
             <p className="text-sm text-slate-500 dark:text-muted-foreground">
               Pantau laporan insiden keamanan, tingkat urgensi, dan status koordinasi di setiap RT
@@ -417,7 +425,7 @@ export default function RwMonitoringLaporanPage() {
         {/* Selesai Bulan Ini */}
         <div className="rounded-3xl border border-slate-200/80 border-t-4 border-t-emerald-500 bg-white p-5 shadow-xs relative overflow-hidden flex items-center justify-between dark:bg-slate-950 dark:border-slate-800">
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Selesai Bulan Ini</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Selesai Bulan {monthNames[currentMonth]} {currentYear}</p>
             <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">
               {selesaiBulanIni} <span className="text-xs font-bold text-slate-400 uppercase tracking-normal">Laporan</span>
             </h3>
@@ -933,8 +941,12 @@ export default function RwMonitoringLaporanPage() {
 
       {/* ── Evidence Zoom Modal Dialog (Lightbox) ── */}
       <Dialog open={proofZoomOpen} onOpenChange={setProofZoomOpen}>
-        <DialogContent showCloseButton={false} className="max-w-4xl p-0 overflow-hidden bg-slate-950 border-0 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-          <div className="relative w-full max-h-[85vh] flex items-center justify-center bg-slate-950 p-2 select-none">
+        <DialogContent showCloseButton={false} className="max-w-5xl sm:max-w-5xl p-0 overflow-hidden bg-slate-955 border-0 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          {/* Visually hidden accessibility headings for screen readers */}
+          <DialogTitle className="sr-only">Bukti Kejadian Laporan</DialogTitle>
+          <DialogDescription className="sr-only">Detail zoom foto bukti kejadian laporan insiden</DialogDescription>
+          
+          <div className="relative w-full max-h-[85vh] flex items-center justify-center bg-slate-955 p-2 select-none">
             {/* Custom Boxed Close Button for Zoom Dialog */}
             <button
               onClick={() => setProofZoomOpen(false)}

@@ -34,6 +34,7 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  RotateCcw,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -191,12 +192,23 @@ export default function MasjidDashboardPage() {
   const [isLoadingTransaksi, setIsLoadingTransaksi] = useState(false);
 
   // Filter & Pagination state
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [appliedStart, setAppliedStart] = useState("");
-  const [appliedEnd, setAppliedEnd] = useState("");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Reset pagination on filter change (realtime)
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
   // Edit State
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -247,7 +259,7 @@ export default function MasjidDashboardPage() {
       });
       toast.success("Data berhasil diperbarui!");
       setIsEditOpen(false);
-      fetchTransaksi(defaultMasjidId, appliedStart, appliedEnd, page, limit).catch(() => undefined);
+      fetchTransaksi(defaultMasjidId, debouncedSearch, page, limit).catch(() => undefined);
       fetchDashboard(defaultMasjidId).catch(() => undefined);
     } catch (error) {
       toast.error(getApiError(error).message);
@@ -281,9 +293,9 @@ export default function MasjidDashboardPage() {
     }
   }, []);
 
-  // Fetch transaksi list (with optional date filter & pagination)
+  // Fetch transaksi list (with optional search & pagination)
   const fetchTransaksi = useCallback(
-    async (masjidId: string, start?: string, end?: string, currentPage = 1, currentLimit = 10) => {
+    async (masjidId: string, searchVal?: string, currentPage = 1, currentLimit = 10) => {
       setIsLoadingTransaksi(true);
       try {
         const params: Record<string, string | number> = {
@@ -291,12 +303,7 @@ export default function MasjidDashboardPage() {
           page: currentPage,
           limit: currentLimit
         };
-        if (start) params.start_date = new Date(start).toISOString();
-        if (end) {
-          const d = new Date(end);
-          d.setHours(23, 59, 59, 999);
-          params.end_date = d.toISOString();
-        }
+        if (searchVal?.trim()) params.search = searchVal.trim();
         const res = await api.get<TransaksiResponse>("/zis/transaksi", { params });
         setTransaksi(res.data.data ?? []);
         setTransaksiMeta(res.data.meta);
@@ -325,20 +332,11 @@ export default function MasjidDashboardPage() {
 
   useEffect(() => {
     if (!defaultMasjidId) return;
-    fetchTransaksi(defaultMasjidId, appliedStart, appliedEnd, page, limit).catch(() => undefined);
-  }, [defaultMasjidId, fetchTransaksi, appliedStart, appliedEnd, page, limit]);
-
-  const handleApplyFilter = () => {
-    setAppliedStart(startDate);
-    setAppliedEnd(endDate);
-    setPage(1);
-  };
+    fetchTransaksi(defaultMasjidId, debouncedSearch, page, limit).catch(() => undefined);
+  }, [defaultMasjidId, fetchTransaksi, debouncedSearch, page, limit]);
 
   const handleResetFilter = () => {
-    setStartDate("");
-    setEndDate("");
-    setAppliedStart("");
-    setAppliedEnd("");
+    setSearch("");
     setPage(1);
   };
 
@@ -347,7 +345,7 @@ export default function MasjidDashboardPage() {
     try {
       await api.delete(`/zis/transaksi/${id}`);
       toast.success("Transaksi berhasil dihapus.");
-      fetchTransaksi(defaultMasjidId, appliedStart, appliedEnd).catch(() => undefined);
+      fetchTransaksi(defaultMasjidId, debouncedSearch).catch(() => undefined);
       fetchDashboard(defaultMasjidId).catch(() => undefined);
     } catch (error) {
       toast.error(getApiError(error).message);
@@ -373,12 +371,6 @@ export default function MasjidDashboardPage() {
   const buildExportUrl = (type: "muzaqi" | "distribusi", fmt: "XLSX" | "PDF") => {
     const params = new URLSearchParams({ format: fmt });
     if (defaultMasjidId) params.set("masjid_id", defaultMasjidId);
-    if (appliedStart) params.set("start_date", new Date(appliedStart).toISOString());
-    if (appliedEnd) {
-      const d = new Date(appliedEnd);
-      d.setHours(23, 59, 59, 999);
-      params.set("end_date", d.toISOString());
-    }
     return `/api/zis/transaksi/export/${type}?${params.toString()}`;
   };
 
@@ -388,12 +380,6 @@ export default function MasjidDashboardPage() {
       const params: Record<string, string> = { format: "PDF" };
 
       if (defaultMasjidId) params.masjid_id = defaultMasjidId;
-      if (appliedStart) params.start_date = new Date(appliedStart).toISOString();
-      if (appliedEnd) {
-        const d = new Date(appliedEnd);
-        d.setHours(23, 59, 59, 999);
-        params.end_date = d.toISOString();
-      }
 
       const res = await api.get(`/zis/transaksi/export/${type}`, {
         params,
@@ -531,7 +517,7 @@ export default function MasjidDashboardPage() {
                   <CardTitle>Riwayat Transaksi ZIS</CardTitle>
                   <CardDescription className="mt-0.5">
                     {transaksi.length} data transaksi ZIS
-                    {appliedStart || appliedEnd ? " (terfilter)" : ""}
+                    {search ? " (terfilter)" : ""}
                   </CardDescription>
                 </div>
                 <Link href="/dashboard/masjid/input">
@@ -542,66 +528,56 @@ export default function MasjidDashboardPage() {
               </div>
 
               {/* Filter */}
-              <div className="mt-3 flex flex-wrap items-end gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-muted-foreground">
-                    Dari Tanggal
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="h-9 rounded-xl border border-input bg-white dark:bg-card px-3 text-sm min-w-37.5"
-                  />
+              <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-end">
+                <div className="w-full lg:w-120 space-y-1.5">
+                  <Label htmlFor="search" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Cari Transaksi</Label>
+                  <div className="relative">
+                    <Input
+                      id="search"
+                      name="search"
+                      type="text"
+                      placeholder="Cari nama KK, alamat, kode..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className={`pl-9 h-10 transition-all duration-200 ${search
+                        ? "border-emerald-500 dark:border-emerald-400 focus-visible:ring-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-950/10"
+                        : ""
+                        }`}
+                    />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-muted-foreground">
-                    Sampai Tanggal
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="h-9 rounded-xl border border-input bg-white dark:bg-card px-3 text-sm min-w-37.5"
-                  />
+                {search && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleResetFilter}
+                    className="h-10 px-4 rounded-xl text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100 hover:border-rose-300 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-950/30 shrink-0 font-semibold shadow-sm transition-all w-full lg:w-auto whitespace-nowrap"
+                  >
+                    <RotateCcw className="size-4 mr-2" />
+                    Reset Filter
+                  </Button>
+                )}
+                <div className="flex-1" />
+                <div className="flex items-center gap-3 w-full lg:w-auto">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 h-10 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 w-full lg:w-auto"
+                    onClick={() => handleExport("muzaqi")}
+                  >
+                    <Download className="size-3.5" />
+                    Rekap Muzaqi
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="gap-1.5 h-10 bg-emerald-600 hover:bg-emerald-700 text-white w-full lg:w-auto"
+                    onClick={() => handleExport("distribusi")}
+                  >
+                    <Download className="size-3.5" />
+                    Rekap Distribusi
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 h-9"
-                  onClick={handleApplyFilter}
-                  disabled={isLoadingTransaksi}
-                >
-                  <Search className="size-3.5" />
-                  Terapkan Filter
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 h-9"
-                  onClick={handleResetFilter}
-                  disabled={isLoadingTransaksi}
-                >
-                  <FilterX className="size-3.5" />
-                  Reset Filter
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 h-9 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300"
-                  onClick={() => handleExport("muzaqi")}
-                >
-                  <Download className="size-3.5" />
-                  Rekap Muzaqi
-                </Button>
-                <Button
-                  size="sm"
-                  className="gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={() => handleExport("distribusi")}
-                >
-                  <Download className="size-3.5" />
-                  Rekap Distribusi
-                </Button>
               </div>
             </CardHeader>
 

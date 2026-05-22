@@ -10,6 +10,7 @@ interface CreateKasMasjidBody {
   keterangan?: string;
   nominal?: number | string;
   bukti_url?: string;
+  bukti_foto_url?: string;
 }
 
 interface GetKasMasjidQuery {
@@ -30,6 +31,7 @@ interface UpdateKasMasjidBody {
   keterangan?: string;
   nominal?: number | string;
   bukti_url?: string;
+  bukti_foto_url?: string;
 }
 
 const generateKodeUnikKasMasjid = (): string => {
@@ -166,6 +168,8 @@ export const createKasMasjid = async (
       tanggalParsed = testDate;
     }
 
+    const bukti_foto_url = req.file ? `/uploads/${req.file.filename}` : undefined;
+
     const kas = await prisma.kasMasjid.create({
       data: {
         masjid_id: authorizedMasjidId,
@@ -174,6 +178,7 @@ export const createKasMasjid = async (
         keterangan,
         nominal: new Prisma.Decimal(nominalKas),
         bukti_url,
+        bukti_foto_url,
         kode_unik: generateKodeUnikKasMasjid(),
       },
       select: {
@@ -184,6 +189,7 @@ export const createKasMasjid = async (
         keterangan: true,
         nominal: true,
         bukti_url: true,
+        bukti_foto_url: true,
         kode_unik: true,
       },
     });
@@ -305,6 +311,7 @@ export const getKasMasjid = async (
         keterangan: true,
         nominal: true,
         bukti_url: true,
+        bukti_foto_url: true,
         kode_unik: true,
       },
       orderBy: [{ tanggal: "desc" }, { id: "desc" }],
@@ -340,7 +347,8 @@ export const getKasMasjid = async (
         },
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("Error in getKasMasjid:", error);
     res.status(500).json({
       success: false,
       message: "Terjadi kesalahan saat mengambil data kas masjid.",
@@ -406,7 +414,8 @@ export const updateKasMasjid = async (
       tanggal === undefined &&
       keterangan === undefined &&
       nominal === undefined &&
-      bukti_url === undefined
+      bukti_url === undefined &&
+      req.file === undefined
     ) {
       res.status(400).json({
         success: false,
@@ -421,6 +430,7 @@ export const updateKasMasjid = async (
       keterangan?: string;
       nominal?: Prisma.Decimal;
       bukti_url?: string | null;
+      bukti_foto_url?: string | null;
     } = {};
 
     if (jenis_transaksi !== undefined) {
@@ -465,6 +475,9 @@ export const updateKasMasjid = async (
       dataToUpdate.nominal = new Prisma.Decimal(parsedNominal);
     }
 
+    if (req.file) {
+      dataToUpdate.bukti_foto_url = `/uploads/${req.file.filename}`;
+    }
     if (bukti_url !== undefined) {
       dataToUpdate.bukti_url = bukti_url.trim() ? bukti_url : null;
     }
@@ -511,6 +524,7 @@ export const updateKasMasjid = async (
         keterangan: true,
         nominal: true,
         bukti_url: true,
+        bukti_foto_url: true,
         kode_unik: true,
       },
     });

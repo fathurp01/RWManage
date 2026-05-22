@@ -16,11 +16,13 @@ import {
   Wheat,
   Banknote,
   Search,
-  FilterX,
   BellRing,
   Calendar,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -146,10 +148,9 @@ export default function PublicSharedDashboardPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
+  const [searchTerm, setSearchTerm] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [appliedStart, setAppliedStart] = useState("");
-  const [appliedEnd, setAppliedEnd] = useState("");
 
   useEffect(() => {
     if (!token) return;
@@ -197,16 +198,28 @@ export default function PublicSharedDashboardPage() {
   const filteredMuzaqi = useMemo(() => {
     if (!muzaqiList.length) return [];
     return muzaqiList.filter((item) => {
+      // Date filters
       const t = new Date(item.waktu_transaksi).getTime();
-      if (appliedStart && t < new Date(appliedStart).getTime()) return false;
-      if (appliedEnd) {
-        const e = new Date(appliedEnd);
+      if (startDate && t < new Date(startDate).getTime()) return false;
+      if (endDate) {
+        const e = new Date(endDate);
         e.setHours(23, 59, 59, 999);
         if (t > e.getTime()) return false;
       }
+
+      // Search filter
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        const matchesSearch =
+          item.nama_kk.toLowerCase().includes(term) ||
+          item.alamat_muzaqi.toLowerCase().includes(term) ||
+          item.kode_unik.toLowerCase().includes(term);
+        if (!matchesSearch) return false;
+      }
+
       return true;
     });
-  }, [muzaqiList, appliedStart, appliedEnd]);
+  }, [muzaqiList, startDate, endDate, searchTerm]);
 
   const summary = useMemo(() => {
     if (!data?.payload?.summary) return null;
@@ -219,7 +232,7 @@ export default function PublicSharedDashboardPage() {
     };
   }, [data]);
 
-  const isFiltered = !!appliedStart || !!appliedEnd;
+  const isFiltered = !!searchTerm || !!startDate || !!endDate;
 
   const computeHijriYear = (date: Date) => {
     // Algorithm from the astronomical/julian conversion to Islamic calendar
@@ -249,8 +262,8 @@ export default function PublicSharedDashboardPage() {
   const headerTitle = data?.payload?.entity?.nama_masjid
     ? `Monitor Zakat ${data.payload.entity.nama_masjid}`
     : data?.payload?.entity?.nama_kompleks
-    ? `Monitor Zakat RW ${data.payload.entity.nama_kompleks}`
-    : "Monitor Zakat Warga";
+      ? `Monitor Zakat RW ${data.payload.entity.nama_kompleks}`
+      : "Monitor Zakat Warga";
 
   const headerDescription = data?.payload?.entity?.nama_masjid
     ? "Halaman ini bersifat read-only untuk pengunjung masjid."
@@ -320,74 +333,6 @@ export default function PublicSharedDashboardPage() {
               </div>
             </div>
 
-            {/* ── Filter Periode ──────────────────────────────────────────── */}
-            <Card>
-              <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Calendar className="size-4 text-slate-400" />
-                  Filter Periode
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="flex flex-wrap items-end gap-3">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-500 dark:text-muted-foreground">
-                      Dari Tanggal
-                    </label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="h-9 rounded-xl border border-input bg-white dark:bg-card px-3 text-sm min-w-28 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-500 dark:text-muted-foreground">
-                      Sampai Tanggal
-                    </label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="h-9 rounded-xl border border-input bg-white dark:bg-card px-3 text-sm min-w-28 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => {
-                        setAppliedStart(startDate);
-                        setAppliedEnd(endDate);
-                      }}
-                    >
-                      <Search className="size-3.5" />
-                      Terapkan
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5 h-9"
-                      onClick={() => {
-                        setStartDate("");
-                        setEndDate("");
-                        setAppliedStart("");
-                        setAppliedEnd("");
-                      }}
-                    >
-                      <FilterX className="size-3.5" />
-                      Reset
-                    </Button>
-                  </div>
-                </div>
-                {isFiltered && (
-                  <p className="mt-3 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                    Filter aktif: {appliedStart || "awal"} → {appliedEnd || "akhir"}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
             {/* ── Ringkasan Stat Cards ─────────────────────────────────────── */}
             <div>
               <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-muted-foreground mb-3 px-0.5">
@@ -435,6 +380,80 @@ export default function PublicSharedDashboardPage() {
                 />
               </div>
             </div>
+
+            {/* ── Filter Periode ──────────────────────────────────────────── */}
+            <Card>
+              <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Calendar className="size-4 text-slate-400" />
+                  Filter Periode
+                </CardTitle>
+                <CardDescription>Cari nama muzaqi dan batasi berdasarkan tanggal transaksi.</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-5 space-y-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                  <div className="flex-1 space-y-1.5">
+                    <Label htmlFor="search" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Cari Nama / Alamat</Label>
+                    <Input
+                      id="search"
+                      name="search"
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                      placeholder="Cari nama muzaqi, alamat, atau kode..."
+                      className={`transition-all duration-200 ${searchTerm
+                        ? "border-emerald-500 dark:border-emerald-400 focus-visible:ring-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-950/10"
+                        : ""
+                        }`}
+                    />
+                  </div>
+                  <div className="w-full lg:w-48 space-y-1.5">
+                    <Label htmlFor="start_date" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Dari Tanggal</Label>
+                    <Input
+                      id="start_date"
+                      name="start_date"
+                      type="date"
+                      value={startDate}
+                      onChange={(event) => setStartDate(event.target.value)}
+                      className={`transition-all duration-200 ${startDate
+                        ? "border-emerald-500 dark:border-emerald-400 focus-visible:ring-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-950/10"
+                        : ""
+                        }`}
+                    />
+                  </div>
+                  <div className="w-full lg:w-48 space-y-1.5">
+                    <Label htmlFor="end_date" className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">Sampai Tanggal</Label>
+                    <Input
+                      id="end_date"
+                      name="end_date"
+                      type="date"
+                      value={endDate}
+                      onChange={(event) => setEndDate(event.target.value)}
+                      className={`transition-all duration-200 ${endDate
+                        ? "border-emerald-500 dark:border-emerald-400 focus-visible:ring-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-950/10"
+                        : ""
+                        }`}
+                    />
+                  </div>
+                  {(searchTerm || startDate || endDate) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setSearchTerm("");
+                        setStartDate("");
+                        setEndDate("");
+                      }}
+                      className="h-10 px-4 rounded-xl text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100 hover:border-rose-300 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-950/30 shrink-0 font-semibold shadow-sm transition-all w-full lg:w-auto whitespace-nowrap"
+                    >
+                      <RotateCcw className="size-4 mr-2" />
+                      Reset Filter
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+
 
             {/* ── Daftar Muzaqi ────────────────────────────────────────────── */}
             <Card>
@@ -499,9 +518,8 @@ export default function PublicSharedDashboardPage() {
                           return (
                             <tr
                               key={trx.id}
-                              className={`hover:bg-slate-50/70 dark:hover:bg-white/3 transition-colors ${
-                                idx % 2 === 0 ? "" : "bg-slate-50/30 dark:bg-white/1"
-                              }`}
+                              className={`hover:bg-slate-50/70 dark:hover:bg-white/3 transition-colors ${idx % 2 === 0 ? "" : "bg-slate-50/30 dark:bg-white/1"
+                                }`}
                             >
                               <td className="px-4 py-3 font-semibold text-slate-900 dark:text-foreground whitespace-nowrap">
                                 {trx.nama_kk}
@@ -514,11 +532,10 @@ export default function PublicSharedDashboardPage() {
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <span
-                                  className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                                    isUang
+                                  className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${isUang
                                       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
                                       : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-                                  }`}
+                                    }`}
                                 >
                                   {isUang ? "Uang" : "Beras"}
                                 </span>

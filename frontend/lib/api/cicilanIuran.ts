@@ -49,8 +49,8 @@ export const cicilanIuranClient = {
     return res.data.data;
   },
 
-  async markAsPaid(cicilan_id: string, scope: CicilanIuranScope = "rw"): Promise<CicilanIuranRecord> {
-    const res = await api.patch<{ data: CicilanIuranRecord }>(`${getBasePath(scope)}/${cicilan_id}/bayar`);
+  async markAsPaid(cicilan_id: string, nominal: number, scope: CicilanIuranScope = "rw"): Promise<CicilanIuranRecord> {
+    const res = await api.patch<{ data: CicilanIuranRecord }>(`${getBasePath(scope)}/${cicilan_id}/bayar`, { nominal });
     return res.data.data;
   },
 

@@ -190,6 +190,48 @@ export const cekKodeUnikWithClient = async (
       return;
     }
 
+    const kasRt = includeRwScope
+      ? await client.kasRT.findUnique({
+          where: { kode_unik: normalizedKode },
+          select: {
+            id: true,
+            blok_wilayah_id: true,
+            jenis_transaksi: true,
+            tanggal: true,
+            keterangan: true,
+            nominal: true,
+            bukti_url: true,
+            bukti_foto_url: true,
+            kode_unik: true,
+            blok_wilayah: {
+              select: {
+                id: true,
+                nama_blok: true,
+                no_rt: true,
+                wilayah_rw: {
+                  select: {
+                    id: true,
+                    no_rw: true,
+                  },
+                },
+              },
+            },
+          },
+        })
+      : null;
+
+    if (kasRt) {
+      res.status(200).json({
+        success: true,
+        message: "Data ditemukan pada kas_rt.",
+        data: {
+          sumber: "kas_rt",
+          detail: kasRt,
+        },
+      });
+      return;
+    }
+
     const zis = includeMasjidScope
       ? await client.transaksiZis.findUnique({
           where: { kode_unik: normalizedKode },
@@ -217,6 +259,41 @@ export const cekKodeUnikWithClient = async (
         data: {
           sumber: "transaksi_zis",
           detail: zis,
+        },
+      });
+      return;
+    }
+
+    const kasMasjid = includeMasjidScope
+      ? await client.kasMasjid.findUnique({
+          where: { kode_unik: normalizedKode },
+          select: {
+            id: true,
+            masjid_id: true,
+            jenis_transaksi: true,
+            tanggal: true,
+            keterangan: true,
+            nominal: true,
+            bukti_url: true,
+            bukti_foto_url: true,
+            kode_unik: true,
+            masjid: {
+              select: {
+                id: true,
+                nama_masjid: true,
+              },
+            },
+          },
+        })
+      : null;
+
+    if (kasMasjid) {
+      res.status(200).json({
+        success: true,
+        message: "Data ditemukan pada kas_masjid.",
+        data: {
+          sumber: "kas_masjid",
+          detail: kasMasjid,
         },
       });
       return;
@@ -307,6 +384,33 @@ export const exportPublicKwitansi = async (req: Request, res: Response): Promise
       return;
     }
 
+    // Check Kas RT
+    const kasRt = await prisma.kasRT.findUnique({
+      where: { kode_unik: normalizedKode },
+      include: {
+        blok_wilayah: {
+          include: { wilayah_rw: true },
+        },
+      },
+    });
+
+    if (kasRt) {
+      await generateKwitansiPdf(res, {
+        sumber: "kas_rt",
+        title: `Kwitansi Kas RT ${kasRt.jenis_transaksi === "MASUK" ? "(Penerimaan)" : "(Pengeluaran)"}`,
+        color: kasRt.jenis_transaksi === "MASUK" ? "#0891b2" : "#ef4444", // Cyan for in, Red for out
+        items: [
+          ["Kode Unik", kasRt.kode_unik],
+          ["Jenis Transaksi", kasRt.jenis_transaksi],
+          ["Nominal", formatCurrencyId(Number(kasRt.nominal))],
+          ["Tanggal", new Date(kasRt.tanggal).toLocaleDateString("id-ID")],
+          ["RT / Blok", `RT ${kasRt.blok_wilayah.no_rt} - ${kasRt.blok_wilayah.nama_blok}`],
+          ["Keterangan", kasRt.keterangan],
+        ],
+      });
+      return;
+    }
+
     // Check ZIS
     const zis = await prisma.transaksiZis.findUnique({
       where: { kode_unik: normalizedKode },
@@ -329,6 +433,29 @@ export const exportPublicKwitansi = async (req: Request, res: Response): Promise
           ["Nominal Infaq", formatCurrencyId(Number(zis.nominal_infaq))],
           ["Beras (kg)", String(zis.total_beras_kg)],
           ["Tanggal Transaksi", new Date(zis.waktu_transaksi).toLocaleDateString("id-ID")],
+        ],
+      });
+      return;
+    }
+
+    // Check Kas Masjid
+    const kasMasjid = await prisma.kasMasjid.findUnique({
+      where: { kode_unik: normalizedKode },
+      include: { masjid: true },
+    });
+
+    if (kasMasjid) {
+      await generateKwitansiPdf(res, {
+        sumber: "kas_masjid",
+        title: `Kwitansi Kas Masjid ${kasMasjid.jenis_transaksi === "MASUK" ? "(Penerimaan)" : "(Pengeluaran)"}`,
+        color: kasMasjid.jenis_transaksi === "MASUK" ? "#059669" : "#ef4444", // Emerald for in, Red for out
+        items: [
+          ["Kode Unik", kasMasjid.kode_unik],
+          ["Jenis Transaksi", kasMasjid.jenis_transaksi],
+          ["Nominal", formatCurrencyId(Number(kasMasjid.nominal))],
+          ["Tanggal", new Date(kasMasjid.tanggal).toLocaleDateString("id-ID")],
+          ["Nama Masjid", kasMasjid.masjid.nama_masjid],
+          ["Keterangan", kasMasjid.keterangan],
         ],
       });
       return;

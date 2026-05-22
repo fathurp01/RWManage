@@ -1,10 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { api, getApiError } from "@/lib/axios";
 import { toast } from "sonner";
-import { Building2, Wallet, TrendingUp, ArrowRightLeft, ChevronLeft, ChevronRight, Receipt } from "lucide-react";
+import { Building2, Wallet, TrendingUp, ArrowRightLeft, ChevronLeft, ChevronRight, Receipt, Calendar, RotateCcw, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface KasRTSummary {
   blok_wilayah_id: string;
@@ -19,21 +26,43 @@ interface KasRTSummary {
 export default function MonitoringKasRTPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<KasRTSummary[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [selectedYear, setSelectedYear] = useState<string>("");
+  const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
+
+  const monthNames = [
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
+  ];
 
   // Pagination states (limit 6 items per page)
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 6;
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get("/rw/kas-rt-summary");
+      const res = await api.get("/rw/kas-rt-summary", {
+        params: {
+          month: selectedMonth,
+          year: selectedYear,
+        }
+      });
       if (res.data.success) {
         setData(res.data.data);
+        if (res.data.years) {
+          setAvailableYears(res.data.years);
+        }
       }
     } catch (error) {
       const apiError = getApiError(error);
@@ -41,7 +70,24 @@ export default function MonitoringKasRTPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedMonth, selectedYear]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const getCardLabel = useCallback((baseLabel: string) => {
+    if (selectedMonth === "" && selectedYear === "") {
+      return `${baseLabel} ${new Date().getFullYear()}`;
+    }
+    if (selectedMonth !== "" && selectedYear === "") {
+      return `${baseLabel} Bulan ${monthNames[Number(selectedMonth)]}`;
+    }
+    if (selectedMonth === "" && selectedYear !== "") {
+      return `${baseLabel} ${selectedYear}`;
+    }
+    return `${baseLabel} ${monthNames[Number(selectedMonth)]} ${selectedYear}`;
+  }, [selectedMonth, selectedYear]);
 
   const totalSaldoSemuaRT = data.reduce((acc, curr) => acc + curr.saldo, 0);
   const totalMasukSemuaRT = data.reduce((acc, curr) => acc + curr.total_masuk, 0);
@@ -65,7 +111,7 @@ export default function MonitoringKasRTPage() {
           </span>
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
-              Monitoring Kas RT
+              {getCardLabel("Monitoring Kas RT -")}
             </h1>
             <p className="text-sm text-slate-500 dark:text-muted-foreground">
               Pantau serapan iuran dan penggunaan dana kas di masing-masing RT secara real-time
@@ -73,6 +119,81 @@ export default function MonitoringKasRTPage() {
           </div>
         </div>
       </header>
+
+      {/* ── Filter Panel ── */}
+      <div className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm space-y-3 dark:bg-slate-900 dark:border-slate-800">
+        <p className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+          <Filter className="size-4 text-violet-500" />
+          Saring Laporan Kas RT
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Select Month */}
+          <Select
+            value={selectedMonth === "" ? "ALL" : selectedMonth}
+            onValueChange={(val) => setSelectedMonth(val === "ALL" ? "" : val)}
+          >
+            <SelectTrigger className={`!h-11 !rounded-xl text-sm w-full sm:w-[220px] font-medium transition-all ${selectedMonth !== ""
+                ? "!bg-violet-50 !border-violet-400 !text-violet-700 shadow-sm"
+                : "!bg-white dark:!bg-slate-950 !border-slate-200 dark:!border-slate-800 !text-slate-600 dark:!text-slate-300 hover:!border-violet-300"
+              }`}>
+              <Calendar className={`size-4 mr-1.5 shrink-0 ${selectedMonth !== "" ? "text-violet-500" : "text-slate-400"}`} />
+              <SelectValue placeholder="Semua Bulan" />
+            </SelectTrigger>
+            <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <SelectItem value="ALL" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">Semua Bulan</SelectItem>
+              <SelectItem value="0" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">Januari</SelectItem>
+              <SelectItem value="1" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">Februari</SelectItem>
+              <SelectItem value="2" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">Maret</SelectItem>
+              <SelectItem value="3" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">April</SelectItem>
+              <SelectItem value="4" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">Mei</SelectItem>
+              <SelectItem value="5" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">Juni</SelectItem>
+              <SelectItem value="6" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">Juli</SelectItem>
+              <SelectItem value="7" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">Agustus</SelectItem>
+              <SelectItem value="8" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">September</SelectItem>
+              <SelectItem value="9" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">Oktober</SelectItem>
+              <SelectItem value="10" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">November</SelectItem>
+              <SelectItem value="11" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">Desember</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Select Year */}
+          <Select
+            value={selectedYear === "" ? "ALL" : selectedYear}
+            onValueChange={(val) => setSelectedYear(val === "ALL" ? "" : val)}
+          >
+            <SelectTrigger className={`!h-11 !rounded-xl text-sm w-full sm:w-[180px] font-medium transition-all ${selectedYear !== ""
+                ? "!bg-violet-50 !border-violet-400 !text-violet-700 shadow-sm"
+                : "!bg-white dark:!bg-slate-950 !border-slate-200 dark:!border-slate-800 !text-slate-600 dark:!text-slate-300 hover:!border-violet-300"
+              }`}>
+              <Calendar className={`size-4 mr-1.5 shrink-0 ${selectedYear !== "" ? "text-violet-500" : "text-slate-400"}`} />
+              <SelectValue placeholder="Semua Tahun" />
+            </SelectTrigger>
+            <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <SelectItem value="ALL" className="!text-sm !py-2 !px-3 !rounded-lg font-medium">Semua Tahun</SelectItem>
+              {availableYears.map((yr) => (
+                <SelectItem key={yr} value={String(yr)} className="!text-sm !py-2 !px-3 !rounded-lg font-medium">
+                  {yr}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Reset Button */}
+          {(selectedMonth !== "" || selectedYear !== "") && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedMonth("");
+                setSelectedYear("");
+              }}
+              className="h-11 px-4 rounded-xl text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100 hover:border-rose-300 shrink-0 font-semibold shadow-xs transition-all flex items-center gap-1.5"
+            >
+              <RotateCcw className="size-4" />
+              Reset
+            </Button>
+          )}
+        </div>
+      </div>
 
       {loading ? (
         <div className="rounded-3xl border border-slate-200/70 bg-white p-12 text-center shadow-sm">
@@ -108,7 +229,9 @@ export default function MonitoringKasRTPage() {
               <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-slate-400 to-slate-500 rounded-t-3xl" />
               <div className="p-5 pt-6 flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-bold uppercase tracking-wider text-slate-500">Akumulasi Arus Kas RT</p>
+                  <p className="text-[13px] font-bold uppercase tracking-wider text-slate-500">
+                    {getCardLabel("Akumulasi Arus Kas RT")}
+                  </p>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <div>
                       <span className="text-xs text-slate-500 mt-1">Kas Masuk</span>
@@ -166,7 +289,9 @@ export default function MonitoringKasRTPage() {
                   <Building2 className="size-4" />
                 </span>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Daftar Saldo &amp; Kepatuhan Kas RT</h2>
+                  <h2 className="text-base font-bold text-slate-900">
+                    {getCardLabel("Daftar Saldo & Kepatuhan Kas RT")}
+                  </h2>
                   <p className="text-sm text-slate-500 mt-0.5">Berdasarkan data rincian transaksi real-time yang diinput oleh masing-masing RT.</p>
                 </div>
               </div>
@@ -198,7 +323,9 @@ export default function MonitoringKasRTPage() {
             </div>
 
             {/* Panel Body */}
-            <div className="p-6">
+            <div className="p-6 space-y-4">
+
+
               <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-slate-50/70 border-b border-slate-100">

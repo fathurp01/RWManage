@@ -147,12 +147,12 @@ const rwGroups: SidebarGroup[] = [
         description: "Lihat ringkasan iuran dan kas",
         icon: FileText,
       },
-      {
+      /* {
         href: "/dashboard/rw/share-links",
         label: "Share Link RW",
         description: "Kelola link transparansi publik",
         icon: Link2,
-      },
+      }, */
       {
         href: "/dashboard/rw/audit-logs",
         label: "Audit Logs",

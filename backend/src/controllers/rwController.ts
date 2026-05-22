@@ -1198,6 +1198,9 @@ export const getMonitoringRonda = async (req: Request, res: Response): Promise<v
         blok_wilayah: { select: { id: true, nama_blok: true, no_rt: true } },
         petugas: true,
         presensi: {
+          ...(tanggal_mulai && tanggal_akhir
+            ? { where: { tanggal: { gte: new Date(tanggal_mulai), lte: new Date(tanggal_akhir) } } }
+            : {}),
           select: {
             status_hadir: true,
             tanggal: true,
@@ -1629,15 +1632,12 @@ export const updateKasRW = async (req: Request, res: Response): Promise<void> =>
       dataToUpdate.nominal = new Prisma.Decimal(parsedNominal);
     }
 
-    // Evidence logic: photo overrides link
+    // Evidence: foto and link are independent — both can coexist
     if (req.file) {
       dataToUpdate.bukti_foto_url = `/uploads/${req.file.filename}`;
-      dataToUpdate.bukti_url = null; // Clear link if photo is uploaded
-    } else if (bukti_url !== undefined) {
+    }
+    if (bukti_url !== undefined) {
       dataToUpdate.bukti_url = bukti_url.trim() || null;
-      if (dataToUpdate.bukti_url) {
-        dataToUpdate.bukti_foto_url = null; // Clear photo path if link is provided
-      }
     }
 
     const updatedKas = await prisma.kasRW.update({

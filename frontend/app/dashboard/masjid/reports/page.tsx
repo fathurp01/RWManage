@@ -193,7 +193,7 @@ export default function MasjidReportPage() {
         <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
           <CardTitle>Filter Periode</CardTitle>
         </CardHeader>
-        <CardContent className="pt-5">
+        <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="tahun">Tahun</Label>
@@ -284,7 +284,7 @@ export default function MasjidReportPage() {
             <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
               <CardTitle>Rincian Bulanan Tahun {tahun}</CardTitle>
             </CardHeader>
-            <CardContent className="pt-5">
+            <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>

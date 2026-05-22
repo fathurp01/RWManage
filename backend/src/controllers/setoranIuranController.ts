@@ -21,14 +21,48 @@ export const getSetoranRT = async (req: Request, res: Response): Promise<void> =
       orderBy: { tanggal_setor: "desc" }
     });
 
-    // Hitung Titipan yang belum disetor (Status LUNAS, tapi setoran_id null)
+    // Hitung Titipan yang belum disetor (Status LUNAS, tapi setoran_id null) - Selalu all-time
     const belumDisetor = await prisma.iuranWarga.aggregate({
       where: {
         warga: { blok_wilayah_id: blokId },
         status: StatusIuran.LUNAS,
         setoran_id: null
       },
-      _sum: { nominal_kas_rw: true, nominal: true }
+      _sum: { nominal_kas_rw: true }
+    });
+
+    // Hitung total pemasukan iuran dengan filter bulan/tahun
+    let filterBulan: number | undefined = undefined;
+    let filterTahun: number | undefined = undefined;
+
+    if (req.query.bulan) {
+      filterBulan = Number(req.query.bulan);
+    }
+    if (req.query.tahun) {
+      filterTahun = Number(req.query.tahun);
+    }
+
+    // Default ke tahun sekarang jika tidak ada filter yang aktif
+    if (filterBulan === undefined && filterTahun === undefined) {
+      filterTahun = new Date().getFullYear();
+    }
+
+    const filterConditions: any = {
+      warga: { blok_wilayah_id: blokId },
+      status: StatusIuran.LUNAS,
+      setoran_id: null
+    };
+
+    if (filterBulan !== undefined) {
+      filterConditions.bulan = filterBulan;
+    }
+    if (filterTahun !== undefined) {
+      filterConditions.tahun = filterTahun;
+    }
+
+    const pemasukanFiltered = await prisma.iuranWarga.aggregate({
+      where: filterConditions,
+      _sum: { nominal: true }
     });
 
     res.status(200).json({
@@ -36,7 +70,7 @@ export const getSetoranRT = async (req: Request, res: Response): Promise<void> =
       data: {
         history: setoran,
         titipan_belum_setor: belumDisetor._sum.nominal_kas_rw || 0,
-        total_pemasukan_iuran: belumDisetor._sum.nominal || 0,
+        total_pemasukan_iuran: pemasukanFiltered._sum.nominal || 0,
       }
     });
   } catch (error) {
@@ -74,6 +108,7 @@ export const submitSetoran = async (req: Request, res: Response): Promise<void> 
 
     const totalKasRW = iuranList.reduce((acc, curr) => acc + Number(curr.nominal_kas_rw || 0), 0);
     const { bukti_url } = req.body;
+    const foto_bukti_url = (req as any).file?.filename ? `/uploads/${(req as any).file.filename}` : (bukti_url || null);
 
     const setoran = await prisma.$transaction(async (tx) => {
       const created = await tx.setoranIuranRT.create({
@@ -82,7 +117,7 @@ export const submitSetoran = async (req: Request, res: Response): Promise<void> 
           wilayah_rw_id: blok.wilayah_rw_id,
           nominal: totalKasRW,
           status: StatusSetoran.PENDING,
-          bukti_url: bukti_url || null,
+          bukti_url: foto_bukti_url,
         }
       });
 
@@ -223,3 +258,170 @@ export const approveSetoran = async (req: Request, res: Response): Promise<void>
     res.status(500).json({ success: false, message: "Terjadi kesalahan saat approve setoran." });
   }
 };
+
+export const updateSetoranRT = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id || req.user.role !== "RT") {
+      res.status(401).json({ success: false, message: "Akses ditolak. Hanya RT." });
+      return;
+    }
+
+    const blokId = req.user.blok_wilayah_id;
+    if (!blokId) {
+      res.status(403).json({ success: false, message: "Data blok wilayah RT tidak ditemukan." });
+      return;
+    }
+
+    const setoran_id = req.params.setoran_id as string;
+    const existing = await prisma.setoranIuranRT.findUnique({
+      where: { id: setoran_id }
+    });
+
+    if (!existing) {
+      res.status(404).json({ success: false, message: "Data setoran tidak ditemukan." });
+      return;
+    }
+
+    if (existing.blok_wilayah_id !== blokId) {
+      res.status(403).json({ success: false, message: "Akses ditolak. Anda tidak berwenang mengedit setoran ini." });
+      return;
+    }
+
+    if (existing.status !== StatusSetoran.PENDING) {
+      res.status(400).json({ success: false, message: "Setoran yang sudah terkonfirmasi tidak dapat diedit." });
+      return;
+    }
+
+    const { bukti_url, hapus_bukti } = req.body;
+    let foto_bukti_url = existing.bukti_url;
+    let shouldDeleteOldFile = false;
+
+    if ((req as any).file?.filename) {
+      foto_bukti_url = `/uploads/${(req as any).file.filename}`;
+      shouldDeleteOldFile = true;
+    } else if (hapus_bukti === "true" || hapus_bukti === true) {
+      foto_bukti_url = null;
+      shouldDeleteOldFile = true;
+    } else if (bukti_url !== undefined) {
+      foto_bukti_url = bukti_url || null;
+      if (foto_bukti_url !== existing.bukti_url) {
+        shouldDeleteOldFile = true;
+      }
+    }
+
+    if (shouldDeleteOldFile && existing.bukti_url) {
+      const fs = require("fs");
+      const path = require("path");
+      const filename = existing.bukti_url.replace(/^\/uploads\//, "");
+      const filePath = path.join(process.cwd(), "uploads", filename);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+        } catch (err) {
+          console.error("Gagal menghapus file bukti setoran lama:", err);
+        }
+      }
+    }
+
+    const updated = await prisma.setoranIuranRT.update({
+      where: { id: setoran_id },
+      data: {
+        bukti_url: foto_bukti_url,
+      }
+    });
+
+    await recordAudit(req, {
+      aksi: AksiAudit.UPDATE,
+      entitas: "SetoranIuranRT",
+      entitas_id: updated.id,
+      data_lama: existing,
+      data_baru: updated,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Bukti transfer setoran berhasil diperbarui.",
+      data: updated
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengupdate bukti setoran." });
+  }
+};
+
+export const deleteSetoranRT = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id || req.user.role !== "RT") {
+      res.status(401).json({ success: false, message: "Akses ditolak. Hanya RT." });
+      return;
+    }
+
+    const blokId = req.user.blok_wilayah_id;
+    if (!blokId) {
+      res.status(403).json({ success: false, message: "Data blok wilayah RT tidak ditemukan." });
+      return;
+    }
+
+    const setoran_id = req.params.setoran_id as string;
+    const existing = await prisma.setoranIuranRT.findUnique({
+      where: { id: setoran_id }
+    });
+
+    if (!existing) {
+      res.status(404).json({ success: false, message: "Data setoran tidak ditemukan." });
+      return;
+    }
+
+    if (existing.blok_wilayah_id !== blokId) {
+      res.status(403).json({ success: false, message: "Akses ditolak. Anda tidak berwenang menghapus setoran ini." });
+      return;
+    }
+
+    if (existing.status !== StatusSetoran.PENDING) {
+      res.status(400).json({ success: false, message: "Setoran yang sudah terkonfirmasi tidak dapat dihapus." });
+      return;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Bebaskan semua iuranWarga yang terikat dengan setoran ini
+      await tx.iuranWarga.updateMany({
+        where: { setoran_id: setoran_id },
+        data: { setoran_id: null }
+      });
+
+      // Hapus data setoran
+      await tx.setoranIuranRT.delete({
+        where: { id: setoran_id }
+      });
+    });
+
+    // Hapus file fisik dari uploads jika menggunakan storage lokal
+    if (existing.bukti_url) {
+      const fs = require("fs");
+      const path = require("path");
+      const filename = existing.bukti_url.replace(/^\/uploads\//, "");
+      const filePath = path.join(process.cwd(), "uploads", filename);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+        } catch (err) {
+          console.error("Gagal menghapus file bukti setoran:", err);
+        }
+      }
+    }
+
+    await recordAudit(req, {
+      aksi: AksiAudit.DELETE,
+      entitas: "SetoranIuranRT",
+      entitas_id: setoran_id,
+      data_lama: existing,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Pengajuan setoran berhasil dibatalkan dan dihapus."
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat menghapus setoran." });
+  }
+};
+

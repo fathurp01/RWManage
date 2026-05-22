@@ -528,7 +528,7 @@ export default function DataPendudukPage() {
             </SelectTrigger>
             <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100">
               <SelectItem value="all" className="!text-sm !py-2 !px-3 !rounded-lg cursor-pointer">
-                Semua Blok
+                Semua Blok / RT
               </SelectItem>
               {blokOptions.map((blok) => (
                 <SelectItem key={blok.id} value={blok.id} className="!text-sm !py-2 !px-3 !rounded-lg cursor-pointer">
@@ -537,26 +537,7 @@ export default function DataPendudukPage() {
               ))}
             </SelectContent>
           </Select>
-          {/* Filter RT */}
-          <Select value={filterRt} onValueChange={setFilterRt}>
-            <SelectTrigger className={`!h-11 !rounded-xl text-sm !w-auto min-w-[140px] font-medium transition-all ${filterRt !== "all"
-              ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm shadow-indigo-100"
-              : "!bg-white !border-slate-200 !text-slate-600 hover:!border-indigo-300 hover:!bg-indigo-50/50"
-              }`}>
-              <GitBranch className={`size-4 mr-1 shrink-0 ${filterRt !== "all" ? "text-indigo-500" : "text-slate-400"}`} />
-              <SelectValue placeholder="Semua RT" />
-            </SelectTrigger>
-            <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100">
-              <SelectItem value="all" className="!text-sm !py-2 !px-3 !rounded-lg cursor-pointer">
-                Semua RT
-              </SelectItem>
-              {rtOptions.map((rt) => (
-                <SelectItem key={rt} value={rt.toString()} className="!text-sm !py-2 !px-3 !rounded-lg cursor-pointer">
-                  RT {rt.toString().padStart(3, "0")}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
           {/* Reset Filter */}
           {(search || filterBlok !== "all" || filterRt !== "all") && (
             <Button
