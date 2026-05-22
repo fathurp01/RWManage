@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { api, getApiError } from "@/lib/axios";
+import { api, downloadApiFile, getApiError } from "@/lib/axios";
 import { cicilanIuranClient, type CicilanIuranRecord } from "@/lib/api/cicilanIuran";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +34,7 @@ import {
   Users,
   FileDown,
   RefreshCw,
+  RotateCcw,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
@@ -71,6 +72,7 @@ interface CicilanItem {
 interface WargaIuran {
   id: string;
   nama_kk: string;
+  status_keluarga?: "MAMPU" | "KURANG_MAMPU" | "LANSIA";
   tarif_iuran_bulanan: number;
   iuran: IuranItem[];
 }
@@ -222,19 +224,36 @@ export default function ManajemenIuranPage() {
   const [payAmount, setPayAmount] = useState("");
   const [payOverlayOpen, setPayOverlayOpen] = useState(false);
 
-  const [historyYear, setHistoryYear] = useState(String(currentYear));
+  const [selectedYear, setSelectedYear] = useState(String(currentYear));
+  const [defaultData, setDefaultData] = useState<RtIuranResponse["data"] | null>(null);
   const [historyRows, setHistoryRows] = useState<HistoryItem[]>([]);
 
   // Pagination for history
   const [historyPage, setHistoryPage] = useState(1);
   const historyPageSize = 10;
 
-  const loadData = useCallback(async () => {
+  // Pagination for tagihan iuran
+  const [tagihanPage, setTagihanPage] = useState(1);
+  const [tagihanPageSize, setTagihanPageSize] = useState(10);
+
+  // Pagination for warga bebas iuran
+  const [bebasPage, setBebasPage] = useState(1);
+  const bebasPageSize = 10;
+
+  const loadData = useCallback(async (yearToLoad = selectedYear) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.get<RtIuranResponse>("/rt/iuran", { params: { tahun: currentYear } });
+      const yearNum = Number(yearToLoad);
+      const res = await api.get<RtIuranResponse>("/rt/iuran", { params: { tahun: yearNum } });
       setData(res.data.data);
+
+      if (yearNum === currentYear) {
+        setDefaultData(res.data.data);
+      } else {
+        const resDefault = await api.get<RtIuranResponse>("/rt/iuran", { params: { tahun: currentYear } });
+        setDefaultData(resDefault.data.data);
+      }
     } catch (err: any) {
       const apiError = getApiError(err);
       setError(apiError.message);
@@ -242,7 +261,7 @@ export default function ManajemenIuranPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedYear]);
 
   const loadHistory = useCallback(async (tahun?: string) => {
     try {
@@ -258,9 +277,11 @@ export default function ManajemenIuranPage() {
   }, []);
 
   useEffect(() => {
-    loadData();
-    loadHistory(historyYear);
-  }, [historyYear, loadData, loadHistory]);
+    loadData(selectedYear);
+    loadHistory(selectedYear);
+    setTagihanPage(1);
+    setBebasPage(1);
+  }, [selectedYear, loadData, loadHistory]);
 
   const openDetail = (wargaName: string, iuran: IuranItem) => {
     setSelectedDetail({ wargaName, iuran });
@@ -294,8 +315,8 @@ export default function ManajemenIuranPage() {
       if (res.data.success) {
         toast.success("Pembayaran berhasil. Saldo otomatis dibagi ke Kas RT & Setoran RW.");
       }
-      await loadData();
-      await loadHistory(historyYear);
+      await loadData(selectedYear);
+      await loadHistory(selectedYear);
     } catch (err) {
       const apiError = getApiError(err);
       toast.error(apiError.message);
@@ -334,8 +355,8 @@ export default function ManajemenIuranPage() {
       setPayOverlayOpen(false);
       setDetailOpen(false);
       setSelectedDetail(null);
-      await loadData();
-      await loadHistory(historyYear);
+      await loadData(selectedYear);
+      await loadHistory(selectedYear);
     } catch (err) {
       toast.error(getApiError(err).message);
     } finally {
@@ -382,7 +403,7 @@ export default function ManajemenIuranPage() {
       toast.success("Cicilan berhasil dibuat.");
       setIsCreateDialogOpen(false);
       setSelectedIuranIdsForCreate([]);
-      await loadData();
+      await loadData(selectedYear);
     } catch (error) {
       toast.error(getApiError(error).message);
     } finally {
@@ -390,34 +411,22 @@ export default function ManajemenIuranPage() {
     }
   };
 
-  const exportHistory = () => {
+  const handleExportPdf = async () => {
     if (historyRows.length === 0) {
       toast.error("Belum ada histori untuk diekspor.");
       return;
     }
 
-    const escapeCsv = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
-    const rows = [
-      ["Warga", "Bulan", "Tahun", "Tanggal Bayar", "Nominal", "Kas RT", "Kas RW", "Kode"],
-      ...historyRows.map((item) => [
-        item.warga.nama_kk,
-        String(item.bulan),
-        String(item.tahun),
-        formatDate(item.tanggal_bayar),
-        String(item.nominal),
-        String(item.nominal_kas_rt ?? ""),
-        String(item.nominal_kas_rw ?? ""),
-        item.kode_unik ?? "",
-      ]),
-    ];
-    const csv = rows.map((row) => row.map(escapeCsv).join(",")).join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `histori-iuran-rt-${historyYear}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const filename = `histori-iuran-rt-${selectedYear}.pdf`;
+    try {
+      toast.info("Mengunduh laporan PDF...");
+      await downloadApiFile("/rt/iuran/history/export-pdf", filename, {
+        tahun: Number(selectedYear),
+      });
+      toast.success("Histori iuran berhasil diunduh.");
+    } catch (error) {
+      toast.error("Gagal mengunduh laporan PDF.");
+    }
   };
 
   const filteredWarga = useMemo(() => {
@@ -426,6 +435,34 @@ export default function ManajemenIuranPage() {
       w.nama_kk.toLowerCase().includes(searchNama.toLowerCase())
     );
   }, [data, searchNama]);
+
+  const chargeableWarga = useMemo(() => {
+    return filteredWarga.filter((w) => {
+      const nominalBulanan = w.iuran[0]?.nominal ?? 0;
+      return Number(nominalBulanan) > 0;
+    });
+  }, [filteredWarga]);
+
+  const exemptWarga = useMemo(() => {
+    return filteredWarga.filter((w) => {
+      const nominalBulanan = w.iuran[0]?.nominal ?? 0;
+      return Number(nominalBulanan) === 0;
+    });
+  }, [filteredWarga]);
+
+  // Tagihan pagination
+  const totalTagihanPages = Math.max(1, Math.ceil(chargeableWarga.length / tagihanPageSize));
+  const paginatedTagihan = useMemo(() => {
+    const start = (tagihanPage - 1) * tagihanPageSize;
+    return chargeableWarga.slice(start, start + tagihanPageSize);
+  }, [chargeableWarga, tagihanPage, tagihanPageSize]);
+
+  // Warga Bebas pagination
+  const totalBebasPages = Math.max(1, Math.ceil(exemptWarga.length / bebasPageSize));
+  const paginatedBebas = useMemo(() => {
+    const start = (bebasPage - 1) * bebasPageSize;
+    return exemptWarga.slice(start, start + bebasPageSize);
+  }, [exemptWarga, bebasPage]);
 
   // History pagination
   const totalHistoryPages = Math.max(1, Math.ceil(historyRows.length / historyPageSize));
@@ -439,13 +476,21 @@ export default function ManajemenIuranPage() {
     if (!data) return { totalWarga: 0, lunas: 0, belumLunas: 0, cicilan: 0 };
     let lunas = 0, belumLunas = 0, cicilan = 0;
     for (const w of data.warga) {
+      const nominal = w.iuran[0]?.nominal ?? 0;
+      if (Number(nominal) === 0) continue;
       for (const iuran of w.iuran) {
-        if (iuran.status === "LUNAS") lunas++;
-        else if (iuran.cicilan.some((c) => !c.sudah_lunas)) cicilan++;
-        else belumLunas++;
+        const toneMeta = getIuranTone(iuran);
+        if (toneMeta.tone === "success") {
+          lunas++;
+        } else if (toneMeta.tone === "warning") {
+          cicilan++;
+        } else if (toneMeta.tone === "danger") {
+          belumLunas++;
+        }
       }
     }
-    return { totalWarga: data.warga.length, lunas, belumLunas, cicilan };
+    const totalWargaCount = data.warga.length;
+    return { totalWarga: totalWargaCount, lunas, belumLunas, cicilan };
   }, [data]);
 
   if (loading) {
@@ -465,7 +510,7 @@ export default function ManajemenIuranPage() {
             <CardDescription>{error}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={loadData} variant="outline" className="gap-2 rounded-xl">
+            <Button onClick={() => loadData(selectedYear)} variant="outline" className="gap-2 rounded-xl">
               <RefreshCw className="size-4" />
               Coba Lagi
             </Button>
@@ -485,7 +530,7 @@ export default function ManajemenIuranPage() {
           </span>
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground mt-0.5">
-              Manajemen Iuran
+              Manajemen Iuran - {selectedYear}
             </h1>
             <p className="text-sm text-slate-500 dark:text-muted-foreground">
               Kelola tagihan, cicilan, dan histori pembayaran iuran warga
@@ -498,9 +543,9 @@ export default function ManajemenIuranPage() {
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           {
-            label: "Total Warga",
+            label: "Total Kepala Keluarga",
             value: stats.totalWarga,
-            suffix: "warga",
+            suffix: "KK",
             gradient: "from-cyan-500 to-blue-600",
             iconBg: "bg-cyan-50 dark:bg-cyan-950/40",
             iconText: "text-cyan-600 dark:text-cyan-400",
@@ -509,7 +554,7 @@ export default function ManajemenIuranPage() {
             Icon: Users,
           },
           {
-            label: "Sudah Lunas",
+            label: `Sudah Lunas - ${selectedYear}`,
             value: stats.lunas,
             suffix: "tagihan",
             gradient: "from-emerald-500 to-teal-600",
@@ -565,34 +610,99 @@ export default function ManajemenIuranPage() {
         ))}
       </section>
 
+      {/* Search & Year Filter bar */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end bg-white dark:bg-card p-4 rounded-3xl border border-slate-100 dark:border-white/8 shadow-sm">
+        {/* Search Input */}
+        <div className="flex-1 space-y-1.5">
+          <Label
+            htmlFor="cari-nama"
+            className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Cari Warga
+          </Label>
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+            <Input
+              id="cari-nama"
+              placeholder="Cari nama kepala keluarga..."
+              value={searchNama}
+              onChange={(e) => {
+                setSearchNama(e.target.value);
+                setTagihanPage(1);
+                setBebasPage(1);
+              }}
+              className="pl-10 h-10 rounded-xl text-sm border-slate-200 dark:border-white/10"
+              disabled={loading}
+            />
+          </div>
+        </div>
+
+        {/* Filter Tahun */}
+        <div className="w-full lg:w-44 space-y-1.5">
+          <Label
+            htmlFor="top-year-filter"
+            className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Tahun
+          </Label>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger
+              id="top-year-filter"
+              className={`!h-10 !rounded-xl text-sm w-full font-medium transition-all ${selectedYear !== String(currentYear)
+                ? "!bg-indigo-50 !border-indigo-400 !text-indigo-700 shadow-sm"
+                : "!bg-white dark:!bg-input/20 !border-slate-200 dark:!border-white/10 !text-slate-600 dark:!text-slate-300 hover:!border-indigo-300"
+                }`}
+            >
+              <Calendar className={`size-4 mr-1 shrink-0 ${selectedYear !== String(currentYear) ? "text-indigo-500" : "text-slate-400"}`} />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-xl !p-1.5 shadow-lg border border-slate-100 dark:border-white/8 bg-white dark:bg-card">
+              {Array.from({ length: Math.max(1, currentYear - 2026 + 1) }, (_, idx) => currentYear - idx).map((year) => (
+                <SelectItem key={year} value={String(year)} className="!text-sm !py-2 !px-3 !rounded-lg font-semibold">
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Reset Button */}
+        {(searchNama || selectedYear !== String(currentYear)) && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setSearchNama("");
+              setSelectedYear(String(currentYear));
+              setTagihanPage(1);
+              setBebasPage(1);
+            }}
+            className="h-10 px-4 rounded-xl text-rose-600 border-rose-200 bg-rose-50 hover:bg-rose-100 hover:border-rose-300 shrink-0 font-semibold shadow-sm transition-all w-full lg:w-auto whitespace-nowrap"
+            disabled={loading}
+          >
+            <RotateCcw className="size-4 mr-2" />
+            Reset Filter
+          </Button>
+        )}
+      </div>
+
       {/* Daftar Tagihan Iuran */}
       <Card className="rounded-3xl border border-slate-100 dark:border-white/8 shadow-sm">
-        <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
+        <CardHeader className="border-b border-slate-100 dark:border-white/8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-2">
               <ListChecks className="size-4.5 text-slate-400" />
               <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-100">
-                Daftar Tagihan Iuran
+                Daftar Tagihan Iuran - {selectedYear}
               </CardTitle>
             </div>
             <Badge variant="outline" className="self-start sm:self-auto">
-              {filteredWarga.length} warga
+              {chargeableWarga.length} warga
             </Badge>
           </div>
           <CardDescription className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
             Klik tombol bulan untuk melihat detail pembayaran iuran per warga.
           </CardDescription>
-          {/* Search */}
-          <div className="relative mt-3">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
-            <Input
-              id="cari-nama"
-              placeholder="Cari nama kepala keluarga..."
-              value={searchNama}
-              onChange={(e) => setSearchNama(e.target.value)}
-              className="pl-10 h-10 rounded-xl text-sm"
-            />
-          </div>
         </CardHeader>
         <CardContent className="pt-4 px-0 pb-0">
           {/* Legend */}
@@ -621,7 +731,7 @@ export default function ManajemenIuranPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredWarga.length === 0 ? (
+                {chargeableWarga.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={4}
@@ -631,7 +741,7 @@ export default function ManajemenIuranPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredWarga.flatMap((warga) => {
+                  paginatedTagihan.flatMap((warga) => {
                     if (warga.iuran.length === 0) {
                       return [
                         <TableRow key={`${warga.id}-empty`} className="hover:bg-slate-50/70 dark:hover:bg-white/3">
@@ -652,7 +762,7 @@ export default function ManajemenIuranPage() {
                             {warga.nama_kk}
                           </p>
                           <p className="text-xs text-slate-400 dark:text-muted-foreground mt-0.5">
-                            Blok {data?.nama_blok}
+                            {data?.nama_blok}
                           </p>
                         </TableCell>
                         <TableCell className="align-middle py-4">
@@ -717,10 +827,171 @@ export default function ManajemenIuranPage() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination */}
+          {chargeableWarga.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-6 py-3 border-t border-slate-100 dark:border-white/8 gap-4">
+              <div className="flex flex-wrap items-center gap-4">
+                <p className="text-xs text-slate-500 dark:text-muted-foreground">
+                  Menampilkan {(tagihanPage - 1) * tagihanPageSize + 1}–
+                  {Math.min(tagihanPage * tagihanPageSize, chargeableWarga.length)} dari{" "}
+                  {chargeableWarga.length} data
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-400">Limit:</span>
+                  <Select
+                    value={String(tagihanPageSize)}
+                    onValueChange={(val) => {
+                      setTagihanPageSize(Number(val));
+                      setTagihanPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="!h-7 !rounded-lg text-xs w-[64px] border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 px-2 py-1 flex items-center justify-between">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] !rounded-lg !p-1 shadow-lg bg-white dark:bg-card">
+                      {[10, 25, 50, 100].map((size) => (
+                        <SelectItem key={size} value={String(size)} className="!text-xs !py-1 !px-2 !rounded-md">
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 self-end sm:self-auto">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8 rounded-xl"
+                  disabled={tagihanPage <= 1}
+                  onClick={() => setTagihanPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 px-2">
+                  {tagihanPage} / {totalTagihanPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8 rounded-xl"
+                  disabled={tagihanPage >= totalTagihanPages}
+                  onClick={() => setTagihanPage((p) => p + 1)}
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
+      {/* Daftar Warga Bebas Iuran */}
+      <Card className="rounded-3xl border border-slate-100 dark:border-white/8 shadow-sm">
+        <CardHeader className="border-b border-slate-100 dark:border-white/8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Users className="size-4.5 text-slate-400" />
+              <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-100">
+                Daftar Warga Bebas Iuran
+              </CardTitle>
+            </div>
+            <Badge variant="outline" className="self-start sm:self-auto bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-400">
+              {exemptWarga.length} warga
+            </Badge>
+          </div>
+          <CardDescription className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+            Daftar warga dengan tarif iuran Rp 0 berdasarkan kategori ketetapan RW yang dibebaskan dari kas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0 px-0 pb-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/80 dark:bg-white/3">
+                  <TableHead className="font-semibold pl-6 w-[35%]">Nama Kepala Keluarga</TableHead>
+                  <TableHead className="font-semibold w-[30%]">Blok / Rumah</TableHead>
+                  <TableHead className="font-semibold pr-6">Kategori Keluarga (Ketetapan RW)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {exemptWarga.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={3}
+                      className="h-24 text-center text-sm text-slate-500 dark:text-muted-foreground"
+                    >
+                      {searchNama ? "Warga bebas iuran tidak ditemukan." : "Tidak ada warga bebas iuran."}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedBebas.map((warga) => {
+                    let textClass = "text-slate-900 dark:text-slate-100 text-sm font-bold";
+                    let friendlyCategory = "Ketetapan RW / Subsidi";
 
+                    if (warga.status_keluarga === "LANSIA") {
+                      friendlyCategory = "Keluarga Lansia";
+                    } else if (warga.status_keluarga === "KURANG_MAMPU") {
+                      friendlyCategory = "Kurang Mampu / Subsidi";
+                    }
+
+                    return (
+                      <TableRow key={warga.id} className="hover:bg-slate-50/70 dark:hover:bg-white/3">
+                        <TableCell className="align-middle pl-6 py-4 font-semibold text-slate-900 dark:text-foreground text-sm">
+                          {warga.nama_kk}
+                        </TableCell>
+                        <TableCell className="align-middle py-4 text-sm text-slate-600 dark:text-muted-foreground">
+                          {data?.nama_blok}
+                        </TableCell>
+                        <TableCell className="align-middle py-4 pr-6">
+                          <span className={textClass}>
+                            {friendlyCategory}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination */}
+          {exemptWarga.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-6 py-3 border-t border-slate-100 dark:border-white/8 gap-4">
+              <p className="text-xs text-slate-500 dark:text-muted-foreground">
+                Menampilkan {(bebasPage - 1) * bebasPageSize + 1}–
+                {Math.min(bebasPage * bebasPageSize, exemptWarga.length)} dari{" "}
+                {exemptWarga.length} data
+              </p>
+              <div className="flex items-center gap-1 self-end sm:self-auto">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8 rounded-xl"
+                  disabled={bebasPage <= 1}
+                  onClick={() => setBebasPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 px-2">
+                  {bebasPage} / {totalBebasPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8 rounded-xl"
+                  disabled={bebasPage >= totalBebasPages}
+                  onClick={() => setBebasPage((p) => p + 1)}
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Histori Pembayaran */}
       <Card className="rounded-3xl border border-slate-100 dark:border-white/8 shadow-sm">
@@ -729,28 +1000,15 @@ export default function ManajemenIuranPage() {
             <div className="flex items-center gap-2">
               <History className="size-4.5 text-slate-400" />
               <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-100">
-                Histori Pembayaran
+                Histori Pembayaran - {selectedYear}
               </CardTitle>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Select value={historyYear} onValueChange={setHistoryYear}>
-                <SelectTrigger className="h-9 w-[120px] rounded-xl text-sm font-medium border-slate-200 dark:border-white/10">
-                  <Calendar className="size-3.5 mr-1 text-slate-400" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  {Array.from({ length: 5 }, (_, idx) => currentYear - idx).map((year) => (
-                    <SelectItem key={year} value={String(year)} className="rounded-lg">
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Button
                 variant="outline"
                 size="sm"
                 className="h-9 rounded-xl text-xs gap-1.5"
-                onClick={() => loadHistory(historyYear)}
+                onClick={() => loadHistory(selectedYear)}
               >
                 <RefreshCw className="size-3.5" />
                 Muat
@@ -759,16 +1017,16 @@ export default function ManajemenIuranPage() {
                 variant="outline"
                 size="sm"
                 className="h-9 rounded-xl text-xs gap-1.5"
-                onClick={exportHistory}
+                onClick={handleExportPdf}
                 disabled={historyRows.length === 0}
               >
                 <FileDown className="size-3.5" />
-                Export CSV
+                Export PDF
               </Button>
             </div>
           </div>
           <CardDescription className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-            Pembayaran iuran yang sudah lunas pada tahun {historyYear}.
+            Pembayaran iuran yang sudah lunas pada tahun {selectedYear}.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0 pb-0 px-0">
@@ -792,7 +1050,7 @@ export default function ManajemenIuranPage() {
                       colSpan={7}
                       className="py-10 text-center text-sm text-slate-500 dark:text-muted-foreground"
                     >
-                      Belum ada histori pembayaran untuk tahun {historyYear}.
+                      Belum ada histori pembayaran untuk tahun {selectedYear}.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -1090,51 +1348,57 @@ export default function ManajemenIuranPage() {
           </div>
 
           <DialogFooter className="pt-2 gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setDetailOpen(false)}
-              className="rounded-xl h-10 px-5"
-            >
-              Tutup
-            </Button>
-            {selectedDetail?.iuran &&
-              (() => {
-                const meta = getIuranTone(selectedDetail.iuran);
-                return (
-                  <Button
-                    onClick={handlePrimaryAction}
-                    disabled={isProcessing === selectedDetail.iuran.id}
-                    className={`rounded-xl h-10 px-5 gap-2 font-bold text-white shadow-md transition-all ${meta.tone === "success"
-                      ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20"
-                      : meta.tone === "warning"
-                        ? "bg-amber-600 hover:bg-amber-700 shadow-amber-500/20"
-                        : "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 shadow-cyan-500/20"
-                      }`}
-                  >
-                    {isProcessing === selectedDetail.iuran.id ? (
-                      <>
-                        <Loader2 className="size-4 animate-spin" />
-                        Memproses...
-                      </>
-                    ) : meta.tone === "success" ? (
-                      <>
-                        <CheckCircle2 className="size-4" />
-                        Lihat Detail
-                      </>
-                    ) : meta.tone === "warning" ? (
-                      <>
-                        <HandCoins className="size-4" />
-                        Lunasi Cicilan
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="size-4" />
-                        Bayar
-                      </>
-                    )}
-                  </Button>
-                );
-              })()}
+            {selectedDetail?.iuran && getIuranTone(selectedDetail.iuran).tone === "success" ? (
+              <Button
+                type="button"
+                onClick={() => setDetailOpen(false)}
+                className="rounded-xl h-10 px-6 font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-500/20 border-0 transition-all w-full sm:w-auto"
+              >
+                <CheckCircle2 className="size-4" />
+                Tutup Detail
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setDetailOpen(false)}
+                  className="rounded-xl h-10 px-5"
+                >
+                  Tutup
+                </Button>
+                {selectedDetail?.iuran &&
+                  (() => {
+                    const meta = getIuranTone(selectedDetail.iuran);
+                    return (
+                      <Button
+                        onClick={handlePrimaryAction}
+                        disabled={isProcessing === selectedDetail.iuran.id}
+                        className={`rounded-xl h-10 px-5 gap-2 font-bold text-white shadow-md transition-all ${meta.tone === "warning"
+                          ? "bg-amber-600 hover:bg-amber-700 shadow-amber-500/20"
+                          : "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 shadow-cyan-500/20"
+                          }`}
+                      >
+                        {isProcessing === selectedDetail.iuran.id ? (
+                          <>
+                            <Loader2 className="size-4 animate-spin" />
+                            Memproses...
+                          </>
+                        ) : meta.tone === "warning" ? (
+                          <>
+                            <HandCoins className="size-4" />
+                            Lunasi Cicilan
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="size-4" />
+                            Bayar
+                          </>
+                        )}
+                      </Button>
+                    );
+                  })()}
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -146,6 +146,7 @@ import {
   removePetugasFromJadwal,
   markPresenceRonda,
   getPresenceForJadwal,
+  exportIuranHistoryPdfForRt,
 } from "../controllers/rtController";
 
 import {
@@ -843,6 +844,14 @@ router.get(
   checkRole(["RT"]),
   checkApproval,
   getIuranHistoryForRt
+);
+router.get(
+  "/rt/iuran/history/export-pdf",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  exportIuranHistoryPdfForRt
 );
 router.get(
   "/rt/warga",

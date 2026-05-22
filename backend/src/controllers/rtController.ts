@@ -83,7 +83,7 @@ export const getIuranForRt = async (req: Request, res: Response): Promise<void> 
       select: {
         id: true,
         nama_kk: true,
-        
+        status_keluarga: true,
         iuran_warga: {
           where: {
             tahun: tahunInt,
@@ -160,7 +160,7 @@ export const getIuranForRt = async (req: Request, res: Response): Promise<void> 
       return {
         id: warga.id,
         nama_kk: warga.nama_kk,
-        
+        status_keluarga: warga.status_keluarga,
         iuran: iuranBySelection,
       };
     }).filter((item) => item.iuran.length > 0 || status !== StatusIuran.LUNAS);
@@ -245,6 +245,161 @@ export const getIuranHistoryForRt = async (req: Request, res: Response): Promise
     res.status(200).json({ success: true, message: "Riwayat iuran RT berhasil diambil.", data: history });
   } catch {
     res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengambil riwayat iuran RT." });
+  }
+};
+
+export const exportIuranHistoryPdfForRt = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({ success: false, message: "User belum terautentikasi." });
+      return;
+    }
+
+    const blok = await getRtBlockContext(req);
+    if (!blok) {
+      res.status(403).json({ success: false, message: "Data blok wilayah RT tidak ditemukan." });
+      return;
+    }
+
+    const { tahun } = req.query as { tahun?: string };
+    const tahunInt = tahun ? Number(tahun) : new Date().getFullYear();
+
+    const history = await prisma.iuranWarga.findMany({
+      where: {
+        warga: { blok_wilayah_id: blok.id, deleted_at: null },
+        status: StatusIuran.LUNAS,
+        tahun: tahunInt,
+      },
+      select: {
+        id: true,
+        warga_id: true,
+        bulan: true,
+        tahun: true,
+        nominal: true,
+        nominal_kas_rt: true,
+        nominal_kas_rw: true,
+        status: true,
+        kode_unik: true,
+        tanggal_bayar: true,
+        warga: { select: { nama_kk: true } },
+      },
+      orderBy: { tanggal_bayar: "desc" },
+    });
+
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+
+    const filename = `histori-iuran-rt-${blok.no_rt || 'grouped'}-${tahunInt}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    doc.pipe(res);
+
+    // Format Currency Helper
+    const formatCurrency = (val: any) =>
+      `Rp ${Number(val ?? 0).toLocaleString("id-ID")}`;
+
+    const MONTH_LABELS_SHORT = [
+      "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+      "Jul", "Agt", "Sep", "Okt", "Nov", "Des"
+    ];
+
+    const formatDateShort = (value: any) => {
+      if (!value) return "-";
+      const d = new Date(value);
+      return `${d.getDate()} ${MONTH_LABELS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+    };
+
+    // Header RT Branding
+    doc.fontSize(16).font("Helvetica-Bold").fillColor("#0e7490").text("LAPORAN HISTORI PEMBAYARAN IURAN WARGA", { align: "center" });
+    doc.moveDown(0.2);
+    doc.fontSize(12).font("Helvetica-Bold").fillColor("#334155").text(`RUKUN TETANGGA (RT) ${blok.no_rt || ''} / BLOK ${blok.nama_blok || ''}`, { align: "center" });
+    doc.fontSize(10).font("Helvetica").fillColor("#64748b").text(`Tahun Anggaran: ${tahunInt}`, { align: "center" });
+    doc.text(`Dicetak: ${new Date().toLocaleString("id-ID")}`, { align: "center" });
+    doc.moveDown(1.5);
+
+    // Summary statistics
+    const totalNominal = history.reduce((acc, item) => acc + Number(item.nominal), 0);
+    const totalKasRt = history.reduce((acc, item) => acc + Number(item.nominal_kas_rt ?? 0), 0);
+    const totalSetoranRw = history.reduce((acc, item) => acc + Number(item.nominal_kas_rw ?? 0), 0);
+
+    doc.fontSize(11).font("Helvetica-Bold").fillColor("#1e293b").text("Ringkasan Penerimaan Iuran:");
+    doc.moveDown(0.4);
+
+    let currentY = doc.y;
+    doc.fontSize(10).font("Helvetica").fillColor("#334155");
+    doc.text(`Total Iuran Lunas: ${history.length} transaksi`, 40, currentY);
+    doc.text(`Total Kas RT (70%): ${formatCurrency(totalKasRt)}`, 300, currentY);
+    currentY += 15;
+    doc.text(`Total Nominal Diterima: ${formatCurrency(totalNominal)}`, 40, currentY);
+    doc.text(`Total Setoran RW (30%): ${formatCurrency(totalSetoranRw)}`, 300, currentY);
+    doc.moveDown(1.5);
+
+    // Table drawing
+    const headers = ["Warga", "Periode", "Tanggal Bayar", "Total Nominal", "Kas RT (70%)", "Setoran RW (30%)", "Kode"];
+    const colWidths = [95, 55, 75, 75, 75, 75, 65];
+    let tableY = doc.y;
+
+    const drawRow = (data: string[], isHeader = false) => {
+      const h = 22;
+      if (tableY + h > 750) {
+        doc.addPage();
+        tableY = 40;
+      }
+      let x = 40;
+      doc.font(isHeader ? "Helvetica-Bold" : "Helvetica").fontSize(8);
+      data.forEach((text, i) => {
+        // Draw background box
+        if (isHeader) {
+          doc.rect(x, tableY, colWidths[i], h).fillColor("#0e7490").fill();
+          doc.rect(x, tableY, colWidths[i], h).strokeColor("#cbd5e1").stroke();
+          doc.fillColor("#ffffff").text(text, x + 4, tableY + 7, { width: colWidths[i] - 8, align: i === 0 || i === 1 || i === 6 ? "left" : "right" });
+        } else {
+          doc.rect(x, tableY, colWidths[i], h).strokeColor("#e2e8f0").stroke();
+          doc.fillColor("#1e293b").text(text, x + 4, tableY + 7, { width: colWidths[i] - 8, align: i === 0 || i === 1 || i === 6 ? "left" : "right" });
+        }
+        x += colWidths[i];
+      });
+      tableY += h;
+    };
+
+    drawRow(headers, true);
+    history.forEach(item => {
+      drawRow([
+        item.warga.nama_kk,
+        `${MONTH_LABELS_SHORT[item.bulan - 1]} ${item.tahun}`,
+        formatDateShort(item.tanggal_bayar),
+        formatCurrency(item.nominal),
+        formatCurrency(item.nominal_kas_rt ?? 0),
+        formatCurrency(item.nominal_kas_rw ?? 0),
+        item.kode_unik ?? "-"
+      ]);
+    });
+
+    // Add Signature section at the end of PDF
+    const signatureHeight = 100;
+    if (tableY + signatureHeight > 750) {
+      doc.addPage();
+      tableY = 40;
+    }
+
+    doc.moveDown(2);
+    tableY = doc.y;
+    
+    doc.fontSize(10).font("Helvetica").fillColor("#334155");
+    const today = new Date();
+    doc.text(`Kota Bandung, ${today.getDate()} ${MONTH_LABELS_SHORT[today.getMonth()]} ${today.getFullYear()}`, 350, tableY, { align: "center", width: 200 });
+    doc.moveDown(0.2);
+    doc.font("Helvetica-Bold").text("Ketua RT", 350, doc.y, { align: "center", width: 200 });
+    doc.moveDown(3.5);
+    doc.font("Helvetica-Bold").text("( ____________________ )", 350, doc.y, { align: "center", width: 200 });
+
+    doc.end();
+  } catch (error) {
+    console.error("Error exporting RT iuran history PDF:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengekspor riwayat iuran ke PDF." });
+    }
   }
 };
 
