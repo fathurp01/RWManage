@@ -101,16 +101,13 @@ export default function LoginPage() {
   const [animState, setAnimState] = useState<"idle" | "expanding-masjid" | "expanding-rwrt" | "expanded">("idle");
 
   const [savedEmail, setSavedEmail] = useState("");
-  const [savedPassword, setSavedPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const em = localStorage.getItem("rwmanage_saved_email");
-      const pw = localStorage.getItem("rwmanage_saved_password");
-      if (em && pw) {
+      if (em) {
         setSavedEmail(em);
-        setSavedPassword(pw);
         setRememberMe(true);
       }
     }
@@ -249,11 +246,10 @@ export default function LoginPage() {
 
         if (remember) {
           localStorage.setItem("rwmanage_saved_email", email);
-          localStorage.setItem("rwmanage_saved_password", password);
         } else {
           localStorage.removeItem("rwmanage_saved_email");
-          localStorage.removeItem("rwmanage_saved_password");
         }
+        localStorage.removeItem("rwmanage_saved_password");
 
         router.push(toRedirectPath(nextUser.role, nextPath));
 
@@ -507,7 +503,7 @@ export default function LoginPage() {
                     name="password"
                     type="password"
                     autoComplete="current-password"
-                    defaultValue={savedPassword}
+                    defaultValue=""
                     placeholder="••••••••"
                     aria-invalid={Boolean(formState.fieldErrors.password)}
                     disabled={isPending}

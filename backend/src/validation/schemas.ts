@@ -681,3 +681,40 @@ export const approveSetoranSchema = z.object({
   keterangan_rw: z.string().trim().max(1000).optional(),
 });
 
+// ==================== SECURITY & FORGOT PASSWORD ====================
+export const forgotPasswordSchema = z
+  .object({
+    email: z.string().trim().email().transform((value) => value.toLowerCase()),
+    new_password: z.string().min(8).max(128),
+    confirm_password: z.string().min(8).max(128),
+    alasan: z.string().trim().min(5).max(500),
+  })
+  .strict()
+  .refine((data) => data.new_password === data.confirm_password, {
+    message: "Password baru dan konfirmasi password tidak cocok.",
+    path: ["confirm_password"],
+  });
+
+// ==================== PARAMETER VALIDATIONS ====================
+export const kasRTParamsSchema = z.object({
+  kas_id: uuidSchema,
+});
+
+export const submitSetoranSchema = z.object({
+  bukti_url: z.string().trim().max(2048).nullable().optional(),
+});
+
+export const updateSetoranRTSchema = z.object({
+  bukti_url: z.string().trim().max(2048).nullable().optional(),
+  hapus_bukti: z.union([z.boolean(), z.enum(["true", "false"])]).optional(),
+});
+
+export const setoranParamsSchema = z.object({
+  setoran_id: uuidSchema,
+});
+
+export const userParamsSchema = z.object({
+  user_id: uuidSchema,
+});
+
+

@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma";
 import { recordAudit } from "../middlewares/auditLogger";
 
-const SALT_ROUNDS = 10;
+const SALT_ROUNDS = 12;
 
 interface CreateBlokBody {
   wilayah_rw_id?: string;

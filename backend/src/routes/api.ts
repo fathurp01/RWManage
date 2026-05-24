@@ -328,6 +328,12 @@ import {
   createKasRTSchema,
   approveSetoranSchema,
   updateCicilanIuranSchema,
+  forgotPasswordSchema,
+  kasRTParamsSchema,
+  submitSetoranSchema,
+  updateSetoranRTSchema,
+  setoranParamsSchema,
+  userParamsSchema,
 } from "../validation/schemas";
 
 const router = Router();
@@ -337,7 +343,7 @@ router.post("/auth/register", authRateLimit, validateBody(registerSchema), regis
 router.post("/auth/login", loginRateLimit, validateBody(loginSchema), login);
 router.post("/auth/logout", logout);
 router.get("/auth/me", verifyToken, me);
-router.post("/auth/forgot-password", forgotPassword);
+router.post("/auth/forgot-password", authRateLimit, validateBody(forgotPasswordSchema), forgotPassword);
 router.patch(
   "/auth/approve-pengurus",
   rwActionRateLimit,
@@ -822,6 +828,7 @@ router.patch(
   verifyToken,
   checkRole(["RW"]),
   checkApproval,
+  validateParams(userParamsSchema),
   updateRwRtAccount
 );
 router.delete(
@@ -830,6 +837,7 @@ router.delete(
   verifyToken,
   checkRole(["RW"]),
   checkApproval,
+  validateParams(userParamsSchema),
   deleteRwRtAccount
 );
 
@@ -1306,6 +1314,7 @@ router.put(
   checkRole(["RT"]),
   checkApproval,
   upload.single("bukti_foto"),
+  validateParams(kasRTParamsSchema),
   validateBody(updateKasRTSchema),
   updateKasRT
 );
@@ -1315,6 +1324,7 @@ router.delete(
   verifyToken,
   checkRole(["RT"]),
   checkApproval,
+  validateParams(kasRTParamsSchema),
   deleteKasRT
 );
 
@@ -1334,6 +1344,7 @@ router.post(
   checkRole(["RT"]),
   checkApproval,
   upload.single("bukti_foto"),
+  validateBody(submitSetoranSchema),
   submitSetoran
 );
 router.put(
@@ -1343,6 +1354,8 @@ router.put(
   checkRole(["RT"]),
   checkApproval,
   upload.single("bukti_foto"),
+  validateParams(setoranParamsSchema),
+  validateBody(updateSetoranRTSchema),
   updateSetoranRT
 );
 router.delete(
@@ -1351,6 +1364,7 @@ router.delete(
   verifyToken,
   checkRole(["RT"]),
   checkApproval,
+  validateParams(setoranParamsSchema),
   deleteSetoranRT
 );
 router.get(
@@ -1367,6 +1381,7 @@ router.post(
   verifyToken,
   checkRole(["RW"]),
   checkApproval,
+  validateParams(setoranParamsSchema),
   validateBody(approveSetoranSchema),
   approveSetoran
 );
