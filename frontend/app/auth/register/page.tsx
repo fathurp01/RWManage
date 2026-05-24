@@ -84,20 +84,50 @@ export default function RegisterPage() {
   const [wilayahHierarchy, setWilayahHierarchy] = useState<WilayahHierarchyOption[]>([]);
   const [masjidOptions, setMasjidOptions] = useState<MasjidOption[]>([]);
   const [selectedRwId, setSelectedRwId] = useState<string>("");
+  const [hydrated, setHydrated] = useState(false);
+
+  // Restore state from URL on first client render (avoids SSR/hydration mismatch)
+  useEffect(() => {
+    if (hydrated) return;
+    setHydrated(true);
+    const params = new URLSearchParams(window.location.search);
+    const r = params.get("role");
+    if (r === "PENGURUS_MASJID") {
+      setSystemChoice("masjid");
+      setAnimState("expanded");
+      setRole("PENGURUS_MASJID");
+    } else if (r === "RW" || r === "RT") {
+      setSystemChoice("rwrt");
+      setAnimState("expanded");
+      setRole(r as AppRole);
+    }
+  }, [hydrated]);
+
+  // Sync system choice and role to URL
+  useEffect(() => {
+    if (typeof window === "undefined" || !hydrated) return;
+    const url = new URL(window.location.href);
+    if (systemChoice === "masjid") {
+      url.searchParams.set("role", "PENGURUS_MASJID");
+    } else if (systemChoice === "rwrt") {
+      url.searchParams.set("role", role);
+    } else {
+      url.searchParams.delete("role");
+    }
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  }, [systemChoice, role, hydrated]);
+
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
 
   const handleSystemSelect = (choice: SystemChoice) => {
-    setAnimState(choice === "masjid" ? "expanding-masjid" : "expanding-rwrt");
-    setTimeout(() => {
-      setSystemChoice(choice);
-      setAnimState("expanded");
-      // Pre-select appropriate role
-      if (choice === "masjid") {
-        setRole("PENGURUS_MASJID");
-      } else {
-        setRole("RW");
-      }
-    }, 420);
+    setSystemChoice(choice);
+    setAnimState("expanded");
+    // Pre-select appropriate role
+    if (choice === "masjid") {
+      setRole("PENGURUS_MASJID");
+    } else {
+      setRole("RW");
+    }
   };
 
   const handleBack = () => {
@@ -246,12 +276,12 @@ export default function RegisterPage() {
   const selectClass = "h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:opacity-50 dark:text-foreground";
 
   return (
-    <main className="flex flex-1 min-h-screen items-center justify-center px-4 py-12 hero-gradient overflow-hidden">
+    <main className="relative flex flex-1 min-h-screen items-center justify-center px-4 py-12 hero-gradient overflow-hidden">
 
 
       {/* Background blobs */}
-      <div aria-hidden className="pointer-events-none fixed -top-40 -left-40 size-125 rounded-full bg-indigo-400/8 blur-3xl" />
-      <div aria-hidden className="pointer-events-none fixed -bottom-40 -right-40 size-100 rounded-full bg-emerald-400/8 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute z-0 -top-40 -left-40 size-125 rounded-full bg-indigo-400/8 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute z-0 -bottom-40 -right-40 size-100 rounded-full bg-emerald-400/8 blur-3xl" />
 
       {/* ──── PHASE 1 ──── */}
       {!isExpanded && (
@@ -279,20 +309,15 @@ export default function RegisterPage() {
           {/* System cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {/* Masjid */}
-            <button
-              type="button"
+            <a
+              href="/auth/register?role=PENGURUS_MASJID"
               id="btn-register-masjid"
-              onClick={() => handleSystemSelect("masjid")}
-              className="group relative cursor-pointer rounded-3xl border border-slate-200/60 dark:border-white/8 bg-white/90 dark:bg-card/90 backdrop-blur-xl shadow-xl shadow-slate-900/8 dark:shadow-black/30 p-8 text-left transition-colors duration-200 hover:shadow-2xl md:hover:-translate-y-1 hover:border-emerald-300 dark:hover:border-emerald-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="group relative cursor-pointer rounded-3xl border border-slate-200/60 dark:border-white/8 bg-white/95 dark:bg-card/95 md:backdrop-blur-xl shadow-xl shadow-slate-900/8 dark:shadow-black/30 p-8 text-left transition-all duration-200 hover:shadow-2xl md:hover:-translate-y-1 md:active:scale-95 active:shadow-md hover:border-emerald-300 dark:hover:border-emerald-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 active:bg-slate-50/90 dark:active:bg-slate-800/90"
               style={{
-                animation: isMasjidExpanding
-                  ? "cardExpand 0.42s cubic-bezier(0.4, 0, 0.2, 1) both"
-                  : isRwrtExpanding
-                  ? "cardFadeOut 0.3s ease-out both"
-                  : undefined,
+                touchAction: "manipulation",
               }}
             >
-              <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-5 pointer-events-none">
                 <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-md shadow-emerald-500/30 group-hover:shadow-lg group-hover:shadow-emerald-500/40 transition-all duration-300" aria-hidden>
                   <HandCoins className="size-7" />
                 </span>
@@ -308,23 +333,18 @@ export default function RegisterPage() {
                 </span>
               </div>
               <div className="absolute bottom-0 right-0 size-32 rounded-full bg-emerald-400/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" aria-hidden />
-            </button>
+            </a>
 
             {/* RW & RT */}
-            <button
-              type="button"
+            <a
+              href="/auth/register?role=RW"
               id="btn-register-rwrt"
-              onClick={() => handleSystemSelect("rwrt")}
-              className="group relative cursor-pointer rounded-3xl border border-slate-200/60 dark:border-white/8 bg-white/90 dark:bg-card/90 backdrop-blur-xl shadow-xl shadow-slate-900/8 dark:shadow-black/30 p-8 text-left transition-colors duration-200 hover:shadow-2xl md:hover:-translate-y-1 hover:border-indigo-300 dark:hover:border-indigo-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              className="group relative cursor-pointer rounded-3xl border border-slate-200/60 dark:border-white/8 bg-white/95 dark:bg-card/95 md:backdrop-blur-xl shadow-xl shadow-slate-900/8 dark:shadow-black/30 p-8 text-left transition-all duration-200 hover:shadow-2xl md:hover:-translate-y-1 md:active:scale-95 active:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 active:bg-slate-50/90 dark:active:bg-slate-800/90"
               style={{
-                animation: isRwrtExpanding
-                  ? "cardExpand 0.42s cubic-bezier(0.4, 0, 0.2, 1) both"
-                  : isMasjidExpanding
-                  ? "cardFadeOut 0.3s ease-out both"
-                  : undefined,
+                touchAction: "manipulation",
               }}
             >
-              <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-5 pointer-events-none">
                 <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30 group-hover:shadow-lg group-hover:shadow-indigo-500/40 transition-all duration-300" aria-hidden>
                   <Landmark className="size-7" />
                 </span>
@@ -340,7 +360,7 @@ export default function RegisterPage() {
                 </span>
               </div>
               <div className="absolute bottom-0 right-0 size-32 rounded-full bg-indigo-400/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" aria-hidden />
-            </button>
+            </a>
           </div>
 
           {/* Footer */}
@@ -744,7 +764,7 @@ export default function RegisterPage() {
       )}
 
       {/* Keyframes */}
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeSlideUp {
           from { opacity: 0; transform: translateY(20px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -762,7 +782,7 @@ export default function RegisterPage() {
           from { opacity: 0; transform: scale(0.95) translateY(12px); }
           to   { opacity: 1; transform: scale(1) translateY(0); }
         }
-      `}</style>
+      `}} />
     </main>
   );
 }

@@ -137,11 +137,8 @@ export default function LoginPage() {
   }, []);
 
   const handleSystemSelect = (choice: SystemChoice) => {
-    setAnimState(choice === "masjid" ? "expanding-masjid" : "expanding-rwrt");
-    setTimeout(() => {
-      setSystemChoice(choice);
-      setAnimState("expanded");
-    }, 420);
+    setSystemChoice(choice);
+    setAnimState("expanded");
   };
 
   const handleBack = () => {
@@ -290,12 +287,12 @@ export default function LoginPage() {
 
   // ─── Render ───────────────────────────────────────────────
   return (
-    <main className="flex flex-1 min-h-screen items-center justify-center px-4 py-12 hero-gradient overflow-hidden">
+    <main className="relative flex flex-1 min-h-screen items-center justify-center px-4 py-12 hero-gradient overflow-hidden">
 
 
       {/* Background blobs */}
-      <div aria-hidden className="pointer-events-none fixed -top-40 -left-40 size-125 rounded-full bg-indigo-400/8 blur-3xl" />
-      <div aria-hidden className="pointer-events-none fixed -bottom-40 -right-40 size-100 rounded-full bg-emerald-400/8 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute z-0 -top-40 -left-40 size-125 rounded-full bg-indigo-400/8 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute z-0 -bottom-40 -right-40 size-100 rounded-full bg-emerald-400/8 blur-3xl" />
 
       {/* ──── PHASE 1: System Selection ──── */}
       {!isExpanded && (
@@ -325,20 +322,15 @@ export default function LoginPage() {
           {/* Two system cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {/* Masjid Card */}
-            <button
-              type="button"
+            <a
+              href="/auth/login?role=PENGURUS_MASJID"
               id="btn-select-masjid"
-              onClick={() => handleSystemSelect("masjid")}
-              className="group relative cursor-pointer rounded-3xl border border-slate-200/60 dark:border-white/8 bg-white/90 dark:bg-card/90 backdrop-blur-xl shadow-xl shadow-slate-900/8 dark:shadow-black/30 p-8 text-left transition-colors duration-200 hover:shadow-2xl md:hover:-translate-y-1 hover:border-emerald-300 dark:hover:border-emerald-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="group relative cursor-pointer rounded-3xl border border-slate-200/60 dark:border-white/8 bg-white/95 dark:bg-card/95 md:backdrop-blur-xl shadow-xl shadow-slate-900/8 dark:shadow-black/30 p-8 text-left transition-all duration-200 hover:shadow-2xl md:hover:-translate-y-1 md:active:scale-95 active:shadow-md hover:border-emerald-300 dark:hover:border-emerald-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 active:bg-slate-50/90 dark:active:bg-slate-800/90"
               style={{
-                animation: isMasjidExpanding
-                  ? "cardExpand 0.42s cubic-bezier(0.4, 0, 0.2, 1) both"
-                  : isRwrtExpanding
-                  ? "cardFadeOut 0.3s ease-out both"
-                  : undefined,
+                touchAction: "manipulation",
               }}
             >
-              <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-5 pointer-events-none">
                 <span
                   className="inline-flex size-14 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-400 to-teal-600 text-white shadow-md shadow-emerald-500/30 group-hover:shadow-lg group-hover:shadow-emerald-500/40 transition-all duration-300"
                   aria-hidden
@@ -366,23 +358,18 @@ export default function LoginPage() {
                 className="absolute bottom-0 right-0 size-32 rounded-full bg-emerald-400/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
                 aria-hidden
               />
-            </button>
+            </a>
 
             {/* RW & RT Card */}
-            <button
-              type="button"
+            <a
+              href="/auth/login?role=RW"
               id="btn-select-rwrt"
-              onClick={() => handleSystemSelect("rwrt")}
-              className="group relative cursor-pointer rounded-3xl border border-slate-200/60 dark:border-white/8 bg-white/90 dark:bg-card/90 backdrop-blur-xl shadow-xl shadow-slate-900/8 dark:shadow-black/30 p-8 text-left transition-colors duration-200 hover:shadow-2xl md:hover:-translate-y-1 hover:border-indigo-300 dark:hover:border-indigo-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              className="group relative cursor-pointer rounded-3xl border border-slate-200/60 dark:border-white/8 bg-white/95 dark:bg-card/95 md:backdrop-blur-xl shadow-xl shadow-slate-900/8 dark:shadow-black/30 p-8 text-left transition-all duration-200 hover:shadow-2xl md:hover:-translate-y-1 md:active:scale-95 active:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 active:bg-slate-50/90 dark:active:bg-slate-800/90"
               style={{
-                animation: isRwrtExpanding
-                  ? "cardExpand 0.42s cubic-bezier(0.4, 0, 0.2, 1) both"
-                  : isMasjidExpanding
-                  ? "cardFadeOut 0.3s ease-out both"
-                  : undefined,
+                touchAction: "manipulation",
               }}
             >
-              <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-5 pointer-events-none">
                 <span
                   className="inline-flex size-14 items-center justify-center rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30 group-hover:shadow-lg group-hover:shadow-indigo-500/40 transition-all duration-300"
                   aria-hidden
@@ -409,7 +396,7 @@ export default function LoginPage() {
                 className="absolute bottom-0 right-0 size-32 rounded-full bg-indigo-400/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
                 aria-hidden
               />
-            </button>
+            </a>
           </div>
 
           {/* Footer links */}
@@ -620,7 +607,7 @@ export default function LoginPage() {
       )}
 
       {/* Inline keyframes */}
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeSlideUp {
           from { opacity: 0; transform: translateY(20px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -638,7 +625,7 @@ export default function LoginPage() {
           from { opacity: 0; transform: scale(0.95) translateY(12px); }
           to   { opacity: 1; transform: scale(1) translateY(0); }
         }
-      `}</style>
+      `}} />
     </main>
   );
 }
