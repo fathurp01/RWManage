@@ -1,3 +1,4 @@
+import fs from "fs";
 import path from "path";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -6,7 +7,7 @@ import apiRouter from "./routes/api";
 import { csrfGuard } from "./middlewares/csrfGuard";
 
 const parseAllowedOrigins = (): string[] => {
-  const raw = process.env.CORS_ORIGINS ?? "http://localhost:3001";
+  const raw = process.env.CORS_ORIGINS ?? process.env.FRONTEND_URL ?? "";
   return raw
     .split(",")
     .map((value) => value.trim())
@@ -45,8 +46,14 @@ export const createApp = () => {
   app.use(csrfGuard());
   app.use(express.json({ limit: "1mb" }));
 
+  // Initialize uploads directory if it doesn't exist
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
   // Serve uploaded files
-  app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+  app.use("/uploads", express.static(uploadsDir));
 
   app.use("/api", apiRouter);
 

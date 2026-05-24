@@ -8,6 +8,7 @@
     "start": "node dist/src/server.js",
     "build": "tsc -p tsconfig.json",
     "db:push": "npx prisma db push",
+    "db:deploy": "npx prisma migrate deploy",
     "db:seed": "npx prisma db seed",
     "test": "jest --runInBand",
     "test:watch": "jest --watch",

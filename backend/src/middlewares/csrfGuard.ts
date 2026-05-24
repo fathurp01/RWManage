@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 
 const parseAllowedOrigins = (): string[] => {
-  const raw = process.env.CORS_ORIGINS ?? "http://localhost:3001";
+  const raw = process.env.CORS_ORIGINS ?? process.env.FRONTEND_URL ?? "";
   return raw
     .split(",")
     .map((value) => value.trim())

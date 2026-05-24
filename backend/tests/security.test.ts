@@ -46,6 +46,9 @@ jest.mock("../src/lib/prisma", () => {
       findUnique: jest.Mock;
       aggregate: jest.Mock;
     };
+    kasMasjid: {
+      findUnique: jest.Mock;
+    };
     pengaturanZis: {
       findUnique: jest.Mock;
     };
@@ -95,6 +98,9 @@ jest.mock("../src/lib/prisma", () => {
       findUnique: jest.fn(),
       aggregate: jest.fn(),
     },
+    kasMasjid: {
+      findUnique: jest.fn(),
+    },
     pengaturanZis: {
       findUnique: jest.fn(),
     },
@@ -122,6 +128,7 @@ type MockedPrisma = {
   kasRW: { create: jest.Mock; findUnique: jest.Mock };
   kasRT: { create: jest.Mock; findUnique: jest.Mock };
   transaksiZis: { create: jest.Mock; findUnique: jest.Mock; aggregate: jest.Mock };
+  kasMasjid: { findUnique: jest.Mock };
   pengaturanZis: { findUnique: jest.Mock };
   $transaction: jest.Mock;
 };
@@ -164,6 +171,7 @@ const resetMocks = () => {
   if (mockedPrisma.kasRT?.findUnique?.mockClear) mockedPrisma.kasRT.findUnique.mockClear();
   if (mockedPrisma.transaksiZis?.findUnique?.mockClear) mockedPrisma.transaksiZis.findUnique.mockClear();
   if (mockedPrisma.transaksiZis?.aggregate?.mockClear) mockedPrisma.transaksiZis.aggregate.mockClear();
+  if (mockedPrisma.kasMasjid?.findUnique?.mockClear) mockedPrisma.kasMasjid.findUnique.mockClear();
   if (mockedPrisma.pengaturanZis?.findUnique?.mockClear) mockedPrisma.pengaturanZis.findUnique.mockClear();
   if (mockedPrisma.$transaction?.mockClear) mockedPrisma.$transaction.mockClear();
 
@@ -425,6 +433,7 @@ describe("Backend security suite", () => {
     mockedPrisma.kasRW.findUnique.mockResolvedValueOnce(null);
     mockedPrisma.kasRT.findUnique.mockResolvedValueOnce(null);
     mockedPrisma.transaksiZis.findUnique.mockResolvedValueOnce(null);
+    mockedPrisma.kasMasjid.findUnique.mockResolvedValueOnce(null);
 
     const response = await request(app).get("/api/public/cek-kode/NONEXISTENT");
 
