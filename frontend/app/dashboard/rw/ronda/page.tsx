@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { getApiError } from "@/lib/axios";
+import { api, getApiError } from "@/lib/axios";
 import { Badge } from "@/components/ui/badge";
 import { performaRondaClient, type RwMonitoringRondaData } from "@/lib/api/performaRonda";
 import { Calendar, ShieldCheck, Clock, Users, ShieldAlert, Award, AlertTriangle, ArrowUpDown, BellRing, Sparkles, Filter, CheckCircle2, Search, RotateCcw, ChevronLeft, ChevronRight, Building2 } from "lucide-react";
@@ -132,7 +132,7 @@ export default function RwMonitoringRondaPage() {
     });
 
     const total = totalHadir + totalIzin + totalAlfa;
-    const attendanceRate = total > 0 ? Math.round((totalHadir / total) * 100) : 100;
+    const attendanceRate = total > 0 ? Math.round(((totalHadir + totalIzin * 0.5) / total) * 100) : 100;
     const alfaRate = total > 0 ? Math.round((totalAlfa / total) * 100) : 0;
 
     let statusKinerja = "AMAN";
@@ -191,11 +191,16 @@ export default function RwMonitoringRondaPage() {
   const endRaporIndex = startRaporIndex + itemsPerPage;
   const paginatedRaporBloks = sortedRaporBloks.slice(startRaporIndex, endRaporIndex);
 
-  const handleReprimand = (no_rt: string, nama_blok: string) => {
-    toast.success(`Surat Teguran Elektronik berhasil dikirim kepada Ketua RT ${no_rt} - ${nama_blok}!`, {
-      description: "Ketua RT akan menerima notifikasi segera untuk mengevaluasi warganya.",
-      duration: 5000,
-    });
+  const handleReprimand = async (blok_id: string, no_rt: string, nama_blok: string) => {
+    try {
+      await api.post(`/rw/monitoring-ronda/blok/${blok_id}/tegur`);
+      toast.success(`Surat Teguran Elektronik berhasil dikirim kepada Ketua RT ${no_rt} - ${nama_blok}!`, {
+        description: "Ketua RT akan menerima notifikasi segera untuk mengevaluasi warganya.",
+        duration: 5000,
+      });
+    } catch (err) {
+      toast.error(getApiError(err).message);
+    }
   };
 
   const isFiltering = filterRt !== "all" || filterKeaktifan !== "all" || searchOfficer.trim() !== "" || sortOption !== "default";
@@ -731,7 +736,7 @@ export default function RwMonitoringRondaPage() {
                             </td>
                             <td className="px-6 py-3 text-right">
                               {stats.statusKinerja !== 'AMAN' ? (
-                                <Button onClick={() => handleReprimand(blok.no_rt, blok.nama_blok)} size="sm" className="h-8 px-3 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all flex items-center gap-1 ml-auto">
+                                <Button onClick={() => handleReprimand(blok.blok_id, blok.no_rt, blok.nama_blok)} size="sm" className="h-8 px-3 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all flex items-center gap-1 ml-auto">
                                   <BellRing className="size-3.5" /> Tegur RT
                                 </Button>
                               ) : (

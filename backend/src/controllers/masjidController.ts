@@ -650,6 +650,7 @@ export const createRwPengurusMasjid = async (
           no_hp: targetNoHp,
           role: Role.PENGURUS_MASJID,
           status_akun: StatusAkun.APPROVED,
+          blok_wilayah_id: targetMasjid.blok_wilayah_id,
         },
       });
 
@@ -809,6 +810,7 @@ export const updateRwPengurusMasjid = async (
           nama: targetNama,
           email: targetEmail,
           no_hp: targetNoHp,
+          blok_wilayah_id: newMasjid.blok_wilayah_id,
           ...(targetPassword ? { password: await bcrypt.hash(targetPassword, SALT_ROUNDS) } : {}),
         },
       });
@@ -903,6 +905,21 @@ export const deleteRwPengurusMasjid = async (
     });
 
     await prisma.$transaction(async (tx) => {
+      // Clear audit log entries created by this user
+      await tx.auditLog.deleteMany({
+        where: { user_id: targetUserId },
+      });
+
+      // Clear user preferences
+      await tx.userPreference.deleteMany({
+        where: { user_id: targetUserId },
+      });
+
+      // Clear password reset requests
+      await tx.passwordResetRequest.deleteMany({
+        where: { user_id: targetUserId },
+      });
+
       // Delete relation
       await tx.pengurusMasjid.deleteMany({
         where: { user_id: targetUserId },

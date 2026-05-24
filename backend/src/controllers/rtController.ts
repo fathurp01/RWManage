@@ -18,6 +18,8 @@ const getRtBlockContext = async (req: Request) => {
       id: req.user.blok_wilayah_id,
       nama_blok: null,
       no_rt: null,
+      tegur_ronda: false,
+      tegur_ronda_pesan: null,
       wilayah_rw_id: null,
       wilayah_rw: null,
     } as any;
@@ -29,6 +31,8 @@ const getRtBlockContext = async (req: Request) => {
       id: true,
       nama_blok: true,
       no_rt: true,
+      tegur_ronda: true,
+      tegur_ronda_pesan: true,
       wilayah_rw_id: true,
       wilayah_rw: {
         select: {
@@ -36,6 +40,12 @@ const getRtBlockContext = async (req: Request) => {
           user: {
             select: {
               nama: true,
+            },
+          },
+          pengaturan_iuran: {
+            select: {
+              persen_rt: true,
+              persen_rw: true,
             },
           },
         },
@@ -196,6 +206,10 @@ export const getIuranForRt = async (req: Request, res: Response): Promise<void> 
         no_rw: blok.wilayah_rw?.no_rw ?? null,
         desa: blok.wilayah_rw?.user?.nama ?? null,
         nama_blok: blok.nama_blok,
+        tegur_ronda: blok.tegur_ronda ?? false,
+        tegur_ronda_pesan: blok.tegur_ronda_pesan ?? null,
+        persen_rt: blok.wilayah_rw?.pengaturan_iuran?.persen_rt ?? 70.0,
+        persen_rw: blok.wilayah_rw?.pengaturan_iuran?.persen_rw ?? 30.0,
         tahun: tahunInt,
         bulan: bulanInt ?? null,
         status: status ?? null,
@@ -324,10 +338,10 @@ export const exportIuranHistoryPdfForRt = async (req: Request, res: Response): P
     };
 
     // Header RT Branding
-    doc.fontSize(16).font("Helvetica-Bold").fillColor("#0e7490").text("LAPORAN HISTORI PEMBAYARAN IURAN WARGA", { align: "center" });
-    doc.moveDown(0.2);
-    doc.fontSize(12).font("Helvetica-Bold").fillColor("#334155").text(`RUKUN TETANGGA (RT) ${blok.no_rt || ''} / BLOK ${blok.nama_blok || ''}`, { align: "center" });
-    doc.fontSize(10).font("Helvetica").fillColor("#64748b").text(`Tahun Anggaran: ${tahunInt}`, { align: "center" });
+    doc.fontSize(15).font("Helvetica-Bold").fillColor("#312e81").text("LAPORAN REKAPITULASI HISTORI PEMBAYARAN IURAN WARGA", { align: "center" });
+    doc.moveDown(0.25);
+    doc.fontSize(12).font("Helvetica-Bold").fillColor("#1e293b").text(`RUKUN TETANGGA (RT) ${blok.no_rt || ''} / BLOK ${blok.nama_blok || ''}`, { align: "center" });
+    doc.fontSize(10).font("Helvetica").fillColor("#64748b").text(`Tahun Anggaran / Periode Laporan: ${tahunInt}`, { align: "center" });
     doc.text(`Dicetak: ${new Date().toLocaleString("id-ID")}`, { align: "center" });
     doc.moveDown(1.5);
 
@@ -336,7 +350,7 @@ export const exportIuranHistoryPdfForRt = async (req: Request, res: Response): P
     const totalKasRt = history.reduce((acc, item) => acc + Number(item.nominal_kas_rt ?? 0), 0);
     const totalSetoranRw = history.reduce((acc, item) => acc + Number(item.nominal_kas_rw ?? 0), 0);
 
-    doc.fontSize(11).font("Helvetica-Bold").fillColor("#1e293b").text("Ringkasan Penerimaan Iuran:");
+    doc.fontSize(11).font("Helvetica-Bold").fillColor("#1e293b").text("Ringkasan Penerimaan Iuran Periode Ini:");
     doc.moveDown(0.4);
 
     let currentY = doc.y;
@@ -350,10 +364,11 @@ export const exportIuranHistoryPdfForRt = async (req: Request, res: Response): P
 
     // Table drawing
     const headers = ["Warga", "Periode", "Tanggal Bayar", "Total Nominal", "Kas RT (70%)", "Setoran RW (30%)", "Kode"];
-    const colWidths = [95, 55, 75, 75, 75, 75, 65];
+    const colWidths = [85, 45, 65, 65, 65, 95, 95];
+    const colAligns: Array<"left" | "center" | "right"> = ["left", "center", "center", "right", "right", "right", "left"];
     let tableY = doc.y;
 
-    const drawRow = (data: string[], isHeader = false) => {
+    const drawRow = (rowData: string[], isHeader = false) => {
       const h = 22;
       if (tableY + h > 750) {
         doc.addPage();
@@ -361,15 +376,15 @@ export const exportIuranHistoryPdfForRt = async (req: Request, res: Response): P
       }
       let x = 40;
       doc.font(isHeader ? "Helvetica-Bold" : "Helvetica").fontSize(8);
-      data.forEach((text, i) => {
+      rowData.forEach((text, i) => {
         // Draw background box
         if (isHeader) {
-          doc.rect(x, tableY, colWidths[i], h).fillColor("#0e7490").fill();
+          doc.rect(x, tableY, colWidths[i], h).fillColor("#312e81").fill();
           doc.rect(x, tableY, colWidths[i], h).strokeColor("#cbd5e1").stroke();
-          doc.fillColor("#ffffff").text(text, x + 4, tableY + 7, { width: colWidths[i] - 8, align: i === 0 || i === 1 || i === 6 ? "left" : "right" });
+          doc.fillColor("#ffffff").text(text, x + 4, tableY + 7, { width: colWidths[i] - 8, align: colAligns[i] });
         } else {
           doc.rect(x, tableY, colWidths[i], h).strokeColor("#e2e8f0").stroke();
-          doc.fillColor("#1e293b").text(text, x + 4, tableY + 7, { width: colWidths[i] - 8, align: i === 0 || i === 1 || i === 6 ? "left" : "right" });
+          doc.fillColor("#1e293b").text(text, x + 4, tableY + 7, { width: colWidths[i] - 8, align: colAligns[i] });
         }
         x += colWidths[i];
       });
@@ -482,13 +497,22 @@ export const createWargaForRt = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const pengaturan = await prisma.pengaturanIuranRW.findUnique({
+    let pengaturan = await prisma.pengaturanIuranRW.findUnique({
       where: { wilayah_rw_id: blok.wilayah_rw_id }
     });
     
     if (!pengaturan) {
-      res.status(400).json({ success: false, message: "Pengaturan iuran belum di-set oleh RW."});
-      return;
+      // Auto-create with default values if not yet set by RW to prevent blocking
+      pengaturan = await prisma.pengaturanIuranRW.create({
+        data: {
+          wilayah_rw_id: blok.wilayah_rw_id,
+          nominal_iuran: new Prisma.Decimal(20000.00),
+          nominal_iuran_kurang_mampu: new Prisma.Decimal(0.00),
+          nominal_iuran_lansia: new Prisma.Decimal(0.00),
+          persen_rt: 70.0,
+          persen_rw: 30.0,
+        }
+      });
     }
 
     const currentYear = new Date().getFullYear();
@@ -622,9 +646,64 @@ export const createPerformaRondaForRt = async (req: Request, res: Response): Pro
   } catch {
     res.status(500).json({ success: false, message: "Terjadi kesalahan saat membuat data performa ronda RT." });
   }
-};
+  };
 
-export const updateWargaForRt = async (req: Request, res: Response): Promise<void> => {
+  export const deleteWargaForRt = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const raw = (req.params as Record<string, unknown>)?.warga_id;
+      const warga_id = Array.isArray(raw) ? raw[0] : (raw as string | undefined);
+      if (!warga_id) {
+        res.status(400).json({ success: false, message: "warga_id harus diisi." });
+        return;
+      }
+
+      if (!req.user?.id) {
+        res.status(401).json({ success: false, message: "User belum terautentikasi." });
+        return;
+      }
+
+      const existing = await prisma.warga.findUnique({ where: { id: warga_id } });
+      if (!existing || existing.deleted_at) {
+        res.status(404).json({ success: false, message: "Warga tidak ditemukan." });
+        return;
+      }
+
+      const blok = await getRtBlockContext(req);
+      if (!blok || existing.blok_wilayah_id !== blok.id) {
+        res.status(403).json({ success: false, message: "Akses ditolak." });
+        return;
+      }
+
+      const deleted = await prisma.warga.update({
+        where: { id: warga_id },
+        data: {
+          deleted_at: new Date(),
+        },
+        select: {
+          id: true,
+          nama_kk: true,
+          deleted_at: true,
+        },
+      });
+
+      await recordAudit(req, {
+        aksi: AksiAudit.DELETE,
+        entitas: "Warga",
+        entitas_id: warga_id,
+        data_lama: existing,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Data warga berhasil dihapus.",
+        data: deleted,
+      });
+    } catch {
+      res.status(500).json({ success: false, message: "Terjadi kesalahan saat menghapus data warga." });
+    }
+  };
+  
+  export const updateWargaForRt = async (req: Request, res: Response): Promise<void> => {
   try {
     const raw = (req.params as Record<string, unknown>)?.warga_id;
     const warga_id = Array.isArray(raw) ? raw[0] : (raw as string | undefined);
@@ -1106,16 +1185,25 @@ export const bayarIuranForRt = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const pengaturan = await prisma.pengaturanIuranRW.findUnique({
+    let pengaturan = await prisma.pengaturanIuranRW.findUnique({
       where: { wilayah_rw_id: blok.wilayah_rw_id }
     });
 
     if (!pengaturan) {
-      res.status(400).json({ success: false, message: "Master Data Pengaturan Iuran belum diatur oleh RW." });
-      return;
+      // Auto-create with default values if not yet set by RW to prevent blocking
+      pengaturan = await prisma.pengaturanIuranRW.create({
+        data: {
+          wilayah_rw_id: blok.wilayah_rw_id,
+          nominal_iuran: new Prisma.Decimal(20000.00),
+          nominal_iuran_kurang_mampu: new Prisma.Decimal(0.00),
+          nominal_iuran_lansia: new Prisma.Decimal(0.00),
+          persen_rt: 70.0,
+          persen_rw: 30.0,
+        }
+      });
     }
 
-    const nominalBayar = Number(pengaturan.nominal_iuran);
+    const nominalBayar = Number(existingIuran.nominal);
     const pRt = Number(pengaturan.persen_rt);
     const pRw = Number(pengaturan.persen_rw);
 
@@ -1770,6 +1858,181 @@ export const getPresenceForJadwal = async (req: Request, res: Response): Promise
   }
 };
 
+const renderIncidentReportPage = (doc: any, laporan: any, headerData: {
+  isRw: boolean;
+  no_rw: string;
+  nama_kompleks: string;
+  no_rt?: string | null;
+  nama_blok?: string | null;
+}) => {
+  const fs = require('fs');
+  const path = require('path');
+
+  const getElapsedString = (dVal: Date): string => {
+    if (!dVal) return "";
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const incidentDate = new Date(dVal);
+    incidentDate.setHours(0, 0, 0, 0);
+
+    const diffTime = today.getTime() - incidentDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "hari ini";
+    if (diffDays === 1) return "kemarin";
+    if (diffDays > 1) return `${diffDays} hari yang lalu`;
+    return "akan datang";
+  };
+
+  // Drawing Kop Surat (Official Letterhead)
+  doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(16).text(
+    headerData.isRw ? 'PENGURUS RUKUN WARGA (RW)' : 'PENGURUS RUKUN TETANGGA (RT)', 
+    { align: 'center' }
+  );
+  doc.moveDown(0.15);
+  
+  let subtitle = '';
+  if (headerData.isRw) {
+    subtitle = `WILAYAH RW ${headerData.no_rw || '-'} - KOMPLEKS ${headerData.nama_kompleks?.toUpperCase() || '-'}`;
+  } else {
+    subtitle = `WILAYAH RT ${headerData.no_rt || '-'} / RW ${headerData.no_rw || '-'} - KOMPLEKS ${headerData.nama_kompleks?.toUpperCase() || '-'}`;
+    if (headerData.nama_blok) {
+      subtitle += ` (BLOK ${headerData.nama_blok.toUpperCase()})`;
+    }
+  }
+  
+  doc.fontSize(11).font('Helvetica-Bold').text(subtitle, { align: 'center' });
+  doc.moveDown(0.15);
+  doc.fontSize(8.5).font('Helvetica').fillColor('#64748b').text('Sistem Informasi Manajemen Lingkungan Terintegrasi - RWManage', { align: 'center' });
+  doc.moveDown(0.15);
+  doc.fontSize(8).font('Helvetica-Oblique').fillColor('#94a3b8').text('Layanan Pengaduan, Keamanan, Ronda, dan Monitoring Insiden Wilayah Resmi', { align: 'center' });
+  
+  // Draw thick professional double lines under Kop Surat
+  doc.lineWidth(1.8).strokeColor('#0f172a').moveTo(40, 105).lineTo(555, 105).stroke();
+  doc.lineWidth(0.5).strokeColor('#475569').moveTo(40, 109).lineTo(555, 109).stroke();
+
+  // Document Title
+  doc.y = 125;
+  doc.fontSize(13).font('Helvetica-Bold').fillColor('#0f172a').text('LAPORAN KEJADIAN / INSIDEN WILAYAH RT', { align: 'center' });
+  doc.moveDown(0.15);
+  doc.fontSize(14).font('Helvetica-Bold').fillColor('#1e3a8a').text(laporan.tipe_insiden.toUpperCase(), { align: 'center' });
+  doc.moveDown(0.5);
+
+  // Status & Urgency Badges
+  let statusLabel = laporan.status === 'LAPORAN' ? 'BELUM DITANGANI' : laporan.status === 'PROSES' ? 'SEDANG DITANGANI' : laporan.status;
+  let statusColor = laporan.status === 'LAPORAN' ? '#be123c' : laporan.status === 'PROSES' ? '#d97706' : laporan.status === 'SELESAI' ? '#059669' : '#4b5563';
+  
+  let urgencyLabel = laporan.urgensi || 'RENDAH';
+  let urgencyColor = urgencyLabel === 'TINGGI' ? '#be123c' : urgencyLabel === 'SEDANG' ? '#b45309' : '#1d4ed8';
+
+  const badgeY = doc.y;
+  // Urgensi Badge
+  doc.fillColor(urgencyColor).rect(160, badgeY, 120, 18).fill();
+  doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(8.5).text(`URGENSI: ${urgencyLabel}`, 160, badgeY + 4, { width: 120, align: 'center' });
+
+  // Status Badge
+  doc.fillColor(statusColor).rect(300, badgeY, 130, 18).fill();
+  doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(8.5).text(`STATUS: ${statusLabel}`, 300, badgeY + 4, { width: 130, align: 'center' });
+
+  doc.y = badgeY + 30;
+
+  // Key-value Details Block
+  doc.fillColor('#f8fafc').rect(40, doc.y, 515, 120).fill();
+  doc.lineWidth(0.5).strokeColor('#e2e8f0').rect(40, doc.y, 515, 120).stroke();
+
+  const startDetailsY = doc.y + 10;
+  doc.fontSize(9.5).fillColor('#0f172a');
+  
+  const labels = [
+    'Waktu Kejadian',
+    'Lokasi Kejadian',
+    'Identitas Pelapor',
+    'Kontak Pelapor',
+    'Deskripsi Kejadian'
+  ];
+
+  const dateStr = new Date(laporan.tanggal_insiden).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  const elapsed = getElapsedString(laporan.tanggal_insiden);
+  
+  const values = [
+    `: ${dateStr} (${elapsed})`,
+    `: ${laporan.lokasi}`,
+    `: ${laporan.pelapor_nama}`,
+    `: ${laporan.pelapor_no_hp || '-'}`,
+    `: ${laporan.deskripsi}`
+  ];
+
+  let currentDetailY = startDetailsY;
+  labels.forEach((label, idx) => {
+    doc.font('Helvetica-Bold').fillColor('#334155').text(label, 50, currentDetailY);
+    doc.font('Helvetica').fillColor('#0f172a');
+    if (idx === 4) {
+      doc.text(values[idx], 150, currentDetailY, { width: 390, height: 35, ellipsis: true });
+    } else {
+      doc.text(values[idx], 150, currentDetailY, { width: 390 });
+    }
+    currentDetailY += 18;
+  });
+
+  doc.y = startDetailsY + 95;
+
+  // Actions Taken (Tindakan Diambil)
+  if (laporan.tindakan_diambil) {
+    doc.y = doc.y + 20;
+    const actionY = doc.y;
+    doc.fillColor('#ecfdf5').rect(40, actionY, 515, 40).fill();
+    doc.lineWidth(0.8).strokeColor('#10b981').rect(40, actionY, 515, 40).stroke();
+    doc.fontSize(9.5).font('Helvetica-Bold').fillColor('#065f46').text('Tindakan Diambil:', 50, actionY + 8);
+    doc.font('Helvetica').fillColor('#047857').text(laporan.tindakan_diambil, 50, actionY + 22, { width: 495, height: 15, ellipsis: true });
+    doc.y = actionY + 45;
+  }
+
+  // Incident Photo (Large Image fulfilling the rest of page)
+  let photoAttached = false;
+  if (laporan.foto_bukti_url) {
+    const filename = laporan.foto_bukti_url.replace(/^\/uploads\//, '').replace('/uploads/', '');
+    let imgPath = path.join(process.cwd(), 'uploads', filename);
+    if (!fs.existsSync(imgPath)) {
+      imgPath = path.join(process.cwd(), 'backend', 'uploads', filename);
+    }
+
+    if (fs.existsSync(imgPath)) {
+      try {
+        const remainingHeight = doc.page.height - doc.y - 65; // safety margin
+        if (remainingHeight > 80) {
+          doc.moveDown(0.8);
+          doc.fontSize(10).font('Helvetica-Bold').fillColor('#334155').text('DOKUMENTASI FOTO KEJADIAN:', 40, doc.y);
+          doc.moveDown(0.3);
+          
+          doc.image(imgPath, {
+            fit: [515, remainingHeight - 20],
+            align: 'center'
+          });
+          photoAttached = true;
+        }
+      } catch (err) {
+        console.error('Gagal melampirkan foto bukti kejadian:', err);
+      }
+    }
+  }
+
+  if (!photoAttached) {
+    doc.moveDown(0.8);
+    const boxY = doc.y;
+    const remainingHeight = Math.min(doc.page.height - doc.y - 65, 120);
+    if (remainingHeight > 40) {
+      doc.lineWidth(0.5).dash(4, { space: 4 }).strokeColor('#94a3b8').rect(40, boxY, 515, remainingHeight).stroke();
+      doc.undash();
+      doc.fontSize(8.5).font('Helvetica-Oblique').fillColor('#94a3b8').text(
+        'Tidak ada lampiran dokumentasi foto bukti kejadian.', 
+        40, 
+        boxY + (remainingHeight / 2) - 4, 
+        { width: 515, align: 'center' }
+      );
+    }
+  }
+};
+
 export const exportLaporanPdfForRt = async (req: Request, res: Response): Promise<void> => {
   try {
     const raw = (req.params as Record<string, unknown>)?.laporan_id;
@@ -1803,53 +2066,29 @@ export const exportLaporanPdfForRt = async (req: Request, res: Response): Promis
       return;
     }
 
-    const PDFDocument = require('pdfkit');
-    const fs = require('fs');
-    const path = require('path');
+    // Get RW details for letterhead
+    const rw = await prisma.wilayahRW.findUnique({
+      where: { id: blok.wilayah_rw_id || undefined },
+      select: { no_rw: true, nama_kompleks: true }
+    });
 
-    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=laporan-${laporan.id}.pdf`);
 
     doc.pipe(res);
 
-    doc.fontSize(18).text('Laporan Insiden', { align: 'center' });
-    doc.moveDown();
+    const headerData = {
+      isRw: false,
+      no_rw: rw?.no_rw || '-',
+      nama_kompleks: rw?.nama_kompleks || '-',
+      no_rt: blok.no_rt,
+      nama_blok: blok.nama_blok
+    };
 
-    doc.fontSize(12).text(`ID: ${laporan.id}`);
-    doc.text(`Tipe Insiden: ${laporan.tipe_insiden}`);
-    doc.text(`Tanggal Insiden: ${laporan.tanggal_insiden?.toISOString().split('T')[0] || ''}`);
-    doc.text(`Lokasi: ${laporan.lokasi}`);
-    doc.text(`Urgensi: ${laporan.urgensi || 'RENDAH'}`);
-    doc.moveDown();
-
-    doc.text('Deskripsi:');
-    doc.fontSize(11).text(laporan.deskripsi || '', { align: 'left' });
-    doc.moveDown();
-
-    doc.fontSize(12).text(`Pelapor: ${laporan.pelapor_nama} ${laporan.pelapor_no_hp ? `(${laporan.pelapor_no_hp})` : ''}`);
-    doc.text(`Status: ${laporan.status}`);
-    if (laporan.tindakan_diambil) {
-      doc.moveDown();
-      doc.text('Tindakan yang diambil:');
-      doc.fontSize(11).text(laporan.tindakan_diambil || '', { align: 'left' });
-    }
-
-    // attach foto if exists
-    if (laporan.foto_bukti_url) {
-      try {
-        const filename = laporan.foto_bukti_url.replace('/uploads/', '');
-        const imgPath = path.join(process.cwd(), 'backend', 'uploads', filename);
-        if (fs.existsSync(imgPath)) {
-          doc.addPage();
-          doc.fontSize(14).text('Foto Bukti', { align: 'center' });
-          doc.image(imgPath, { fit: [480, 600], align: 'center' });
-        }
-      } catch (err) {
-        console.error('Gagal melampirkan foto bukti:', err);
-      }
-    }
+    renderIncidentReportPage(doc, laporan, headerData);
 
     doc.end();
   } catch (error) {
@@ -1907,13 +2146,13 @@ export const exportGroupedLaporanPdfForRt = async (
       select: { no_rw: true, nama_kompleks: true }
     });
 
-    // Grouping: since RT only views its own block, group name is its RT
-    const rtKey = blok.no_rt 
-      ? `RT ${blok.no_rt.padStart(3, '0')} (${blok.nama_blok || ''})` 
-      : `Blok ${blok.nama_blok || ''}`;
-    const groupedByRt: Record<string, typeof incidents> = {
-      [rtKey]: incidents
-    };
+    if (incidents.length === 0) {
+      res.status(404).json({
+        success: false,
+        message: "Tidak ada laporan insiden untuk diekspor."
+      });
+      return;
+    }
 
     const PDFDocument = require('pdfkit');
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
@@ -1923,132 +2162,20 @@ export const exportGroupedLaporanPdfForRt = async (
 
     doc.pipe(res);
 
-    // Drawing Kop Surat (Official Letterhead)
-    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(16).text('PENGURUS RUKUN TETANGGA (RT)', { align: 'center' });
-    doc.moveDown(0.15);
-    doc.fontSize(11).font('Helvetica-Bold').text(`WILAYAH RT ${blok.no_rt || '-'} / RW ${rw?.no_rw || '-'} - KOMPLEKS ${rw?.nama_kompleks?.toUpperCase() || '-'}`, { align: 'center' });
-    doc.moveDown(0.15);
-    doc.fontSize(8.5).font('Helvetica').fillColor('#64748b').text('Sistem Informasi Manajemen Lingkungan Terintegrasi - RWManage', { align: 'center' });
-    doc.moveDown(0.15);
-    doc.fontSize(8).font('Helvetica-Oblique').fillColor('#94a3b8').text('Layanan Pengaduan, Keamanan, Ronda, dan Monitoring Insiden Wilayah Resmi', { align: 'center' });
-    
-    // Draw thick professional double lines under Kop Surat
-    doc.lineWidth(1.8).strokeColor('#0f172a').moveTo(40, 105).lineTo(555, 105).stroke();
-    doc.lineWidth(0.5).strokeColor('#475569').moveTo(40, 109).lineTo(555, 109).stroke();
-
-    // Title of the document
-    doc.moveDown(2);
-    doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b').text('LAPORAN MONITORING INSIDEN & KEJADIAN WILAYAH RT', { align: 'center' });
-    doc.moveDown(0.15);
-    doc.fontSize(8.5).font('Helvetica').fillColor('#64748b').text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} WIB`, { align: 'center' });
-    doc.moveDown(1.5);
-
-    // Summary Box
-    let totalLaporan = incidents.length;
-    let baru = incidents.filter(i => i.status === 'LAPORAN').length;
-    let proses = incidents.filter(i => i.status === 'PROSES').length;
-    let selesai = incidents.filter(i => i.status === 'SELESAI').length;
-    let ditutup = incidents.filter(i => i.status === 'DITUTUP').length;
-
-    doc.lineWidth(0.8).strokeColor('#cbd5e1').rect(40, doc.y, 515, 42).stroke();
-    const summaryY = doc.y + 8;
-    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(9.5);
-    doc.text('RINGKASAN STATUS LAPORAN AKTIF:', 50, summaryY);
-    
-    doc.font('Helvetica').fontSize(8.5).fillColor('#334155');
-    doc.text(`Total Kejadian: ${totalLaporan}   |   Baru: ${baru}   |   Sedang Ditangani: ${proses}   |   Selesai: ${selesai}   |   Ditutup: ${ditutup}`, 50, summaryY + 15);
-    doc.moveDown(2.8);
-
-    // Grouped list rendering
-    const rtKeys = Object.keys(groupedByRt).sort();
-
-    rtKeys.forEach((rtKey) => {
-      // Check page overflow
-      if (doc.y + 60 > 750) {
+    incidents.forEach((item, index) => {
+      if (index > 0) {
         doc.addPage();
       }
 
-      const currentY = doc.y;
-      // Draw RT Section header
-      doc.fillColor('#e0f2fe').rect(40, currentY, 515, 22).fill();
-      doc.fillColor('#0369a1').font('Helvetica-Bold').fontSize(10).text(rtKey.toUpperCase(), 50, currentY + 6);
-      doc.moveDown(1.2);
-
-      const rtIncidents = groupedByRt[rtKey];
-
-      // Group by status
-      const statusGroups: Record<string, typeof incidents> = {
-        'LAPORAN': [],
-        'PROSES': [],
-        'SELESAI': [],
-        'DITUTUP': []
+      const headerData = {
+        isRw: false,
+        no_rw: rw?.no_rw || '-',
+        nama_kompleks: rw?.nama_kompleks || '-',
+        no_rt: blok.no_rt,
+        nama_blok: blok.nama_blok
       };
 
-      rtIncidents.forEach(item => {
-        statusGroups[item.status] = statusGroups[item.status] || [];
-        statusGroups[item.status].push(item);
-      });
-
-      const statuses = ['LAPORAN', 'PROSES', 'SELESAI', 'DITUTUP'];
-
-      statuses.forEach(status => {
-        const items = statusGroups[status];
-        if (!items || items.length === 0) return;
-
-        if (doc.y + 40 > 750) {
-          doc.addPage();
-        }
-
-        // Draw Status subheading
-        let statusLabel = status === 'LAPORAN' ? 'BARU' : status === 'PROSES' ? 'DITANGANI' : status;
-        let statusColor = status === 'LAPORAN' ? '#be123c' : status === 'PROSES' ? '#d97706' : status === 'SELESAI' ? '#059669' : '#4b5563';
-
-        doc.fillColor(statusColor).font('Helvetica-Bold').fontSize(9).text(`• Status: ${statusLabel} (${items.length} Laporan)`, 48, doc.y);
-        doc.moveDown(0.4);
-
-        items.forEach((item, itemIdx) => {
-          if (doc.y + 110 > 750) {
-            doc.addPage();
-          }
-
-          const boxY = doc.y;
-          // Outer box
-          doc.lineWidth(0.5).strokeColor('#e2e8f0').rect(46, boxY, 503, 85).stroke();
-          
-          // Row Header inside box
-          doc.fillColor('#f8fafc').rect(47, boxY + 1, 501, 16).fill();
-          doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(8.5).text(`${itemIdx + 1}. ${item.tipe_insiden}`, 52, boxY + 4);
-          
-          // Urgency Dynamic Level
-          const urgency = (item as any).urgensi || getUrgencyHelper(item.tipe_insiden, item.deskripsi);
-          let urgencyColor = urgency === 'TINGGI' ? '#be123c' : urgency === 'SEDANG' ? '#b45309' : '#1d4ed8';
-          doc.fillColor(urgencyColor).font('Helvetica-Bold').fontSize(8).text(`URGENSI: ${urgency}`, 440, boxY + 4);
-
-          // Incident details
-          const elapsed = getElapsedHelper(item.tanggal_insiden);
-          const dateStr = new Date(item.tanggal_insiden).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-          
-          doc.fillColor('#334155').font('Helvetica').fontSize(8);
-          doc.text(`Waktu Kejadian : ${dateStr} (${elapsed})`, 52, boxY + 22);
-          doc.text(`Lokasi Kejadian : ${item.lokasi}`, 52, boxY + 32);
-          doc.text(`Identitas Pelapor : ${item.pelapor_nama} ${item.pelapor_no_hp ? `(${item.pelapor_no_hp})` : ''}`, 52, boxY + 42);
-          doc.fillColor('#475569').text(`Deskripsi Kejadian : ${item.deskripsi.substring(0, 120)}${item.deskripsi.length > 120 ? '...' : ''}`, 52, boxY + 52, { width: 490 });
-
-          // Warnings / Resolution actions
-          if (item.tindakan_diambil) {
-            doc.fillColor('#059669').font('Helvetica-Bold').text(`Tindakan Diambil : ${item.tindakan_diambil.substring(0, 110)}${item.tindakan_diambil.length > 110 ? '...' : ''}`, 52, boxY + 68, { width: 490 });
-          } else if (item.status === 'LAPORAN') {
-            const isOverdue = checkOverdueHelper(item.tanggal_insiden);
-            if (isOverdue) {
-              doc.fillColor('#be123c').font('Helvetica-Bold').text('⚠️ PERINGATAN: Belum ditindaklanjuti > 3 Hari (Segera lakukan tindakan!)', 52, boxY + 68, { width: 490 });
-            }
-          }
-
-          doc.moveDown(9.8);
-        });
-      });
-
-      doc.moveDown(0.8);
+      renderIncidentReportPage(doc, item, headerData);
     });
 
     doc.end();
@@ -2270,6 +2397,38 @@ export const exportPerformaRondaPdfForRt = async (req: Request, res: Response): 
   } catch (error) {
     console.error("Error exporting RT ronda history PDF:", error);
     res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengekspor rekapitulasi absensi ronda ke PDF." });
+  }
+};
+
+export const clearTegurRondaForRt = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id || req.user.role !== "RT") {
+      res.status(401).json({ success: false, message: "Akses ditolak. Hanya RT." });
+      return;
+    }
+
+    const blokId = req.user.blok_wilayah_id;
+    if (!blokId) {
+      res.status(403).json({ success: false, message: "Data blok wilayah untuk RT login tidak ditemukan." });
+      return;
+    }
+
+    const updated = await prisma.blokWilayah.update({
+      where: { id: blokId },
+      data: {
+        tegur_ronda: false,
+        tegur_ronda_pesan: null
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Teguran ronda berhasil diselesaikan / diakui.",
+      data: updated
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat menyelesaikan teguran ronda." });
   }
 };
 

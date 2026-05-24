@@ -131,55 +131,28 @@ export default function PengaturanIuranPage() {
     }
   };
 
-  const exportHistory = () => {
+  const exportHistory = async () => {
     if (history.length === 0) {
       toast.error("Belum ada histori untuk diekspor.");
       return;
     }
-    const escapeCsv = (value: unknown) => {
-      const text = value === null || value === undefined ? "" : String(value);
-      return `"${text.replaceAll('"', '""')}"`;
-    };
-    const headers = [
-      "Waktu",
-      "Diubah Oleh",
-      "Keterangan",
-      "Nominal Lama",
-      "Nominal Baru",
-      "Kurang Mampu Lama",
-      "Kurang Mampu Baru",
-      "Lansia Lama",
-      "Lansia Baru",
-      "Kas RT Lama",
-      "Kas RT Baru",
-      "Kas RW Lama",
-      "Kas RW Baru",
-      "Perubahan",
-    ];
-    const rows = history.map((item) => [
-      formatDateTime(item.created_at),
-      item.user?.nama || item.user?.email || "-",
-      item.keterangan || "-",
-      formatCurrency(item.data_lama?.nominal_iuran),
-      formatCurrency(item.data_baru?.nominal_iuran),
-      formatCurrency(item.data_lama?.nominal_iuran_kurang_mampu),
-      formatCurrency(item.data_baru?.nominal_iuran_kurang_mampu),
-      formatCurrency(item.data_lama?.nominal_iuran_lansia),
-      formatCurrency(item.data_baru?.nominal_iuran_lansia),
-      formatPercent(item.data_lama?.persen_rt),
-      formatPercent(item.data_baru?.persen_rt),
-      formatPercent(item.data_lama?.persen_rw),
-      formatPercent(item.data_baru?.persen_rw),
-      item.perubahan.map((c) => `${c.label}: ${c.lama ?? "-"} → ${c.baru ?? "-"}`).join("; "),
-    ]);
-    const csv = [headers, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `histori-pengaturan-iuran-${new Date().toISOString().slice(0, 10)}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    toast.info("Mengunduh rekap histori perubahan iuran (PDF)...");
+    try {
+      const res = await api.get("/rw/pengaturan-iuran/history/export-pdf", {
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `histori-pengaturan-iuran-${new Date().toISOString().slice(0, 10)}.pdf`;
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+      toast.success("Histori perubahan iuran berhasil diunduh dalam PDF!");
+    } catch (error) {
+      const apiError = getApiError(error);
+      toast.error(apiError.message || "Gagal mengunduh histori perubahan iuran.");
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -524,7 +497,7 @@ export default function PengaturanIuranPage() {
             disabled={historyLoading || history.length === 0}
           >
             <Download className="size-4" />
-            Export CSV
+            Export PDF
           </Button>
         </div>
 

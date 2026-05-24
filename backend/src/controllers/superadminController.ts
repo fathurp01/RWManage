@@ -23,6 +23,22 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
         status_akun: true,
         created_at: true,
         blok_wilayah_id: true,
+        blok_wilayah: {
+          select: {
+            nama_blok: true,
+            no_rt: true,
+          }
+        },
+        pengurus_masjid: {
+          select: {
+            masjid_id: true,
+            masjid: {
+              select: {
+                nama_masjid: true
+              }
+            }
+          }
+        }
       },
       orderBy: { created_at: "desc" },
     });
@@ -42,7 +58,7 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
 
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { nama, email, password, no_hp, role, blok_wilayah_id } = req.body;
+    const { nama, email, password, no_hp, role, blok_wilayah_id, masjid_id } = req.body;
 
     if (!nama || !email || !password || !no_hp || !role) {
       res.status(400).json({
@@ -62,7 +78,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
           password: hashedPassword,
           no_hp,
           role,
-          blok_wilayah_id: blok_wilayah_id || null,
+          blok_wilayah_id: role === Role.RT ? (blok_wilayah_id || null) : null,
           status_akun: StatusAkun.APPROVED, // Auto-approved as requested
         },
         select: {
@@ -80,6 +96,15 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
             user_id: user.id,
             nama_kompleks: user.nama, // Gunakan nama user (Desa)
             no_rw: "-", // Default no_rw
+          },
+        });
+      }
+
+      if (user.role === Role.PENGURUS_MASJID && masjid_id) {
+        await tx.pengurusMasjid.create({
+          data: {
+            user_id: user.id,
+            masjid_id,
           },
         });
       }
@@ -113,7 +138,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = req.params.id as string;
-    const { nama, no_hp, role, status_akun, blok_wilayah_id } = req.body;
+    const { nama, no_hp, role, status_akun, blok_wilayah_id, masjid_id } = req.body;
 
     const existingUser = await prisma.user.findUnique({ where: { id } });
     if (!existingUser) {
@@ -121,16 +146,46 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: {
-        nama: nama ?? existingUser.nama,
-        no_hp: no_hp ?? existingUser.no_hp,
-        role: role ?? existingUser.role,
-        status_akun: status_akun ?? existingUser.status_akun,
-        blok_wilayah_id: blok_wilayah_id !== undefined ? blok_wilayah_id : existingUser.blok_wilayah_id,
-      },
-      select: { id: true, nama: true, email: true, role: true, status_akun: true },
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id },
+        data: {
+          nama: nama ?? existingUser.nama,
+          no_hp: no_hp ?? existingUser.no_hp,
+          role: role ?? existingUser.role,
+          status_akun: status_akun ?? existingUser.status_akun,
+          blok_wilayah_id: role === "RT" ? (blok_wilayah_id || null) : null,
+        },
+        select: { id: true, nama: true, email: true, role: true, status_akun: true },
+      });
+
+      // Clear old masjid relation if exists
+      await tx.pengurusMasjid.deleteMany({ where: { user_id: id } });
+
+      if (user.role === Role.PENGURUS_MASJID && masjid_id) {
+        await tx.pengurusMasjid.create({
+          data: {
+            user_id: id,
+            masjid_id,
+          },
+        });
+      }
+
+      // If role changed to RW and didn't have WilayahRW, create it
+      if (user.role === Role.RW) {
+        const existingRw = await tx.wilayahRW.findUnique({ where: { user_id: id } });
+        if (!existingRw) {
+          await tx.wilayahRW.create({
+            data: {
+              user_id: id,
+              nama_kompleks: user.nama,
+              no_rw: "-",
+            },
+          });
+        }
+      }
+
+      return user;
     });
 
     await recordAudit(req, {
@@ -163,9 +218,11 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
-        wilayah_rw: true,
-        pengurus_masjid: true,
-        audit_logs: { take: 1 },
+        wilayah_rw: {
+          include: {
+            blok_wilayah: { select: { id: true } },
+          }
+        },
       },
     });
 
@@ -174,16 +231,50 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Check for related records to prevent deletion
-    if (user.wilayah_rw || user.pengurus_masjid.length > 0 || user.audit_logs.length > 0) {
+    // Prevent deleting RW if they still have active blocks
+    if (user.wilayah_rw && user.wilayah_rw.blok_wilayah.length > 0) {
       res.status(400).json({
         success: false,
-        message: "Tidak dapat menghapus user karena masih memiliki data yang terhubung.",
+        message: "Tidak dapat menghapus user RW karena masih memiliki blok wilayah aktif. Silakan hapus blok wilayah terlebih dahulu.",
       });
       return;
     }
 
-    await prisma.user.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      // Clean up audit logs created by this user
+      await tx.auditLog.deleteMany({
+        where: { user_id: id }
+      });
+
+      // Clean up preferences
+      await tx.userPreference.deleteMany({
+        where: { user_id: id }
+      });
+
+      // Clean up password reset requests
+      await tx.passwordResetRequest.deleteMany({
+        where: { user_id: id }
+      });
+
+      // Clean up pengurus masjid relations
+      await tx.pengurusMasjid.deleteMany({
+        where: { user_id: id }
+      });
+
+      // Clean up wilayah_rw if exists
+      if (user.wilayah_rw) {
+        await tx.kasRW.deleteMany({ where: { wilayah_rw_id: user.wilayah_rw.id } });
+        await tx.laporanInsiden.deleteMany({ where: { wilayah_rw_id: user.wilayah_rw.id } });
+        await tx.shareLink.deleteMany({ where: { scope: "RW", scope_id: user.wilayah_rw.id } });
+        await tx.pengaturanIuranRW.deleteMany({ where: { wilayah_rw_id: user.wilayah_rw.id } });
+        await tx.wilayahRW.delete({ where: { id: user.wilayah_rw.id } });
+      }
+
+      // Delete main user account
+      await tx.user.delete({
+        where: { id }
+      });
+    });
 
     await recordAudit(req, {
       user_id: req.user!.id,
@@ -199,9 +290,10 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
       message: "User berhasil dihapus.",
     });
   } catch (error) {
+    console.error("ERROR in deleteUser:", error);
     res.status(500).json({
       success: false,
-      message: "Gagal menghapus user.",
+      message: "Gagal menghapus user. Silakan pastikan data terkait sudah dibersihkan.",
     });
   }
 };

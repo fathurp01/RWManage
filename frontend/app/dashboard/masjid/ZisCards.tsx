@@ -7,9 +7,19 @@ interface DashboardZisPayload {
   total_beras: number;
   total_uang_zakat: number;
   total_infaq: number;
-  total_kk?: number;
-  total_jiwa?: number;
-  total_dana_distribusi?: number;
+  total_kk: number;
+  total_jiwa: number;
+  total_dana_distribusi: number;
+  total_terdistribusi_uang: number;
+  total_terdistribusi_beras: number;
+  distribusi_uang_zakat: {
+    nominal: {
+      fakir: number;
+      amil: number;
+      fisabilillah: number;
+      lainnya: number;
+    };
+  };
 }
 
 type Distribution = {
@@ -50,6 +60,7 @@ export default function ZisCards({
   formatRupiah,
   pengaturanZis,
   kasData,
+  selectedYear,
 }: {
   dashboardData: DashboardZisPayload;
   fixedUangDistribution: Distribution;
@@ -57,13 +68,21 @@ export default function ZisCards({
   formatRupiah: (value: number) => string;
   pengaturanZis?: PengaturanZis;
   kasData?: KasData | null;
+  selectedYear?: string;
 }) {
   const totalUangZakat = Number(dashboardData.total_uang_zakat || 0);
   const totalInfaq = Number(dashboardData.total_infaq || 0);
   const totalBeras = Number(dashboardData.total_beras || 0);
   const totalKk = dashboardData.total_kk ?? 0;
   const totalJiwa = dashboardData.total_jiwa ?? 0;
-  const totalDanaDistribusi = dashboardData.total_dana_distribusi ?? (totalUangZakat + totalInfaq);
+  
+  const sisaUangZakat =
+    (dashboardData.distribusi_uang_zakat?.nominal?.fakir || 0) +
+    (dashboardData.distribusi_uang_zakat?.nominal?.amil || 0) +
+    (dashboardData.distribusi_uang_zakat?.nominal?.fisabilillah || 0) +
+    (dashboardData.distribusi_uang_zakat?.nominal?.lainnya || 0);
+  
+  const totalDanaTerdistribusi = dashboardData.total_terdistribusi_uang ?? 0;
 
   const persen = pengaturanZis ?? {
     persen_fakir: 62.5,
@@ -71,6 +90,8 @@ export default function ZisCards({
     persen_fisabilillah: 11,
     persen_lainnya: 18.5,
   };
+
+  const yearLabel = selectedYear ? ` ${selectedYear}` : "";
 
   return (
     <div className="flex flex-col gap-4">
@@ -82,19 +103,19 @@ export default function ZisCards({
             ? "border-blue-200/70 dark:border-blue-800/30 bg-blue-50/60 dark:bg-blue-950/20"
             : "border-rose-200/70 dark:border-rose-800/30 bg-rose-50/60 dark:bg-rose-950/20"
         )}>
-          <p className="text-xs font-semibold text-blue-600/70 dark:text-blue-400/70 mb-1.5">Total Kas Masjid</p>
+          <p className="text-xs font-semibold text-blue-600/70 dark:text-blue-400/70 mb-1.5">Total Kas Masjid{yearLabel}</p>
           <p className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-foreground">
             {kasData != null ? formatRupiah(kasData.saldo_kas) : "-"}
           </p>
         </div>
         <div className="rounded-2xl border border-emerald-200/70 dark:border-emerald-800/30 bg-emerald-50/60 dark:bg-emerald-950/20 shadow-sm px-5 py-4">
-          <p className="text-xs font-semibold text-emerald-600/70 dark:text-emerald-400/70 mb-1.5">Total Pemasukan Kas</p>
+          <p className="text-xs font-semibold text-emerald-600/70 dark:text-emerald-400/70 mb-1.5">Total Pemasukan Kas{yearLabel}</p>
           <p className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-foreground">
             {kasData != null ? formatRupiah(kasData.total_kas_masuk) : "-"}
           </p>
         </div>
         <div className="rounded-2xl border border-rose-200/70 dark:border-rose-800/30 bg-rose-50/60 dark:bg-rose-950/20 shadow-sm px-5 py-4">
-          <p className="text-xs font-semibold text-rose-600/70 dark:text-rose-400/70 mb-1.5">Total Pengeluaran Kas</p>
+          <p className="text-xs font-semibold text-rose-600/70 dark:text-rose-400/70 mb-1.5">Total Pengeluaran Kas{yearLabel}</p>
           <p className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-foreground">
             {kasData != null ? formatRupiah(kasData.total_kas_keluar) : "-"}
           </p>
@@ -104,19 +125,19 @@ export default function ZisCards({
       {/* ── Card 1: Penerimaan (3 kolom terpisah jelas) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white dark:bg-card shadow-sm px-5 py-4">
-          <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground mb-1.5">Total Beras (kg)</p>
+          <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground mb-1.5">Total Beras (kg){yearLabel}</p>
           <p className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-foreground">
             {totalBeras.toFixed(2)} kg
           </p>
         </div>
         <div className="rounded-2xl border border-emerald-200/70 dark:border-emerald-800/30 bg-emerald-50/60 dark:bg-emerald-950/20 shadow-sm px-5 py-4">
-          <p className="text-xs font-semibold text-emerald-600/70 dark:text-emerald-400/70 mb-1.5">Total Uang Zakat (Rp)</p>
+          <p className="text-xs font-semibold text-emerald-600/70 dark:text-emerald-400/70 mb-1.5">Sisa Uang Zakat (Rp){yearLabel}</p>
           <p className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-foreground">
-            {formatRupiah(totalUangZakat)}
+            {formatRupiah(sisaUangZakat)}
           </p>
         </div>
         <div className="rounded-2xl border border-teal-200/70 dark:border-teal-800/30 bg-teal-50/60 dark:bg-teal-950/20 shadow-sm px-5 py-4">
-          <p className="text-xs font-semibold text-teal-600/70 dark:text-teal-400/70 mb-1.5">Total Infaq (Rp)</p>
+          <p className="text-xs font-semibold text-teal-600/70 dark:text-teal-400/70 mb-1.5">Total Infaq (Rp){yearLabel}</p>
           <p className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-foreground">
             {formatRupiah(totalInfaq)}
           </p>
@@ -130,7 +151,7 @@ export default function ZisCards({
         {/* Baris 2a: KK/Jiwa | Dana Distribusi | Breakdown Dana */}
         <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-white/8">
           <div className="px-5 py-4">
-            <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground mb-1.5">Total KK / Jiwa</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground mb-1.5">Total KK / Jiwa{yearLabel}</p>
             <p className="text-lg tabular-nums text-slate-900 dark:text-foreground">
               <span className="font-extrabold">{totalKk} KK</span>
               <span className="text-slate-400 dark:text-muted-foreground"> • </span>
@@ -138,9 +159,9 @@ export default function ZisCards({
             </p>
           </div>
           <div className="px-5 py-4">
-            <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground mb-1.5">Total Dana Distribusi (Rp)</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground mb-1.5">Total Dana Terdistribusi (Rp){yearLabel}</p>
             <p className="text-lg font-extrabold tabular-nums text-slate-900 dark:text-foreground">
-              {formatRupiah(totalDanaDistribusi)}
+              {formatRupiah(totalDanaTerdistribusi)}
             </p>
           </div>
           <div className="px-5 py-4">
@@ -166,7 +187,7 @@ export default function ZisCards({
         {/* Baris 2b: Beras Distribusi | Breakdown Beras */}
         <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-white/8">
           <div className="px-5 py-4">
-            <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground mb-1.5">Total Beras Distribusi (kg)</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground mb-1.5">Total Beras Terdistribusi (kg){yearLabel}</p>
             <p className="text-lg font-extrabold tabular-nums text-slate-900 dark:text-foreground">
               {totalBeras.toFixed(2)} kg
             </p>

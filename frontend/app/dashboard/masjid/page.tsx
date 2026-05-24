@@ -59,6 +59,8 @@ interface DashboardZisPayload {
   total_kk: number;
   total_jiwa: number;
   total_dana_distribusi: number;
+  total_terdistribusi_uang: number;
+  total_terdistribusi_beras: number;
   distribusi_uang_zakat: {
     nominal: { fakir: number; amil: number; fisabilillah: number; lainnya: number };
   };
@@ -191,6 +193,10 @@ export default function MasjidDashboardPage() {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isLoadingTransaksi, setIsLoadingTransaksi] = useState(false);
 
+  // Year filter state
+  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
+  const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
+
   // Filter & Pagination state
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -248,7 +254,7 @@ export default function MasjidDashboardPage() {
 
     setIsUpdating(true);
     try {
-      await api.put(`/zis/transaksi/${editTrxId}`, {
+      await api.patch(`/zis/transaksi/${editTrxId}`, {
         nama_kk: editNamaKk,
         alamat_muzaqi: editAlamat,
         waktu_transaksi: new Date(editWaktu).toISOString(),
@@ -270,18 +276,22 @@ export default function MasjidDashboardPage() {
 
 
   // Fetch dashboard + report
-  const fetchDashboard = useCallback(async (masjidId: string) => {
+  const fetchDashboard = useCallback(async (masjidId: string, year?: string) => {
     setIsLoadingData(true);
     try {
+      const dashboardParams: Record<string, string> = { masjid_id: masjidId };
+      if (year) dashboardParams.tahun = year;
+
       const [dashRes, reportRes] = await Promise.all([
-        api.get<{ data: DashboardZisPayload }>("/zis/dashboard", {
-          params: { masjid_id: masjidId },
+        api.get<{ data: DashboardZisPayload; years?: number[] }>("/zis/dashboard", {
+          params: dashboardParams,
         }),
         api.get<MasjidReportResponse>("/masjid/report", {
           params: { masjid_id: masjidId },
         }),
       ]);
       setDashboardData(dashRes.data.data);
+      if (dashRes.data.years) setAvailableYears(dashRes.data.years);
       setReportData(reportRes.data.data);
     } catch (error) {
       const apiError = getApiError(error);
@@ -327,13 +337,11 @@ export default function MasjidDashboardPage() {
       setTransaksiMeta(null);
       return;
     }
-    fetchDashboard(defaultMasjidId).catch(() => undefined);
-  }, [defaultMasjidId, fetchDashboard]);
-
-  useEffect(() => {
-    if (!defaultMasjidId) return;
-    fetchTransaksi(defaultMasjidId, debouncedSearch, page, limit).catch(() => undefined);
-  }, [defaultMasjidId, fetchTransaksi, debouncedSearch, page, limit]);
+    if (defaultMasjidId) {
+      fetchDashboard(defaultMasjidId, selectedYear).catch(() => undefined);
+      fetchTransaksi(defaultMasjidId, debouncedSearch, page, limit).catch(() => undefined);
+    }
+  }, [defaultMasjidId, fetchDashboard, fetchTransaksi, debouncedSearch, page, limit, selectedYear]);
 
   const handleResetFilter = () => {
     setSearch("");
@@ -414,17 +422,34 @@ export default function MasjidDashboardPage() {
     <main className="flex flex-1 flex-col gap-6">
       {/* Header */}
       <header className="flex flex-col gap-1">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30">
-            <HandCoins className="size-5" />
-          </span>
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
-              Dashboard ZIS Masjid
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-muted-foreground">
-              Ringkasan zakat, infaq, dan distribusi dana
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30">
+              <HandCoins className="size-5" />
+            </span>
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
+                Dashboard ZIS Masjid{selectedYear ? ` - ${selectedYear}` : ""}
+              </h1>
+              <p className="text-sm text-slate-500 dark:text-muted-foreground">
+                Ringkasan zakat, infaq, dan distribusi dana
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider hidden sm:inline-block">Tahun:</span>
+            <select
+              className="h-9 w-32 rounded-lg border border-emerald-500 dark:border-emerald-400 bg-emerald-50/10 dark:bg-emerald-950/10 px-2.5 text-sm font-semibold text-emerald-700 dark:text-emerald-300 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all cursor-pointer shadow-xs hover:bg-emerald-50/20 dark:hover:bg-emerald-950/20"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+            >
+              <option value="">Semua Tahun</option>
+              {availableYears.map((yr) => (
+                <option key={yr} value={String(yr)}>
+                  {yr}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </header>
@@ -506,6 +531,7 @@ export default function MasjidDashboardPage() {
               formatRupiah={formatRupiah}
               pengaturanZis={dashboardData.pengaturan_zis}
               kasData={reportData?.summary ?? null}
+              selectedYear={selectedYear}
             />
           </Suspense>
 
@@ -514,7 +540,7 @@ export default function MasjidDashboardPage() {
             <CardHeader className="border-b border-slate-100 dark:border-white/8 pb-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <CardTitle>Riwayat Transaksi ZIS</CardTitle>
+                  <CardTitle>Riwayat Transaksi ZIS{selectedYear ? ` ${selectedYear}` : ""}</CardTitle>
                   <CardDescription className="mt-0.5">
                     {transaksi.length} data transaksi ZIS
                     {search ? " (terfilter)" : ""}

@@ -40,6 +40,7 @@ import {
   getMonitoringRonda,
   getDetailRondaBlok,
   getPresensiSummaryBlok,
+  tegurRtRonda,
 } from "../controllers/rwController";
 import {
   createRwMasjid,
@@ -141,6 +142,7 @@ import {
   createWargaForRt,
   getWargaForRt,
   updateWargaForRt,
+  deleteWargaForRt,
   getIuranForRt,
   getIuranHistoryForRt,
   bayarIuranForRt,
@@ -160,12 +162,14 @@ import {
   getPresenceForJadwal,
   exportIuranHistoryPdfForRt,
   exportPerformaRondaPdfForRt,
+  clearTegurRondaForRt,
 } from "../controllers/rtController";
 
 import {
   getPengaturanIuranRW,
   getPengaturanIuranHistory,
   upsertPengaturanIuranRW,
+  exportPengaturanIuranHistoryPdf,
 } from "../controllers/pengaturanIuranController";
 import {
   getKasRT,
@@ -731,6 +735,14 @@ router.get(
   checkApproval,
   getMonitoringRonda
 );
+router.post(
+  "/rw/monitoring-ronda/blok/:blok_id/tegur",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  tegurRtRonda
+);
 router.get(
   "/rw/monitoring-ronda/blok/:blok_id",
   rwActionRateLimit,
@@ -894,6 +906,15 @@ router.patch(
   validateBody(updateRtWargaSchema),
   updateWargaForRt
 );
+router.delete(
+  "/rt/warga/:warga_id",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateParams(rtWargaParamsSchema),
+  deleteWargaForRt
+);
 router.patch(
   "/rt/cicilan-iuran/:cicilan_id",
   rwActionRateLimit,
@@ -995,6 +1016,14 @@ router.get(
   checkApproval,
   validateQuery(getRtPerformaRondaQuerySchema),
   getPerformaRondaForRt
+);
+router.post(
+  "/rt/ronda/clear-tegur",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  clearTegurRondaForRt
 );
 router.get(
   "/rt/performa-ronda/export-pdf",
@@ -1221,6 +1250,14 @@ router.get(
   checkRole(["RW"]),
   checkApproval,
   getPengaturanIuranHistory
+);
+router.get(
+  "/rw/pengaturan-iuran/history/export-pdf",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RW"]),
+  checkApproval,
+  exportPengaturanIuranHistoryPdf
 );
 router.post(
   "/rw/pengaturan-iuran",

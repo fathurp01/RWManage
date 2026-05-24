@@ -6,12 +6,13 @@ export const getAuditLogList = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { user_id, aksi, role, tanggal_mulai, tanggal_akhir, limit = "50", offset = "0" } = req.query as {
+    const { user_id, aksi, role, tanggal_mulai, tanggal_akhir, search, limit = "50", offset = "0" } = req.query as {
       user_id?: string;
       aksi?: string;
       role?: string;
       tanggal_mulai?: string;
       tanggal_akhir?: string;
+      search?: string;
       limit?: string;
       offset?: string;
     };
@@ -70,6 +71,17 @@ export const getAuditLogList = async (
       if (Object.keys(dateFilter).length > 0) {
         auditLogQuery.created_at = dateFilter;
       }
+    }
+
+    if (search && search.trim() !== "") {
+      const normalizedSearch = search.trim();
+      auditLogQuery.OR = [
+        { keterangan: { contains: normalizedSearch, mode: "insensitive" } },
+        { entitas: { contains: normalizedSearch, mode: "insensitive" } },
+        { ip_address: { contains: normalizedSearch, mode: "insensitive" } },
+        { user: { nama: { contains: normalizedSearch, mode: "insensitive" } } },
+        { user: { email: { contains: normalizedSearch, mode: "insensitive" } } }
+      ];
     }
 
     const auditLogs = await prisma.auditLog.findMany({

@@ -50,7 +50,8 @@ import {
   XCircle,
   MoreVertical,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  RotateCcw
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -68,6 +69,16 @@ interface User {
   status_akun: string;
   created_at: string;
   blok_wilayah_id: string | null;
+  blok_wilayah?: {
+    nama_blok: string;
+    no_rt: string | null;
+  } | null;
+  pengurus_masjid?: {
+    masjid_id: string;
+    masjid: {
+      nama_masjid: string;
+    };
+  }[];
 }
 
 interface PasswordReset {
@@ -87,6 +98,10 @@ export default function SuperadminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [resets, setResets] = useState<PasswordReset[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Dropdown options
+  const [blokOptions, setBlokOptions] = useState<{ id: string; label: string }[]>([]);
+  const [masjidOptions, setMasjidOptions] = useState<{ id: string; label: string }[]>([]);
 
   // Pagination states
   const [userPage, setUserPage] = useState(1);
@@ -110,6 +125,8 @@ export default function SuperadminUsersPage() {
     no_hp: "",
     role: "RW",
     status_akun: "APPROVED",
+    blok_wilayah_id: "",
+    masjid_id: "",
   });
   const [newPassword, setNewPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,14 +154,47 @@ export default function SuperadminUsersPage() {
     }
   };
 
+  const fetchDropdownOptions = async () => {
+    try {
+      const [wilayahRes, masjidRes] = await Promise.all([
+        api.get("/public/wilayah-list"),
+        api.get("/public/masjid-list"),
+      ]);
+
+      const flatBloks: { id: string; label: string }[] = [];
+      wilayahRes.data.data.forEach((rw: any) => {
+        rw.blok_wilayah.forEach((b: any) => {
+          flatBloks.push({
+            id: b.id,
+            label: `${rw.nama_kompleks} (RW ${rw.no_rw}) - ${b.nama_blok} (RT ${b.no_rt || "-"})`,
+          });
+        });
+      });
+      setBlokOptions(flatBloks);
+
+      const flatMasjids = masjidRes.data.data.masjid.map((m: any) => ({
+        id: m.id,
+        label: `${m.nama_masjid} (${m.nama_kompleks})`,
+      }));
+      setMasjidOptions(flatMasjids);
+    } catch (error) {
+      console.error("Gagal memuat opsi wilayah/masjid", error);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchDropdownOptions();
   }, []);
 
   const handleCreate = async () => {
     try {
       setIsSubmitting(true);
-      await api.post("/superadmin/users", formData);
+      await api.post("/superadmin/users", {
+        ...formData,
+        blok_wilayah_id: formData.role === "RT" ? formData.blok_wilayah_id : undefined,
+        masjid_id: formData.role === "PENGURUS_MASJID" ? formData.masjid_id : undefined,
+      });
       toast.success("User berhasil dibuat");
       setIsCreateOpen(false);
       setFormData({
@@ -154,6 +204,8 @@ export default function SuperadminUsersPage() {
         no_hp: "",
         role: "RW",
         status_akun: "APPROVED",
+        blok_wilayah_id: "",
+        masjid_id: "",
       });
       fetchData();
     } catch (error: any) {
@@ -172,6 +224,8 @@ export default function SuperadminUsersPage() {
         no_hp: formData.no_hp,
         role: formData.role,
         status_akun: formData.status_akun,
+        blok_wilayah_id: formData.role === "RT" ? formData.blok_wilayah_id : undefined,
+        masjid_id: formData.role === "PENGURUS_MASJID" ? formData.masjid_id : undefined,
       });
       toast.success("User berhasil diperbarui");
       setIsEditOpen(false);
@@ -234,13 +288,16 @@ export default function SuperadminUsersPage() {
 
   const openEditModal = (user: User) => {
     setSelectedUser(user);
+    const linkedMasjidId = user.pengurus_masjid?.[0]?.masjid_id || "";
     setFormData({
-      ...formData,
       nama: user.nama,
       email: user.email,
+      password: "",
       no_hp: user.no_hp,
       role: user.role,
       status_akun: user.status_akun,
+      blok_wilayah_id: user.blok_wilayah_id || "",
+      masjid_id: linkedMasjidId,
     });
     setIsEditOpen(true);
   };
@@ -317,6 +374,7 @@ export default function SuperadminUsersPage() {
               <TableHead>Nama</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>No HP</TableHead>
+              <TableHead>Keterangan Wilayah / Masjid</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Aksi</TableHead>
             </TableRow>
@@ -324,43 +382,59 @@ export default function SuperadminUsersPage() {
           <TableBody>
             {paginatedData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                <TableCell colSpan={6} className="text-center py-8 text-slate-500">
                   Tidak ada data user.
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedData.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell className="font-medium">{u.nama}</TableCell>
-                  <TableCell>{u.email}</TableCell>
-                  <TableCell>{u.no_hp}</TableCell>
-                  <TableCell>
-                    <Badge variant={u.status_akun === "APPROVED" ? "default" : u.status_akun === "PENDING" ? "secondary" : "destructive"}>
-                      {u.status_akun}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEditModal(u)}>
-                          <Edit className="mr-2 h-4 w-4" /> Edit Akun
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openResetModal(u)}>
-                          <KeyRound className="mr-2 h-4 w-4" /> Reset Password
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(u.id)}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Hapus
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+              paginatedData.map((u) => {
+                let linkedInfo = "-";
+                if (u.role === "RT" && u.blok_wilayah) {
+                  linkedInfo = `${u.blok_wilayah.nama_blok} (RT ${u.blok_wilayah.no_rt || "-"})`;
+                } else if (u.role === "PENGURUS_MASJID" && u.pengurus_masjid?.[0]) {
+                  linkedInfo = u.pengurus_masjid[0].masjid.nama_masjid;
+                } else if (u.role === "RW") {
+                  linkedInfo = "Rukun Warga (RW)";
+                }
+
+                return (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.nama}</TableCell>
+                    <TableCell>{u.email}</TableCell>
+                    <TableCell>{u.no_hp}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="bg-slate-50 text-slate-700">
+                        {linkedInfo}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={u.status_akun === "APPROVED" ? "default" : u.status_akun === "PENDING" ? "secondary" : "destructive"}>
+                        {u.status_akun}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditModal(u)}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit Akun
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openResetModal(u)}>
+                            <KeyRound className="mr-2 h-4 w-4" /> Reset Password
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(u.id)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Hapus
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -421,13 +495,28 @@ export default function SuperadminUsersPage() {
 
   return (
     <div className="space-y-6">
+      {/* Dummy off-screen inputs to absorb Chrome's aggressive credential autofill */}
+      <input 
+        type="text" 
+        name="chrome-autofill-prevent-username" 
+        style={{ position: "absolute", top: "-1000px", left: "-1000px", width: "1px", height: "1px", opacity: 0.01, pointerEvents: "none", zIndex: -9999 }} 
+        tabIndex={-1} 
+        autoComplete="off" 
+      />
+      <input 
+        type="password" 
+        name="chrome-autofill-prevent-password" 
+        style={{ position: "absolute", top: "-1000px", left: "-1000px", width: "1px", height: "1px", opacity: 0.01, pointerEvents: "none", zIndex: -9999 }} 
+        tabIndex={-1} 
+        autoComplete="off" 
+      />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Manajemen User</h2>
           <p className="text-muted-foreground">Kelola pengguna RW, RT, Masjid, dan persetujuan password.</p>
         </div>
         <Button onClick={() => {
-          setFormData({ nama: "", email: "", password: "", no_hp: "", role: "RW", status_akun: "APPROVED" });
+          setFormData({ nama: "", email: "", password: "", no_hp: "", role: "RW", status_akun: "APPROVED", blok_wilayah_id: "", masjid_id: "" });
           setIsCreateOpen(true);
         }} className="gap-2">
           <UserPlus className="h-4 w-4" />
@@ -435,14 +524,27 @@ export default function SuperadminUsersPage() {
         </Button>
       </div>
 
-      <div className="flex items-center space-x-2 bg-white dark:bg-card p-2 rounded-xl border max-w-sm">
-        <Search className="h-4 w-4 text-muted-foreground ml-2" />
-        <Input 
-          placeholder="Cari nama atau email..." 
-          className="border-0 focus-visible:ring-0 shadow-none h-8"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex items-center space-x-2 bg-white dark:bg-card p-2 rounded-xl border max-w-sm flex-1">
+          <Search className="h-4 w-4 text-slate-400 ml-2" />
+          <Input 
+            placeholder="Cari nama atau email..." 
+            className="border-0 focus-visible:ring-0 shadow-none h-8 text-sm w-full"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoComplete="off"
+            name="superadmin-search-query-filter"
+          />
+        </div>
+        {searchQuery && (
+          <Button 
+            variant="ghost" 
+            onClick={() => setSearchQuery("")} 
+            className="text-slate-500 hover:text-slate-700 h-10 px-4 rounded-xl hover:bg-slate-100 flex items-center gap-2 border border-dashed border-slate-200"
+          >
+            <RotateCcw className="h-4 w-4" /> Reset Filter
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -481,22 +583,37 @@ export default function SuperadminUsersPage() {
       {/* CREATE MODAL */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent>
+          {/* Dummy off-screen inputs to catch modal-level autofill */}
+          <input 
+            type="text" 
+            name="chrome-create-prevent-username" 
+            style={{ position: "absolute", top: "-1000px", left: "-1000px", width: "1px", height: "1px", opacity: 0.01, pointerEvents: "none", zIndex: -9999 }} 
+            tabIndex={-1} 
+            autoComplete="off" 
+          />
+          <input 
+            type="password" 
+            name="chrome-create-prevent-password" 
+            style={{ position: "absolute", top: "-1000px", left: "-1000px", width: "1px", height: "1px", opacity: 0.01, pointerEvents: "none", zIndex: -9999 }} 
+            tabIndex={-1} 
+            autoComplete="off" 
+          />
           <DialogHeader>
             <DialogTitle>Tambah User Baru</DialogTitle>
             <DialogDescription>User yang dibuat akan otomatis berstatus APPROVED.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto">
             <div className="space-y-2">
               <Label>Nama Lengkap</Label>
-              <Input value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} />
+              <Input value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} autoComplete="off" name="superadmin-create-fullname" />
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
+              <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} autoComplete="new-email" name="superadmin-create-email" />
             </div>
             <div className="space-y-2">
               <Label>Password</Label>
-              <Input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
+              <Input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} autoComplete="new-password" name="superadmin-create-password" />
             </div>
             <div className="space-y-2">
               <Label>No HP</Label>
@@ -504,7 +621,7 @@ export default function SuperadminUsersPage() {
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v})}>
+              <Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v, blok_wilayah_id: "", masjid_id: ""})}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih Role" />
                 </SelectTrigger>
@@ -515,6 +632,36 @@ export default function SuperadminUsersPage() {
                 </SelectContent>
               </Select>
             </div>
+            {formData.role === "RT" && (
+              <div className="space-y-2">
+                <Label>Blok Wilayah (RT)</Label>
+                <Select value={formData.blok_wilayah_id} onValueChange={(v) => setFormData({...formData, blok_wilayah_id: v})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Blok Wilayah" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {blokOptions.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {formData.role === "PENGURUS_MASJID" && (
+              <div className="space-y-2">
+                <Label>Masjid</Label>
+                <Select value={formData.masjid_id} onValueChange={(v) => setFormData({...formData, masjid_id: v})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Masjid" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {masjidOptions.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Batal</Button>
@@ -528,10 +675,25 @@ export default function SuperadminUsersPage() {
       {/* EDIT MODAL */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent>
+          {/* Dummy off-screen inputs to catch modal-level autofill */}
+          <input 
+            type="text" 
+            name="chrome-edit-prevent-username" 
+            style={{ position: "absolute", top: "-1000px", left: "-1000px", width: "1px", height: "1px", opacity: 0.01, pointerEvents: "none", zIndex: -9999 }} 
+            tabIndex={-1} 
+            autoComplete="off" 
+          />
+          <input 
+            type="password" 
+            name="chrome-edit-prevent-password" 
+            style={{ position: "absolute", top: "-1000px", left: "-1000px", width: "1px", height: "1px", opacity: 0.01, pointerEvents: "none", zIndex: -9999 }} 
+            tabIndex={-1} 
+            autoComplete="off" 
+          />
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto">
             <div className="space-y-2">
               <Label>Nama Lengkap</Label>
               <Input value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} />
@@ -542,7 +704,7 @@ export default function SuperadminUsersPage() {
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v})}>
+              <Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v, blok_wilayah_id: "", masjid_id: ""})}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih Role" />
                 </SelectTrigger>
@@ -553,6 +715,36 @@ export default function SuperadminUsersPage() {
                 </SelectContent>
               </Select>
             </div>
+            {formData.role === "RT" && (
+              <div className="space-y-2">
+                <Label>Blok Wilayah (RT)</Label>
+                <Select value={formData.blok_wilayah_id} onValueChange={(v) => setFormData({...formData, blok_wilayah_id: v})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Blok Wilayah" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {blokOptions.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {formData.role === "PENGURUS_MASJID" && (
+              <div className="space-y-2">
+                <Label>Masjid</Label>
+                <Select value={formData.masjid_id} onValueChange={(v) => setFormData({...formData, masjid_id: v})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Masjid" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {masjidOptions.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Status Akun</Label>
               <Select value={formData.status_akun} onValueChange={(v) => setFormData({...formData, status_akun: v})}>
@@ -579,6 +771,21 @@ export default function SuperadminUsersPage() {
       {/* RESET PASSWORD MODAL */}
       <Dialog open={isResetPassOpen} onOpenChange={setIsResetPassOpen}>
         <DialogContent>
+          {/* Dummy off-screen inputs to catch modal-level autofill */}
+          <input 
+            type="text" 
+            name="chrome-reset-prevent-username" 
+            style={{ position: "absolute", top: "-1000px", left: "-1000px", width: "1px", height: "1px", opacity: 0.01, pointerEvents: "none", zIndex: -9999 }} 
+            tabIndex={-1} 
+            autoComplete="off" 
+          />
+          <input 
+            type="password" 
+            name="chrome-reset-prevent-password" 
+            style={{ position: "absolute", top: "-1000px", left: "-1000px", width: "1px", height: "1px", opacity: 0.01, pointerEvents: "none", zIndex: -9999 }} 
+            tabIndex={-1} 
+            autoComplete="off" 
+          />
           <DialogHeader>
             <DialogTitle>Reset Password</DialogTitle>
             <DialogDescription>Reset password untuk {selectedUser?.email}</DialogDescription>

@@ -200,7 +200,7 @@ export default function DashboardRwIndexPage() {
 
           const totalPresensi = totalHadir + totalIzin + totalAlfa;
           const persentase_kehadiran = totalPresensi > 0
-            ? Math.round((totalHadir / totalPresensi) * 100)
+            ? Math.round(((totalHadir + totalIzin * 0.5) / totalPresensi) * 100)
             : 0;
 
           let status_keaktifan = "pasif";

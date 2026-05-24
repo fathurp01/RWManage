@@ -45,6 +45,8 @@ interface DashboardZisPayload {
   total_kk: number;
   total_jiwa: number;
   total_dana_distribusi: number;
+  total_terdistribusi_uang: number;
+  total_terdistribusi_beras: number;
   distribusi_uang_zakat: {
     nominal: { fakir: number; amil: number; fisabilillah: number; lainnya: number };
   };
@@ -192,7 +194,7 @@ export default function DistribusiPage() {
       if (response.data.success && response.data.years) {
         setAvailableYears(response.data.years);
       }
-      
+
       const payload = response.data.data as DashboardZisPayload;
       setData(payload);
       setEditPersentase({
@@ -354,6 +356,26 @@ export default function DistribusiPage() {
     );
   }
 
+  const sisaUangZakat =
+    data.distribusi_uang_zakat.nominal.fakir +
+    data.distribusi_uang_zakat.nominal.amil +
+    data.distribusi_uang_zakat.nominal.fisabilillah +
+    data.distribusi_uang_zakat.nominal.lainnya;
+
+  const sisaZakatBeras =
+    data.distribusi_beras_kg.nominal_kg.fakir +
+    data.distribusi_beras_kg.nominal_kg.amil +
+    data.distribusi_beras_kg.nominal_kg.fisabilillah +
+    data.distribusi_beras_kg.nominal_kg.lainnya;
+
+  const totalTerdistribusiUang = distribusiRecords
+    .filter((r) => r.jenis === "UANG")
+    .reduce((sum, r) => sum + Number(r.nominal), 0);
+
+  const totalTerdistribusiBeras = distribusiRecords
+    .filter((r) => r.jenis === "BERAS")
+    .reduce((sum, r) => sum + Number(r.nominal), 0);
+
   return (
     <main className="flex flex-1 flex-col gap-6">
       {/* Header */}
@@ -397,28 +419,33 @@ export default function DistribusiPage() {
             </select>
           </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground uppercase">Total Zakat Uang</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground uppercase">Sisa Uang Zakat</p>
             <p className="text-lg font-bold text-slate-900 dark:text-foreground">
-              {formatRupiah(data.total_uang_zakat)}
+              {formatRupiah(sisaUangZakat)}
             </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground uppercase">Sisa Zakat Beras</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-foreground">{sisaZakatBeras.toFixed(2)} kg</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground uppercase">Total Terdistribusi Zakat</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-foreground">
+              {formatRupiah(totalTerdistribusiUang)}
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground uppercase">Total Terdistribusi Beras</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-foreground">{totalTerdistribusiBeras.toFixed(2)} kg</p>
           </div>
           <div className="space-y-1">
             <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground uppercase">Total Infaq</p>
             <p className="text-lg font-bold text-slate-900 dark:text-foreground">
               {formatRupiah(data.total_infaq)}
             </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground uppercase">Total Distribusi</p>
-            <p className="text-lg font-bold text-slate-900 dark:text-foreground">
-              {formatRupiah(data.total_dana_distribusi)}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-semibold text-slate-500 dark:text-muted-foreground uppercase">Zakat Beras</p>
-            <p className="text-lg font-bold text-slate-900 dark:text-foreground">{data.total_beras.toFixed(2)} kg</p>
           </div>
         </CardContent>
       </Card>

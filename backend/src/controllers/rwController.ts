@@ -64,14 +64,14 @@ interface UpdateKasRWBody {
   bukti_foto_url?: string;
 }
 
-const createKodeUnikCandidate = (prefix: "IUR" | "KAS", date: Date): string => {
+export const createKodeUnikCandidate = (prefix: "IUR" | "KAS", date: Date): string => {
   const year2 = String(date.getFullYear()).slice(-2);
   const month2 = String(date.getMonth() + 1).padStart(2, "0");
   const suffix = randomBytes(3).toString("hex").toUpperCase();
   return `${prefix}-${year2}${month2}-${suffix}`;
 };
 
-const generateKodeUnik = async (
+export const generateKodeUnik = async (
   client: typeof prisma | Prisma.TransactionClient,
   prefix: "IUR" | "KAS"
 ): Promise<string> => {
@@ -1126,6 +1126,28 @@ export const createKasRW = async (req: Request, res: Response): Promise<void> =>
 
     const bukti_foto_url = req.file ? `/uploads/${req.file.filename}` : undefined;
 
+    if (jenis_transaksi === JenisTransaksi.KELUAR) {
+      const totalMasuk = await prisma.kasRW.aggregate({
+        where: { wilayah_rw_id, jenis_transaksi: JenisTransaksi.MASUK },
+        _sum: { nominal: true },
+      });
+
+      const totalKeluar = await prisma.kasRW.aggregate({
+        where: { wilayah_rw_id, jenis_transaksi: JenisTransaksi.KELUAR },
+        _sum: { nominal: true },
+      });
+
+      const currentSaldo = Number(totalMasuk._sum.nominal || 0) - Number(totalKeluar._sum.nominal || 0);
+
+      if (nominalKas > currentSaldo) {
+        res.status(400).json({
+          success: false,
+          message: `Saldo tidak mencukupi. Saldo saat ini: Rp ${currentSaldo.toLocaleString("id-ID")}`,
+        });
+        return;
+      }
+    }
+
     const kas = await prisma.kasRW.create({
       data: {
         wilayah_rw_id,
@@ -1239,7 +1261,7 @@ export const getMonitoringRonda = async (req: Request, res: Response): Promise<v
 
       const totalPresensi = stats.HADIR + stats.IZIN + stats.ALFA;
       const persentase_kehadiran = totalPresensi > 0
-        ? Math.round((stats.HADIR / totalPresensi) * 100)
+        ? Math.round(((stats.HADIR + stats.IZIN * 0.5) / totalPresensi) * 100)
         : null;
 
       let status_keaktifan = "belum_ada";
@@ -1640,6 +1662,49 @@ export const updateKasRW = async (req: Request, res: Response): Promise<void> =>
       dataToUpdate.bukti_url = bukti_url.trim() || null;
     }
 
+    // Check for negative balance if this update changes nominal or type
+    const finalJenis = dataToUpdate.jenis_transaksi ?? existingKas.jenis_transaksi;
+    const finalNominal = dataToUpdate.nominal ? Number(dataToUpdate.nominal) : Number(existingKas.nominal);
+
+    const isIuranOrSetoran =
+      existingKas.keterangan.toLowerCase().includes("iuran khusus") ||
+      existingKas.keterangan.toLowerCase().includes("setoran iuran");
+
+    if (isIuranOrSetoran && finalJenis === JenisTransaksi.KELUAR) {
+      res.status(400).json({
+        success: false,
+        message: "Transaksi yang bersumber dari iuran khusus atau setoran iuran tidak boleh diubah menjadi jenis KELUAR.",
+      });
+      return;
+    }
+
+    if (finalJenis === JenisTransaksi.KELUAR || (existingKas.jenis_transaksi === JenisTransaksi.MASUK && finalJenis === JenisTransaksi.MASUK)) {
+      const totalMasuk = await prisma.kasRW.aggregate({
+        where: { wilayah_rw_id: existingKas.wilayah_rw_id, jenis_transaksi: JenisTransaksi.MASUK, id: { not: kas_id } },
+        _sum: { nominal: true },
+      });
+
+      const totalKeluar = await prisma.kasRW.aggregate({
+        where: { wilayah_rw_id: existingKas.wilayah_rw_id, jenis_transaksi: JenisTransaksi.KELUAR, id: { not: kas_id } },
+        _sum: { nominal: true },
+      });
+
+      let projectedSaldo = Number(totalMasuk._sum.nominal || 0) - Number(totalKeluar._sum.nominal || 0);
+      if (finalJenis === JenisTransaksi.MASUK) {
+        projectedSaldo += finalNominal;
+      } else {
+        projectedSaldo -= finalNominal;
+      }
+
+      if (projectedSaldo < 0) {
+        res.status(400).json({
+          success: false,
+          message: "Transaksi ini akan menyebabkan saldo menjadi negatif.",
+        });
+        return;
+      }
+    }
+
     const updatedKas = await prisma.kasRW.update({
       where: { id: kas_id },
       data: dataToUpdate,
@@ -1724,6 +1789,28 @@ export const deleteKasRW = async (req: Request, res: Response): Promise<void> =>
         message: "Akses ditolak. Anda hanya dapat menghapus kas di wilayah RW Anda.",
       });
       return;
+    }
+
+    if (existingKas.jenis_transaksi === JenisTransaksi.MASUK) {
+      const totalMasuk = await prisma.kasRW.aggregate({
+        where: { wilayah_rw_id: existingKas.wilayah_rw_id, jenis_transaksi: JenisTransaksi.MASUK, id: { not: kas_id } },
+        _sum: { nominal: true },
+      });
+
+      const totalKeluar = await prisma.kasRW.aggregate({
+        where: { wilayah_rw_id: existingKas.wilayah_rw_id, jenis_transaksi: JenisTransaksi.KELUAR },
+        _sum: { nominal: true },
+      });
+
+      const projectedSaldo = Number(totalMasuk._sum.nominal || 0) - Number(totalKeluar._sum.nominal || 0);
+
+      if (projectedSaldo < 0) {
+        res.status(400).json({
+          success: false,
+          message: "Menghapus transaksi ini akan menyebabkan saldo menjadi negatif.",
+        });
+        return;
+      }
     }
 
     const deletedKas = await prisma.kasRW.delete({
@@ -1942,3 +2029,66 @@ export const getDataPenduduk = async (req: Request, res: Response): Promise<void
 
 
 // test
+export const tegurRtRonda = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({ success: false, message: "User belum terautentikasi." });
+      return;
+    }
+
+    const rwWilayah = await getRwWilayahByUserId(req.user.id);
+    if (!rwWilayah) {
+      res.status(403).json({ success: false, message: "Wilayah RW untuk user login tidak ditemukan." });
+      return;
+    }
+
+    const { blok_id } = req.params as { blok_id?: string };
+    if (!blok_id) {
+      res.status(400).json({ success: false, message: "blok_id wajib diisi." });
+      return;
+    }
+
+    const { pesan } = (req.body || {}) as { pesan?: string };
+
+    const blok = await prisma.blokWilayah.findUnique({
+      where: { id: blok_id }
+    });
+
+    if (!blok) {
+      res.status(404).json({ success: false, message: "Blok wilayah tidak ditemukan." });
+      return;
+    }
+
+    if (blok.wilayah_rw_id !== rwWilayah.id) {
+      res.status(403).json({ success: false, message: "Akses ditolak. Blok tidak berada di RW Anda." });
+      return;
+    }
+
+    const warningMessage = pesan?.trim() || "Tingkat kepatuhan ronda di wilayah Anda sangat rendah. Mohon segera evaluasi keaktifan jadwal patroli dan petugas ronda!";
+
+    const updated = await prisma.blokWilayah.update({
+      where: { id: blok_id },
+      data: {
+        tegur_ronda: true,
+        tegur_ronda_pesan: warningMessage
+      }
+    });
+
+    await recordAudit(req, {
+      aksi: AksiAudit.UPDATE,
+      entitas: "BlokWilayah",
+      entitas_id: blok_id,
+      data_baru: { tegur_ronda: true, tegur_ronda_pesan: warningMessage },
+      keterangan: `RW memberikan teguran ronda elektronik kepada RT ${blok.no_rt || ""} Blok ${blok.nama_blok}`,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Teguran ronda elektronik berhasil dikirim kepada Ketua RT ${blok.no_rt || ""} Blok ${blok.nama_blok}.`,
+      data: updated
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengirim teguran ronda." });
+  }
+};

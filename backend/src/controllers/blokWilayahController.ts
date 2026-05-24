@@ -167,6 +167,17 @@ export const getBlokWilayahList = async (
         users: {
           select: { id: true, nama: true, email: true, role: true, status_akun: true }
         },
+        masjid: {
+          include: {
+            pengurus_masjid: {
+              include: {
+                user: {
+                  select: { id: true, nama: true, email: true, role: true, status_akun: true }
+                }
+              }
+            }
+          }
+        },
         warga: {
           select: {
             id: true,
@@ -186,17 +197,29 @@ export const getBlokWilayahList = async (
     });
 
     const formattedBloks = bloks.map((b) => {
-      const rtCount = b.users.filter((u) => u.role === "RT" && u.status_akun === "APPROVED").length;
-      const pengurusCount = b.users.filter((u) => u.role === "PENGURUS_MASJID" && u.status_akun === "APPROVED").length;
+      const rtUsers = b.users.filter((u) => u.role === "RT" && u.status_akun === "APPROVED");
+      
+      const pengurusUsers = b.masjid.flatMap((m) =>
+        m.pengurus_masjid
+          .map((pm) => pm.user)
+          .filter((u) => u && u.role === "PENGURUS_MASJID" && u.status_akun === "APPROVED")
+      );
+
+      // Remove duplicates just in case
+      const uniquePengurusUsers = Array.from(new Map(pengurusUsers.map((u) => [u.id, u])).values());
+
+      const rtCount = rtUsers.length;
+      const pengurusCount = uniquePengurusUsers.length;
 
       const kkCount = b.warga.length;
       const anggotaCount = b.warga.reduce((sum, w) => sum + w._count.anggota_keluarga, 0);
       const totalWarga = kkCount + anggotaCount;
 
-      const { warga, ...rest } = b;
+      const { warga, masjid, ...rest } = b;
 
       return {
         ...rest,
+        users: [...rtUsers, ...uniquePengurusUsers],
         _count: {
           ...b._count,
           rt_users: rtCount,
@@ -405,7 +428,10 @@ export const deleteBlokWilayah = async (
 
     // 3. Check for residents (warga)
     const wargaCount = await prisma.warga.count({
-      where: { blok_wilayah_id: blok_id }
+      where: { 
+        blok_wilayah_id: blok_id,
+        deleted_at: null,
+      }
     });
 
     if (wargaCount > 0) {
@@ -456,6 +482,54 @@ export const deleteBlokWilayah = async (
         await tx.kasMasjid.deleteMany({ where: { masjid_id: m.id } });
         await tx.pengaturanZis.delete({ where: { masjid_id: m.id } }).catch(() => { });
         await tx.masjid.delete({ where: { id: m.id } });
+      }
+
+      // Find all warga (both active and soft-deleted) in this block
+      const wargaList = await tx.warga.findMany({
+        where: { blok_wilayah_id: blok_id },
+        select: { id: true }
+      });
+      const wargaIds = wargaList.map(w => w.id);
+
+      if (wargaIds.length > 0) {
+        // Clear setoran_id in iuran_warga first
+        await tx.iuranWarga.updateMany({
+          where: { warga_id: { in: wargaIds }, setoran_id: { not: null } },
+          data: { setoran_id: null }
+        });
+
+        // Delete pembayaran_cicilan first
+        const cicilanList = await tx.cicilanIuran.findMany({
+          where: { warga_id: { in: wargaIds } },
+          select: { id: true }
+        });
+        const cicilanIds = cicilanList.map(c => c.id);
+        
+        if (cicilanIds.length > 0) {
+          await tx.pembayaranCicilan.deleteMany({
+            where: { cicilan_id: { in: cicilanIds } }
+          });
+        }
+
+        await tx.cicilanIuran.deleteMany({
+          where: { warga_id: { in: wargaIds } }
+        });
+
+        await tx.identitasWarga.deleteMany({
+          where: { warga_id: { in: wargaIds } }
+        });
+
+        await tx.anggotaKeluarga.deleteMany({
+          where: { warga_id: { in: wargaIds } }
+        });
+
+        await tx.iuranWarga.deleteMany({
+          where: { warga_id: { in: wargaIds } }
+        });
+
+        await tx.warga.deleteMany({
+          where: { id: { in: wargaIds } }
+        });
       }
 
       // Clean up RT related records
@@ -923,6 +997,7 @@ export const deleteRwRtAccount = async (
       const activeWargaCount = await prisma.warga.count({
         where: {
           blok_wilayah_id: targetUser.blok_wilayah_id,
+          deleted_at: null,
         },
       });
 
@@ -935,11 +1010,29 @@ export const deleteRwRtAccount = async (
       }
     }
 
-    // Delete preference if exists, then delete the user account
+    // Delete dependent records first to prevent foreign key constraint violations, then delete the user account
     await prisma.$transaction(async (tx) => {
+      // Clear audit log entries created by this user
+      await tx.auditLog.deleteMany({
+        where: { user_id: targetUserId },
+      });
+
+      // Clear user preferences
       await tx.userPreference.deleteMany({
         where: { user_id: targetUserId },
       });
+
+      // Clear password reset requests
+      await tx.passwordResetRequest.deleteMany({
+        where: { user_id: targetUserId },
+      });
+
+      // Clear pengurus masjid relation if exists
+      await tx.pengurusMasjid.deleteMany({
+        where: { user_id: targetUserId },
+      });
+
+      // Delete user account
       await tx.user.delete({
         where: { id: targetUserId },
       });

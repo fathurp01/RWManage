@@ -135,6 +135,9 @@ model BlokWilayah {
   no_rt         String?
   created_at    DateTime    @default(now())
   
+  tegur_ronda        Boolean   @default(false)
+  tegur_ronda_pesan  String?   @db.Text
+  
   wilayah_rw    WilayahRW   @relation(fields: [wilayah_rw_id], references: [id])
   masjid        Masjid[]
   users         User[]

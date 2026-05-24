@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Search, RotateCcw } from "lucide-react";
 
 export default function SuperadminApprovalsPage() {
   const [rows, setRows] = useState<PendingRegistrationItem[]>([]);
@@ -60,17 +61,40 @@ export default function SuperadminApprovalsPage() {
         <p className="text-slate-500 dark:text-muted-foreground">Proses pendaftaran RW yang masih pending.</p>
       </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Filter</CardTitle>
+      <Card className="shadow-sm border-slate-200">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-bold text-slate-800">Filter Pencarian</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Pencarian</Label>
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nama / email / no hp" />
+        <CardContent className="flex flex-col sm:flex-row items-end gap-4">
+          <div className="space-y-1.5 flex-1 w-full">
+            <Label className="text-slate-600 font-semibold text-xs">Pencarian</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                placeholder="Cari Nama / Email / No HP" 
+                className="pl-9 rounded-xl border-slate-200 text-sm h-11 bg-white dark:bg-slate-950"
+              />
+            </div>
           </div>
-          <div className="flex items-end">
-            <Button className="w-full" variant="rw" onClick={() => loadRows()} disabled={loading}>{loading ? "Memuat..." : "Terapkan"}</Button>
+          <div className="flex gap-2 w-full sm:w-auto shrink-0">
+            {search && (
+              <Button 
+                variant="outline" 
+                onClick={() => setSearch("")} 
+                className="h-11 px-5 font-semibold text-slate-600 rounded-xl hover:bg-slate-100 flex items-center gap-2 border border-slate-200"
+              >
+                <RotateCcw className="h-4 w-4" /> Reset
+              </Button>
+            )}
+            <Button 
+              className="h-11 px-6 font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm flex-1 sm:flex-initial"
+              onClick={() => loadRows()} 
+              disabled={loading}
+            >
+              {loading ? "Memuat..." : "Terapkan"}
+            </Button>
           </div>
         </CardContent>
       </Card>

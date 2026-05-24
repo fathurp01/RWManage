@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { StatusIuran, StatusSetoran, AksiAudit, JenisTransaksi } from "@prisma/client";
 import { recordAudit } from "../middlewares/auditLogger";
+import { generateKodeUnik } from "./rwController";
 
 export const getSetoranRT = async (req: Request, res: Response): Promise<void> => {
   try {

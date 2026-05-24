@@ -344,7 +344,12 @@ export default function DataPendudukPage() {
           new Map(
             blokData.map((blok) => [
               blok.blok_id,
-              { id: blok.blok_id, nama: blok.nama_blok },
+              {
+                id: blok.blok_id,
+                nama: blok.no_rt
+                  ? `${blok.nama_blok} - RT ${String(blok.no_rt).padStart(3, "0")}`
+                  : blok.nama_blok,
+              },
             ])
           ).values()
         );

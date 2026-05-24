@@ -88,8 +88,8 @@ export const listPendingPengurusQuerySchema = z.object({
 export const createWargaSchema = z.object({
   blok_wilayah_id: uuidSchema,
   nama_kk: z.string().trim().min(2).max(150),
-  no_kk: z.string().trim().regex(/^\d{16}$/).optional(),
-  nik: z.string().trim().regex(/^\d{16}$/).optional(),
+  no_kk: z.string().trim().regex(/^\d{16}$/, { message: "Harus berupa 16 digit angka" }).optional(),
+  nik: z.string().trim().regex(/^\d{16}$/, { message: "Harus berupa 16 digit angka" }).optional(),
   tanggal_terbit_kk: z.string().datetime().optional(),
   tanggal_lahir: z.string().datetime().optional(),
   pendidikan: z.enum(["TK", "SD", "SMP", "SMA", "DIPLOMA", "SARJANA", "LAINNYA"]).optional(),
@@ -112,8 +112,8 @@ export const getIuranRtQuerySchema = z.object({
 
 export const createRtWargaSchema = z.object({
   nama_kk: z.string().trim().min(2).max(150),
-  no_kk: z.string().trim().regex(/^\d{16}$/).optional(),
-  nik: z.string().trim().regex(/^\d{16}$/).optional(),
+  no_kk: z.string().trim().regex(/^\d{16}$/, { message: "Harus berupa 16 digit angka" }).optional(),
+  nik: z.string().trim().regex(/^\d{16}$/, { message: "Harus berupa 16 digit angka" }).optional(),
   tanggal_terbit_kk: z.string().datetime().optional(),
   tanggal_lahir: z.string().datetime().optional(),
   pendidikan: z.enum(["TK", "SD", "SMP", "SMA", "DIPLOMA", "SARJANA", "LAINNYA"]).optional(),
@@ -124,8 +124,8 @@ export const createRtWargaSchema = z.object({
 export const updateRtWargaSchema = z
   .object({
     nama_kk: z.string().trim().min(2).max(150).optional(),
-    no_kk: z.string().trim().regex(/^\d{16}$/).optional(),
-    nik: z.string().trim().regex(/^\d{16}$/).optional(),
+    no_kk: z.string().trim().regex(/^\d{16}$/, { message: "Harus berupa 16 digit angka" }).optional(),
+    nik: z.string().trim().regex(/^\d{16}$/, { message: "Harus berupa 16 digit angka" }).optional(),
     tanggal_terbit_kk: z.string().datetime().optional(),
     tanggal_lahir: z.string().datetime().optional(),
     pendidikan: z.enum(["TK", "SD", "SMP", "SMA", "DIPLOMA", "SARJANA", "LAINNYA"]).optional(),
@@ -246,8 +246,8 @@ export const wargaParamsSchema = z.object({
 
 export const updateWargaSchema = z.object({
   nama_kk: z.string().min(1, "Nama KK tidak boleh kosong").optional(),
-  no_kk: z.string().trim().regex(/^\d{16}$/).optional(),
-  nik: z.string().trim().regex(/^\d{16}$/).optional(),
+  no_kk: z.string().trim().regex(/^\d{16}$/, { message: "Harus berupa 16 digit angka" }).optional(),
+  nik: z.string().trim().regex(/^\d{16}$/, { message: "Harus berupa 16 digit angka" }).optional(),
   tanggal_terbit_kk: z.string().datetime().optional(),
   tanggal_lahir: z.string().datetime().optional(),
   pendidikan: z.enum(["TK", "SD", "SMP", "SMA", "DIPLOMA", "SARJANA", "LAINNYA"]).optional(),

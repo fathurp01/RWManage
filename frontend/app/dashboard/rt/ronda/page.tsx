@@ -355,7 +355,7 @@ export default function ManajemenRondaPage() {
     map.forEach(stat => {
       stat.total = stat.totalHadir + stat.totalIzin + stat.totalAlfa;
       if (stat.total > 0) {
-        stat.attendanceRate = Math.round((stat.totalHadir / stat.total) * 100);
+        stat.attendanceRate = Math.round(((stat.totalHadir + stat.totalIzin * 0.5) / stat.total) * 100);
       }
       if (stat.attendanceRate < 40) stat.statusKinerja = "RAWAN";
       else if (stat.attendanceRate < 75) stat.statusKinerja = "PERHATIAN";

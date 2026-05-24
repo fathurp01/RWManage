@@ -28,10 +28,12 @@ export const validateBody = (schema: ZodTypeAny) => {
     const parsed = schema.safeParse(req.body);
 
     if (!parsed.success) {
+      const formatted = formatIssues(parsed.error.issues);
+      const errMsg = formatted.map((e) => `${e.field}: ${e.message}`).join(", ");
       res.status(400).json({
         success: false,
-        message: "Validasi body gagal.",
-        errors: formatIssues(parsed.error.issues),
+        message: `Validasi body gagal: ${errMsg}`,
+        errors: formatted,
       });
       return;
     }
@@ -46,10 +48,12 @@ export const validateQuery = (schema: ZodTypeAny) => {
     const parsed = schema.safeParse(req.query);
 
     if (!parsed.success) {
+      const formatted = formatIssues(parsed.error.issues);
+      const errMsg = formatted.map((e) => `${e.field}: ${e.message}`).join(", ");
       res.status(400).json({
         success: false,
-        message: "Validasi query gagal.",
-        errors: formatIssues(parsed.error.issues),
+        message: `Validasi query gagal: ${errMsg}`,
+        errors: formatted,
       });
       return;
     }
@@ -67,10 +71,12 @@ export const validateParams = (schema: ZodTypeAny) => {
     const parsed = schema.safeParse(req.params);
 
     if (!parsed.success) {
+      const formatted = formatIssues(parsed.error.issues);
+      const errMsg = formatted.map((e) => `${e.field}: ${e.message}`).join(", ");
       res.status(400).json({
         success: false,
-        message: "Validasi parameter gagal.",
-        errors: formatIssues(parsed.error.issues),
+        message: `Validasi parameter gagal: ${errMsg}`,
+        errors: formatted,
       });
       return;
     }

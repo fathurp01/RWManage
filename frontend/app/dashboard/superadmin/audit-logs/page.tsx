@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Calendar, User, Activity, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Calendar, User, Activity, FileText, ChevronLeft, ChevronRight, Search, RotateCcw } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
@@ -51,6 +52,15 @@ export default function SuperadminAuditLogsPage() {
   const [limit, setLimit] = useState<number>(20);
   const [page, setPage] = useState<number>(1);
   const [totalData, setTotalData] = useState<number>(0);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const fetchLogs = async () => {
     try {
@@ -59,6 +69,9 @@ export default function SuperadminAuditLogsPage() {
       let url = `/audit-logs?role=${activeTab}&limit=${limit}&offset=${offset}`;
       
       if (filterAksi !== "ALL") url += `&aksi=${filterAksi}`;
+      if (debouncedSearch.trim() !== "") {
+        url += `&search=${encodeURIComponent(debouncedSearch.trim())}`;
+      }
 
       const response = await api.get(url);
       setLogs(response.data.data);
@@ -75,11 +88,11 @@ export default function SuperadminAuditLogsPage() {
   // Reset page to 1 when filters or tabs change
   useEffect(() => {
     setPage(1);
-  }, [activeTab, filterAksi, limit]);
+  }, [activeTab, filterAksi, limit, debouncedSearch]);
 
   useEffect(() => {
     fetchLogs();
-  }, [activeTab, filterAksi, limit, page]);
+  }, [activeTab, filterAksi, limit, page, debouncedSearch]);
 
   const getActionColor = (aksi: string) => {
     switch (aksi) {
@@ -227,9 +240,18 @@ export default function SuperadminAuditLogsPage() {
               <FileText className="h-5 w-5 text-indigo-500" />
               Daftar Riwayat Aktivitas
             </CardTitle>
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto items-stretch sm:items-center">
+              <div className="relative w-full sm:w-[240px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Cari keterangan, entitas..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-10 w-full bg-white dark:bg-slate-950 rounded-xl border-slate-200 text-sm"
+                />
+              </div>
               <Select value={filterAksi} onValueChange={setFilterAksi}>
-                <SelectTrigger className="w-full sm:w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px] h-10 rounded-xl border-slate-200 text-sm">
                   <SelectValue placeholder="Pilih Aksi" />
                 </SelectTrigger>
                 <SelectContent>
@@ -241,6 +263,18 @@ export default function SuperadminAuditLogsPage() {
                   <SelectItem value="LOGIN">LOGIN</SelectItem>
                 </SelectContent>
               </Select>
+              {(searchQuery || filterAksi !== "ALL") && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => {
+                    setSearchQuery("");
+                    setFilterAksi("ALL");
+                  }} 
+                  className="text-slate-500 hover:text-slate-700 h-10 px-4 rounded-xl hover:bg-slate-100 flex items-center gap-2 border border-dashed border-slate-200"
+                >
+                  <RotateCcw className="h-4 w-4" /> Reset Filter
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>

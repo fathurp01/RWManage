@@ -300,7 +300,7 @@ export default function LoginPage() {
       {/* ──── PHASE 1: System Selection ──── */}
       {!isExpanded && (
         <div
-          className="w-full max-w-2xl"
+          className="w-full max-w-2xl relative z-10"
           style={{
             animation: animState === "idle" ? "fadeSlideUp 0.5s ease-out both" : undefined,
           }}
@@ -329,8 +329,7 @@ export default function LoginPage() {
               type="button"
               id="btn-select-masjid"
               onClick={() => handleSystemSelect("masjid")}
-              disabled={isMasjidExpanding || isRwrtExpanding}
-              className="group relative rounded-3xl border border-slate-200/60 dark:border-white/8 bg-white/90 dark:bg-card/90 backdrop-blur-xl shadow-xl shadow-slate-900/8 dark:shadow-black/30 p-8 text-left transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 hover:border-emerald-300 dark:hover:border-emerald-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="group relative cursor-pointer rounded-3xl border border-slate-200/60 dark:border-white/8 bg-white/90 dark:bg-card/90 backdrop-blur-xl shadow-xl shadow-slate-900/8 dark:shadow-black/30 p-8 text-left transition-colors duration-200 hover:shadow-2xl md:hover:-translate-y-1 hover:border-emerald-300 dark:hover:border-emerald-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               style={{
                 animation: isMasjidExpanding
                   ? "cardExpand 0.42s cubic-bezier(0.4, 0, 0.2, 1) both"
@@ -374,8 +373,7 @@ export default function LoginPage() {
               type="button"
               id="btn-select-rwrt"
               onClick={() => handleSystemSelect("rwrt")}
-              disabled={isMasjidExpanding || isRwrtExpanding}
-              className="group relative rounded-3xl border border-slate-200/60 dark:border-white/8 bg-white/90 dark:bg-card/90 backdrop-blur-xl shadow-xl shadow-slate-900/8 dark:shadow-black/30 p-8 text-left transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 hover:border-indigo-300 dark:hover:border-indigo-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              className="group relative cursor-pointer rounded-3xl border border-slate-200/60 dark:border-white/8 bg-white/90 dark:bg-card/90 backdrop-blur-xl shadow-xl shadow-slate-900/8 dark:shadow-black/30 p-8 text-left transition-colors duration-200 hover:shadow-2xl md:hover:-translate-y-1 hover:border-indigo-300 dark:hover:border-indigo-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               style={{
                 animation: isRwrtExpanding
                   ? "cardExpand 0.42s cubic-bezier(0.4, 0, 0.2, 1) both"
@@ -441,7 +439,7 @@ export default function LoginPage() {
       {/* ──── PHASE 2: Login Form ──── */}
       {isExpanded && systemChoice && (
         <div
-          className="w-full max-w-md"
+          className="w-full max-w-md relative z-10"
           style={{ animation: "formFadeIn 0.35s ease-out both" }}
         >
           <div

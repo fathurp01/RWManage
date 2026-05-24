@@ -138,17 +138,13 @@ export default function Home() {
 
           {/* CTA */}
           <div className="flex items-center gap-2">
-
             <Button asChild variant="ghost" size="sm">
-              <Link href="/auth/login">Masuk</Link>
+              <Link href="/auth/register">Daftar</Link>
             </Button>
             <Button asChild variant="rw" size="sm">
-              <Link href="/auth/register" className="hidden sm:inline-flex">
-                Daftar Sekarang
+              <Link href="/auth/login">
+                Masuk Dashboard
               </Link>
-            </Button>
-            <Button asChild variant="rw" size="sm" className="sm:hidden">
-              <Link href="/auth/register">Daftar</Link>
             </Button>
           </div>
         </div>

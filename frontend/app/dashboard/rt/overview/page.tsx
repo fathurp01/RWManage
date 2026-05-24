@@ -15,6 +15,8 @@ interface RtOverviewResponse {
     no_rt: string;
     no_rw?: string | null;
     desa?: string | null;
+    tegur_ronda?: boolean;
+    tegur_ronda_pesan?: string | null;
     tahun: number;
     summary: {
       total_warga: number;
@@ -166,6 +168,39 @@ export default function RtOverviewPage() {
           </div>
         </div>
       </header>
+
+      {/* Teguran Keamanan Ronda dari RW */}
+      {overview?.tegur_ronda && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4.5 rounded-2xl border border-rose-200 bg-rose-50/50 dark:border-rose-950/30 dark:bg-rose-950/10 shadow-xs">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex size-9 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 shrink-0">
+              <AlertTriangle className="size-4.5" />
+            </span>
+            <div>
+              <p className="text-sm font-bold text-rose-800 dark:text-rose-300">Teguran Keamanan Ronda dari Ketua RW</p>
+              <p className="text-xs text-rose-700 dark:text-rose-400/80 font-semibold mt-0.5 leading-relaxed">
+                {overview.tegur_ronda_pesan || "Tingkat kepatuhan ronda di wilayah Anda sangat rendah. Mohon segera evaluasi keaktifan jadwal patroli dan petugas ronda!"}
+              </p>
+            </div>
+          </div>
+          <Button 
+            onClick={async () => {
+              try {
+                await api.post("/rt/ronda/clear-tegur");
+                toast.success("Teguran ronda berhasil diselesaikan / dibaca.");
+                load();
+              } catch (err) {
+                toast.error(getApiError(err).message);
+              }
+            }} 
+            variant="outline" 
+            size="sm" 
+            className="w-full sm:w-auto font-bold border-rose-300 text-rose-700 bg-white hover:bg-rose-50 dark:border-rose-850 dark:bg-slate-900 dark:text-rose-300 dark:hover:bg-rose-950/30 shrink-0"
+          >
+            Mengerti & Selesaikan
+          </Button>
+        </div>
+      )}
 
       {/* 2. Area Peringatan & Tindakan (To-Do List / Notification Bar) */}
       {pendingSetoran > 0 ? (

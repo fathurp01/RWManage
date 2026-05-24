@@ -36,7 +36,8 @@ interface UpdateKasMasjidBody {
 
 const generateKodeUnikKasMasjid = (): string => {
   const year = new Date().getFullYear();
-  return `KMS-${year}-${randomUUID().toUpperCase()}`;
+  const suffix = randomUUID().split("-")[0].toUpperCase();
+  return `KMS-${year}-${suffix}`;
 };
 
 const parsePositiveNumber = (

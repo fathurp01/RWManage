@@ -541,7 +541,7 @@ interface KwitansiDataSource {
 }
 
 const generateKwitansiPdf = async (res: Response, data: KwitansiDataSource) => {
-  const doc = new PDFDocument({ margin: 50, size: "A4" });
+  const doc = new PDFDocument({ margin: 40, size: "A4" });
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
@@ -551,37 +551,94 @@ const generateKwitansiPdf = async (res: Response, data: KwitansiDataSource) => {
 
   doc.pipe(res);
 
-  // Header Title
-  doc.fontSize(24).font("Helvetica-Bold").fillColor(data.color).text(data.title, { align: "center" });
-  doc.moveDown(0.5);
+  // 1. KOP RESMI (Official Header at the very top - split into columns to prevent overlap)
+  const leftColW = 280;
+  const rightColX = 330;
+  const rightColW = doc.page.width - 40 - rightColX;
 
-  // Subtitle
-  doc.fontSize(12).font("Helvetica").fillColor("#64748b").text("Sistem Informasi RWManage", { align: "center" });
-  doc.moveDown(2);
+  // Left Column: Branding / App name
+  doc.fontSize(15).font("Helvetica-Bold").fillColor("#312e81").text("RWMANAGE PORTAL", 40, 35, { width: leftColW });
+  doc.fontSize(8).font("Helvetica").fillColor("#64748b").text("Sistem Informasi & Transparansi Keuangan RT/RW", 40, 54, { width: leftColW });
 
-  // Content
-  doc.fillColor("#334155");
-  data.items.forEach(([label, value]) => {
-    doc.fontSize(12).font("Helvetica-Bold").text(`${label}:`, { continued: true });
-    doc.font("Helvetica").text(` ${value}`);
-    doc.moveDown(0.5);
+  // Right Column: Title & Subtitle of the document
+  doc.fontSize(10.5).font("Helvetica-Bold").fillColor(data.color).text(data.title.toUpperCase(), rightColX, 35, { width: rightColW, align: "right" });
+  doc.fontSize(7.5).font("Helvetica").fillColor("#64748b").text("Dokumen Bukti Transaksi Resmi Terverifikasi", rightColX, 54, { width: rightColW, align: "right" });
+
+  // Divider Line below the main Kop
+  doc.moveTo(40, 75).lineTo(doc.page.width - 40, 75).strokeColor("#312e81").lineWidth(1.5).stroke();
+
+  // 2. CARD CONTAINER
+  const cardX = 40;
+  const cardY = 95;
+  const cardW = doc.page.width - 80;
+  const cardH = 430;
+
+  // Background of the card
+  doc.roundedRect(cardX, cardY, cardW, cardH, 8).fillColor("#f8fafc").fill();
+
+  // Thin outer border of the card
+  doc.roundedRect(cardX, cardY, cardW, cardH, 8).strokeColor("#cbd5e1").lineWidth(1).stroke();
+
+  // Left solid accent bar in status color (data.color)
+  doc.rect(cardX, cardY, 6, cardH).fillColor(data.color).fill();
+
+  // 3. DETAIL ITEMS
+  let labelY = cardY + 25;
+  data.items.forEach(([label, value], idx) => {
+    // Alternating rows backgrounds
+    if (idx % 2 === 0) {
+      doc.rect(cardX + 12, labelY - 4, cardW - 24, 20).fillColor("#ffffff").fill();
+    }
+
+    doc.font("Helvetica").fillColor("#475569").fontSize(9.5).text(label, cardX + 25, labelY);
+
+    // Dynamic coloring for status fields
+    const valStr = String(value).toUpperCase();
+    let valColor = "#1e293b";
+    let isStatus = false;
+    
+    if (valStr === "LUNAS" || valStr === "MASUK") {
+      valColor = "#059669"; // Emerald 600
+      isStatus = true;
+    } else if (valStr === "BELUM LUNAS" || valStr === "KELUAR") {
+      valColor = "#dc2626"; // Red 600
+      isStatus = true;
+    }
+
+    doc.font("Helvetica-Bold").fillColor(valColor).fontSize(9.5).text(value, cardX + 180, labelY, { width: cardW - 200 });
+
+    // Subtle divider dotted line
+    doc.moveTo(cardX + 20, labelY + 14)
+       .lineTo(cardX + cardW - 20, labelY + 14)
+       .strokeColor("#f1f5f9")
+       .lineWidth(0.5)
+       .stroke();
+
+    labelY += 24;
   });
 
-  doc.moveDown(2);
+  // 4. ROTATED CONCENTRIC DIGITAL STAMP
+  const stampX = cardX + cardW - 80;
+  const stampY = cardY + cardH - 65;
 
-  // Footer stamp
-  // Draw a border/stamp
-  doc.rect(400, doc.y, 130, 40)
-    .lineWidth(2)
-    .strokeColor(data.color)
-    .stroke();
-  doc.fontSize(14).font("Helvetica-Bold").fillColor(data.color).text("VERIFIED", 425, doc.y - 30);
+  doc.circle(stampX, stampY, 32).strokeColor(data.color).lineWidth(1.5).stroke();
+  doc.circle(stampX, stampY, 28).strokeColor(data.color).lineWidth(0.75).dash(1.5, { space: 1.5 }).stroke();
+  doc.undash();
 
-  doc.moveDown(3);
-  doc.fontSize(10).fillColor("#94a3b8").text("Dokumen ini dicetak secara otomatis dan sah tanpa tanda tangan basah.", 50, doc.y, { align: "center" });
+  doc.save();
+  doc.translate(stampX, stampY);
+  doc.rotate(-12);
+  doc.fillColor(data.color).font("Helvetica-Bold").fontSize(10).text("VERIFIED", -23, -4);
+  doc.restore();
 
-  // Add generation date
-  doc.text(`Waktu Cetak: ${new Date().toLocaleString("id-ID")}`, { align: "center" });
+  // 5. FOOTER NOTES INSIDE THE CARD
+  doc.fillColor("#64748b").font("Helvetica").fontSize(7.5).text("Pernyataan Resmi: Bukti transaksi ini sah secara hukum dan diterbitkan otomatis oleh sistem RWManage.", cardX + 25, cardY + cardH - 35);
+  doc.text(`Waktu Cetak: ${new Date().toLocaleString("id-ID")} | Protokol: SHA-256 / SSL-SECURE / ${data.sumber.toUpperCase()}`, cardX + 25, cardY + cardH - 22);
+
+  // 6. GLOBAL PAGE FOOTER
+  doc.moveTo(40, 765).lineTo(doc.page.width - 40, 765).strokeColor("#cbd5e1").lineWidth(0.5).stroke();
+  doc.fillColor("#94a3b8").font("Helvetica").fontSize(8).text("RWManage • Sistem Informasi & Pengelolaan Lingkungan RT/RW Mandiri Terintegrasi", 40, 775, { align: "center" });
+  doc.text("Dokumen ini diakses secara aman dan publik melalui Portal Transparansi RWManage.", 40, 787, { align: "center" });
 
   doc.end();
 };

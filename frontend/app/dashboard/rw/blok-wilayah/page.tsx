@@ -133,6 +133,7 @@ export default function BlokWilayahPage() {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   const [form, setForm] = useState({ nama_blok: "", no_rt: "" });
   const [selectedBlok, setSelectedBlok] = useState<BlokWilayah | null>(null);
@@ -1534,7 +1535,10 @@ export default function BlokWilayahPage() {
       </Dialog>
 
       {/* ── Delete Modal ── */}
-      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+      <Dialog open={showDeleteModal} onOpenChange={(open) => {
+        setShowDeleteModal(open);
+        if (!open) setDeleteConfirmText("");
+      }}>
         <DialogContent className="sm:max-w-md !rounded-[24px]">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-red-600 flex items-center gap-2">
@@ -1559,13 +1563,10 @@ export default function BlokWilayahPage() {
                 <p>Ketik <strong className="text-slate-900">HAPUS</strong> untuk konfirmasi:</p>
                 <input
                   type="text"
-                  id="delete-confirm-input"
                   placeholder="Ketik HAPUS di sini"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
                   className="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400"
-                  onChange={(e) => {
-                    const btn = document.getElementById("delete-confirm-btn") as HTMLButtonElement | null;
-                    if (btn) btn.disabled = e.target.value !== "HAPUS";
-                  }}
                 />
               </div>
             </DialogDescription>
@@ -1573,14 +1574,12 @@ export default function BlokWilayahPage() {
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => {
               setShowDeleteModal(false);
-              // reset confirm input
-              const inp = document.getElementById("delete-confirm-input") as HTMLInputElement | null;
-              if (inp) inp.value = "";
+              setDeleteConfirmText("");
             }}
               className="rounded-xl h-11 px-5 font-semibold">
               Batal
             </Button>
-            <Button id="delete-confirm-btn" onClick={handleDeleteSubmit} disabled={true}
+            <Button onClick={handleDeleteSubmit} disabled={deleteConfirmText !== "HAPUS" || isSubmitting}
               className="rounded-xl h-11 px-6 bg-red-600 hover:bg-red-700 text-white font-bold disabled:opacity-40">
               {isSubmitting ? <><Loader2 className="size-4 mr-2 animate-spin" /> Menghapus...</> : "Ya, Hapus Blok"}
             </Button>

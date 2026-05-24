@@ -465,10 +465,19 @@ export const getDashboardZisWithClient = async (
       FAKIR: { uang: 0, beras: 0 }, AMIL: { uang: 0, beras: 0 },
       FISABILILLAH: { uang: 0, beras: 0 }, LAINNYA: { uang: 0, beras: 0 },
     };
+    let totalTerdistribusiUang = 0;
+    let totalTerdistribusiBeras = 0;
+
     sumDistribusi.forEach(d => {
       const nominal = decimalToNumber(d._sum.nominal);
-      if (d.jenis === "UANG") used[d.kategori].uang += nominal;
-      if (d.jenis === "BERAS") used[d.kategori].beras += nominal;
+      if (d.jenis === "UANG") {
+        used[d.kategori].uang += nominal;
+        totalTerdistribusiUang += nominal;
+      }
+      if (d.jenis === "BERAS") {
+        used[d.kategori].beras += nominal;
+        totalTerdistribusiBeras += nominal;
+      }
     });
 
     distribusiUang.fakir = Math.max(0, roundTo2(distribusiUang.fakir - used.FAKIR.uang));
@@ -528,6 +537,8 @@ export const getDashboardZisWithClient = async (
         total_kk: totalKk,
         total_jiwa: totalJiwa,
         total_dana_distribusi: totalDanaDistribusi,
+        total_terdistribusi_uang: totalTerdistribusiUang,
+        total_terdistribusi_beras: totalTerdistribusiBeras,
         distribusi_uang_zakat: {
           persen: {
             fakir: pengaturan.persen_fakir,
@@ -682,57 +693,8 @@ export const deleteTransaksiZis = async (
 
 
 
-    // Check if deleting this transaction will make ZIS distribution balance negative
-    const balances = await getAvailableZisBalance(prisma, authorizedMasjidId);
-    const settings = await prisma.pengaturanZis.findUnique({ where: { masjid_id: authorizedMasjidId } });
-    
-    if (settings) {
-      const trans = await prisma.transaksiZis.findUnique({ where: { id: transaksi_id } });
-      if (trans) {
-        const categories = ["FAKIR", "AMIL", "FISABILILLAH", "LAINNYA"];
-        const zakatNominal = Number(trans.nominal_zakat || 0);
-        const berasNominal = Number(trans.total_beras_kg || 0);
-        
-        for (const cat of categories) {
-          const catKey = cat as "FAKIR" | "AMIL" | "FISABILILLAH" | "LAINNYA";
-          const percent = Number(settings[`persen_${cat.toLowerCase()}` as keyof typeof settings] || 0);
-          
-          const reductionUang = (percent / 100) * zakatNominal;
-          const reductionBeras = (percent / 100) * berasNominal;
-          
-          // Re-calculate used amount without Math.max(0) to see the true debt
-          const sumDist = await prisma.pencatatanDistribusi.aggregate({
-            where: { masjid_id: authorizedMasjidId, kategori: cat as any, jenis: "UANG" },
-            _sum: { nominal: true }
-          });
-          const sumBeras = await prisma.pencatatanDistribusi.aggregate({
-            where: { masjid_id: authorizedMasjidId, kategori: cat as any, jenis: "BERAS" },
-            _sum: { nominal: true }
-          });
-          
-          const totalUang = await prisma.transaksiZis.aggregate({
-            where: { masjid_id: authorizedMasjidId, id: { not: transaksi_id } },
-            _sum: { nominal_zakat: true }
-          });
-          const totalBeras = await prisma.transaksiZis.aggregate({
-            where: { masjid_id: authorizedMasjidId, id: { not: transaksi_id } },
-            _sum: { total_beras_kg: true }
-          });
-          
-          const newAllocUang = (percent / 100) * Number(totalUang._sum.nominal_zakat || 0);
-          const newAllocBeras = (percent / 100) * Number(totalBeras._sum.total_beras_kg || 0);
-          
-          if (newAllocUang < Number(sumDist._sum.nominal || 0)) {
-            res.status(400).json({ success: false, message: `Tidak bisa menghapus. Dana zakat kategori ${cat} sudah terdistribusi melebihi sisa alokasi baru.` });
-            return;
-          }
-          if (newAllocBeras < Number(sumBeras._sum.nominal || 0)) {
-            res.status(400).json({ success: false, message: `Tidak bisa menghapus. Beras kategori ${cat} sudah terdistribusi melebihi sisa alokasi baru.` });
-            return;
-          }
-        }
-      }
-    }
+    // Deletion allowed regardless of distribution status to allow correcting human input errors
+
 
     await prisma.transaksiZis.delete({ where: { id: transaksi_id } });
     res.status(200).json({ success: true, message: "Transaksi ZIS berhasil dihapus." });
@@ -828,54 +790,8 @@ export const updateTransaksiZis = async (
       }
     }
 
-    // Check if update will make ZIS distribution balance negative
-    const settings = await prisma.pengaturanZis.findUnique({ where: { masjid_id: authorizedMasjidId } });
-    if (settings) {
-      const categories = ["FAKIR", "AMIL", "FISABILILLAH", "LAINNYA"];
-      for (const cat of categories) {
-        const percent = Number(settings[`persen_${cat.toLowerCase()}` as keyof typeof settings] || 0);
-        
-        const sumDist = await prisma.pencatatanDistribusi.aggregate({
-          where: { masjid_id: authorizedMasjidId, kategori: cat as any, jenis: "UANG" },
-          _sum: { nominal: true }
-        });
-        const sumBeras = await prisma.pencatatanDistribusi.aggregate({
-          where: { masjid_id: authorizedMasjidId, kategori: cat as any, jenis: "BERAS" },
-          _sum: { nominal: true }
-        });
-        
-        // Projected total after update
-        const allTransactions = await prisma.transaksiZis.findMany({
-          where: { masjid_id: authorizedMasjidId },
-          select: { id: true, nominal_zakat: true, total_beras_kg: true }
-        });
-        
-        let newTotalUang = 0;
-        let newTotalBeras = 0;
-        
-        for (const t of allTransactions) {
-          if (t.id === transaksi_id) {
-            newTotalUang += calculatedZakatUang;
-            newTotalBeras += calculatedTotalBeras;
-          } else {
-            newTotalUang += Number(t.nominal_zakat || 0);
-            newTotalBeras += Number(t.total_beras_kg || 0);
-          }
-        }
-        
-        const newAllocUang = (percent / 100) * newTotalUang;
-        const newAllocBeras = (percent / 100) * newTotalBeras;
-        
-        if (newAllocUang < Number(sumDist._sum.nominal || 0)) {
-          res.status(400).json({ success: false, message: `Tidak bisa mengubah. Dana zakat kategori ${cat} sudah terdistribusi melebihi alokasi baru.` });
-          return;
-        }
-        if (newAllocBeras < Number(sumBeras._sum.nominal || 0)) {
-          res.status(400).json({ success: false, message: `Tidak bisa mengubah. Beras kategori ${cat} sudah terdistribusi melebihi alokasi baru.` });
-          return;
-        }
-      }
-    }
+    // Update allowed regardless of distribution status to allow correcting human input errors
+
 
     const updated = await prisma.transaksiZis.update({
       where: { id: transaksi_id },
@@ -965,7 +881,7 @@ export const exportRekapMuzaqi = async (
     if (fmt === "PDF") {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `inline; filename="${filename}.pdf"`);
-      const doc = new PDFDocument({ margin: 50, size: "A4" });
+      const doc = new PDFDocument({ margin: 40, size: "A4" });
       doc.pipe(res);
 
       let totalJiwa = 0;
@@ -980,62 +896,60 @@ export const exportRekapMuzaqi = async (
         totalBerasKg += Number(t.total_beras_kg) || 0;
       });
 
-      // Top browser-like print header
-      const now = new Date();
-      const printDateStr = now.toLocaleDateString("en-US", { year: "2-digit", month: "numeric", day: "numeric" }) + ", " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-      doc.fontSize(8).font("Helvetica").fillColor("black");
-      doc.text(printDateStr, 50, 20, { align: "left" });
-      doc.text("Rekap Muzaqi", 50, 20, { width: 500, align: "center" });
-
-      doc.y = 50; 
-
-      doc.fontSize(18).font("Helvetica-Bold").fillColor("#1e293b").text("Rekap Muzaqi", 50, 50, { align: "left" });
-      doc.moveDown(0.2);
-      doc.fontSize(12).font("Helvetica").fillColor("#64748b").text(`Periode: ${periodeDisplay}`, { align: "left" });
+      // Header logic
+      doc.fontSize(15).font("Helvetica-Bold").fillColor("#312e81").text("LAPORAN REKAPITULASI DAFTAR MUZAQI ZIS", { align: "center" });
+      doc.moveDown(0.25);
+      doc.fontSize(12).font("Helvetica-Bold").fillColor("#1e293b").text(masjid?.nama_masjid.toUpperCase() || "MASJID", { align: "center" });
+      doc.fontSize(10).font("Helvetica").fillColor("#64748b").text(`Alamat: ${masjid?.alamat || "-"}`, { align: "center" });
+      doc.text(`Periode Laporan: ${periodeDisplay} | Dicetak: ${new Date().toLocaleString("id-ID")}`, { align: "center" });
       doc.moveDown(1.5);
 
-      // Summary Stats
-      doc.fontSize(11).font("Helvetica").fillColor("#334155");
-      const summaryY = doc.y;
-      doc.text(`Total Transaksi: `, 50, summaryY, { continued: true }).font("Helvetica-Bold").text(`${transaksi.length}`);
-      doc.font("Helvetica").text(`Total Jiwa: `, 300, summaryY, { continued: true }).font("Helvetica-Bold").text(`${totalJiwa}`);
+      // Summary ZIS & Kas
+      doc.fontSize(11).font("Helvetica-Bold").fillColor("#1e293b").text("Ringkasan Penerimaan ZIS Periode Ini:");
+      doc.moveDown(0.4);
       
-      const summaryY2 = summaryY + 20;
-      doc.font("Helvetica").text(`Total Beras: `, 50, summaryY2, { continued: true }).font("Helvetica-Bold").text(`${totalBerasKg.toFixed(2)} kg`);
-      doc.font("Helvetica").text(`Total Uang Zakat: `, 300, summaryY2, { continued: true }).font("Helvetica-Bold").text(`${formatCurrencyId(totalUangZakat)}`);
-      
-      const summaryY3 = summaryY2 + 20;
-      doc.font("Helvetica").text(`Total Infaq: `, 50, summaryY3, { continued: true }).font("Helvetica-Bold").text(`${formatCurrencyId(totalInfaq)}`);
-      
-      doc.y = summaryY3 + 30;
-
-      // Table Header Setup
-      const headers = ["No", "Nama KK", "Alamat Muzaqi", "Jiwa", "Jenis", "Nominal Zakat", "Infaq"];
-      const colWidths = [25, 110, 110, 40, 45, 85, 85];
-      const startX = 50;
       let currentY = doc.y;
+      doc.fontSize(10).font("Helvetica").fillColor("#334155");
+      doc.text(`Total Transaksi (KK): ${transaksi.length} KK`, 40, currentY);
+      doc.text(`Total Uang Zakat: ${formatCurrencyId(totalUangZakat)}`, 300, currentY);
+      
+      currentY += 15;
+      doc.text(`Total Jiwa: ${totalJiwa} Jiwa`, 40, currentY);
+      doc.text(`Total Beras Zakat: ${totalBerasKg.toFixed(2)} kg`, 300, currentY);
+      
+      currentY += 15;
+      doc.font("Helvetica-Bold").text(`Total Infaq Terbuka: ${formatCurrencyId(totalInfaq)}`, 40, currentY);
+      doc.moveDown(1.5);
+
+      // Table Setup
+      const headers = ["No", "Nama KK", "Alamat Muzaqi", "Jiwa", "Jenis", "Nominal Zakat", "Infaq"];
+      const colWidths = [25, 110, 110, 40, 45, 90, 95];
+      const colAligns: Array<"left" | "center" | "right"> = ["center", "left", "left", "center", "center", "right", "right"];
+      const startX = 40;
+      let tableY = doc.y;
 
       const drawRow = (rowData: string[], isHeader = false) => {
-        doc.font(isHeader ? "Helvetica-Bold" : "Helvetica")
-           .fillColor(isHeader ? "#1e293b" : "#475569")
-           .fontSize(9);
-        
-        const rowHeight = 22; 
-
-        if (currentY + rowHeight > doc.page.height - 50) {
+        const h = 22; 
+        if (tableY + h > doc.page.height - 50) {
           doc.addPage();
-          currentY = 50;
+          tableY = 40;
         }
 
-        let currentX = startX;
-        const rowY = currentY; // Freeze Y coordinate for this entire row
+        let x = startX;
+        doc.font(isHeader ? "Helvetica-Bold" : "Helvetica").fontSize(8);
 
         rowData.forEach((text, i) => {
-          doc.text(text, currentX + 4, rowY + 6, { width: colWidths[i] - 8, align: "left" });
-          doc.rect(currentX, rowY, colWidths[i], rowHeight).strokeColor("#cbd5e1").lineWidth(0.5).stroke();
-          currentX += colWidths[i];
+          if (isHeader) {
+            doc.rect(x, tableY, colWidths[i], h).fillColor("#312e81").fill();
+            doc.rect(x, tableY, colWidths[i], h).strokeColor("#cbd5e1").stroke();
+            doc.fillColor("#ffffff").text(text, x + 4, tableY + 7, { width: colWidths[i] - 8, align: colAligns[i] });
+          } else {
+            doc.rect(x, tableY, colWidths[i], h).strokeColor("#e2e8f0").stroke();
+            doc.fillColor("#1e293b").text(text, x + 4, tableY + 7, { width: colWidths[i] - 8, align: colAligns[i] });
+          }
+          x += colWidths[i];
         });
-        currentY += rowHeight;
+        tableY += h;
       };
 
       // Draw Headers
@@ -1046,7 +960,7 @@ export const exportRekapMuzaqi = async (
         const jenis = t.jenis_bayar === "UANG" ? "Uang" : "Beras";
         let nominalZakat = formatCurrencyId(Number(t.nominal_zakat) || 0);
         if (t.jenis_bayar === "BERAS") {
-          nominalZakat = `${Number(t.total_beras_kg).toFixed(2)} kg`; // using comma instead of formatCurrency if needed
+          nominalZakat = `${Number(t.total_beras_kg).toFixed(2)} kg`;
         }
         drawRow([
           String(idx + 1),
@@ -1205,21 +1119,14 @@ export const exportRekapDistribusi = async (
     if (fmt === "PDF") {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `inline; filename="${filename}.pdf"`);
-      const doc = new PDFDocument({ margin: 50, size: "A4" });
+      const doc = new PDFDocument({ margin: 40, size: "A4" });
       doc.pipe(res);
 
-      // Top browser-like print header
-      const now = new Date();
-      const printDateStr = now.toLocaleDateString("en-US", { year: "2-digit", month: "numeric", day: "numeric" }) + ", " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-      doc.fontSize(8).font("Helvetica").fillColor("black");
-      doc.text(printDateStr, 50, 20, { align: "left" });
-      doc.text("Rekap Distribusi", 50, 20, { width: 500, align: "center" });
-
-      doc.y = 50; // Reset Y for main content
-
-      doc.fontSize(18).font("Helvetica-Bold").fillColor("#1e293b").text("Rekap Distribusi Zakat", 50, 50, { align: "left" });
-      doc.moveDown(0.2);
-      doc.fontSize(12).font("Helvetica").fillColor("#64748b").text(`Periode: ${periode}`, { align: "left" });
+      // Header logic
+      doc.fontSize(15).font("Helvetica-Bold").fillColor("#312e81").text("LAPORAN REKAPITULASI ESTIMASI DISTRIBUSI ZAKAT", { align: "center" });
+      doc.moveDown(0.25);
+      doc.fontSize(12).font("Helvetica-Bold").fillColor("#1e293b").text(masjid?.nama_masjid.toUpperCase() || "MASJID", { align: "center" });
+      doc.fontSize(10).font("Helvetica").fillColor("#64748b").text(`Periode Laporan: ${periode} | Dicetak: ${new Date().toLocaleString("id-ID")}`, { align: "center" });
       doc.moveDown(1.5);
 
       const drawTable = (
@@ -1227,30 +1134,34 @@ export const exportRekapDistribusi = async (
         headers: string[],
         tableRows: string[][],
         colWidths: number[],
-        titleAlign: "left" | "right" = "left"
+        colAligns: Array<"left" | "center" | "right">
       ) => {
-        doc.fontSize(12).font("Helvetica-Bold").fillColor("#334155").text(title, 50, doc.y, { width: 500, align: titleAlign });
-        doc.moveDown(0.5);
+        doc.fontSize(11).font("Helvetica-Bold").fillColor("#1e293b").text(title, 40, doc.y);
+        doc.moveDown(0.4);
 
-        const startX = 50;
+        const startX = 40;
         let y = doc.y;
 
         const drawRow = (rowData: string[], isHeader = false) => {
-          doc.font(isHeader ? "Helvetica-Bold" : "Helvetica")
-             .fillColor(isHeader ? "#1e293b" : "#334155")
-             .fontSize(10);
-          
-          const rowHeight = 24; 
+          const rowHeight = 22; 
 
           if (y + rowHeight > doc.page.height - 50) {
             doc.addPage();
-            y = 50;
+            y = 40;
           }
 
           let currentX = startX;
+          doc.font(isHeader ? "Helvetica-Bold" : "Helvetica").fontSize(8.5);
+
           rowData.forEach((text, i) => {
-            doc.text(text, currentX + 8, y + 7, { width: colWidths[i] - 16, align: "left" });
-            doc.rect(currentX, y, colWidths[i], rowHeight).strokeColor("#cbd5e1").lineWidth(0.5).stroke();
+            if (isHeader) {
+              doc.rect(currentX, y, colWidths[i], rowHeight).fillColor("#312e81").fill();
+              doc.rect(currentX, y, colWidths[i], rowHeight).strokeColor("#cbd5e1").stroke();
+              doc.fillColor("#ffffff").text(text, currentX + 6, y + 7, { width: colWidths[i] - 12, align: colAligns[i] });
+            } else {
+              doc.rect(currentX, y, colWidths[i], rowHeight).strokeColor("#e2e8f0").stroke();
+              doc.fillColor("#1e293b").text(text, currentX + 6, y + 7, { width: colWidths[i] - 12, align: colAligns[i] });
+            }
             currentX += colWidths[i];
           });
           y += rowHeight;
@@ -1260,48 +1171,48 @@ export const exportRekapDistribusi = async (
           drawRow(headers, true);
         }
         tableRows.forEach(row => drawRow(row, false));
-        doc.y = y + 20; 
+        doc.y = y + 15; 
       };
 
-      // Table 1: Ringkasan Sumber Dana
+      // Table 1: Ringkasan Sumber Penerimaan Dana
       drawTable(
-        "Ringkasan Sumber Dana",
-        [],
+        "Ringkasan Penerimaan ZIS",
+        ["Sumber ZIS", "Jumlah Penerimaan"],
         [
           ["Total Zakat Uang", formatCurrencyId(totalZakat)],
           ["Total Zakat Beras", `${totalBeras.toFixed(2)} kg`],
-          ["Total Infaq (Terpisah Kas Masjid)", formatCurrencyId(totalInfaq)]
+          ["Total Infaq Terbuka", formatCurrencyId(totalInfaq)]
         ],
-        [300, 200],
-        "left"
+        [300, 215],
+        ["left", "right"]
       );
 
-      // Table 2: Distribusi Zakat Uang
+      // Table 2: Estimasi Distribusi Zakat Uang
       drawTable(
-        "Distribusi Zakat Uang",
-        ["Asnaf", "Persentase", "Nominal"],
+        "Estimasi Alokasi Distribusi Zakat Uang",
+        ["Asnaf/Kategori", "Persentase", "Jumlah Alokasi"],
         [
           ["Fakir Miskin", `${pengaturan.persen_fakir}%`, formatCurrencyId(distribusiDana.fakir)],
-          ["Amil", `${pengaturan.persen_amil}%`, formatCurrencyId(distribusiDana.amil)],
+          ["Amil Zakat", `${pengaturan.persen_amil}%`, formatCurrencyId(distribusiDana.amil)],
           ["Fisabilillah", `${pengaturan.persen_fisabilillah}%`, formatCurrencyId(distribusiDana.fisabilillah)],
-          ["Lainnya", `${pengaturan.persen_lainnya}%`, formatCurrencyId(distribusiDana.lainnya)]
+          ["Kategori Lainnya", `${pengaturan.persen_lainnya}%`, formatCurrencyId(distribusiDana.lainnya)]
         ],
-        [200, 100, 200],
-        "left"
+        [215, 100, 200],
+        ["left", "center", "right"]
       );
 
-      // Table 3: Distribusi Zakat Beras
+      // Table 3: Estimasi Distribusi Zakat Beras
       drawTable(
-        "Distribusi Zakat Beras",
-        ["Asnaf", "Persentase", "Nominal"],
+        "Estimasi Alokasi Distribusi Zakat Beras",
+        ["Asnaf/Kategori", "Persentase", "Jumlah Alokasi"],
         [
           ["Fakir Miskin", `${pengaturan.persen_fakir}%`, `${distribusiBeras.fakir.toFixed(2)} kg`],
-          ["Amil", `${pengaturan.persen_amil}%`, `${distribusiBeras.amil.toFixed(2)} kg`],
+          ["Amil Zakat", `${pengaturan.persen_amil}%`, `${distribusiBeras.amil.toFixed(2)} kg`],
           ["Fisabilillah", `${pengaturan.persen_fisabilillah}%`, `${distribusiBeras.fisabilillah.toFixed(2)} kg`],
-          ["Lainnya", `${pengaturan.persen_lainnya}%`, `${distribusiBeras.lainnya.toFixed(2)} kg`]
+          ["Kategori Lainnya", `${pengaturan.persen_lainnya}%`, `${distribusiBeras.lainnya.toFixed(2)} kg`]
         ],
-        [200, 100, 200],
-        "left"
+        [215, 100, 200],
+        ["left", "center", "right"]
       );
 
       doc.end();
@@ -1422,68 +1333,105 @@ export const exportKwitansiZis = async (
     const doc = new PDFDocument({ margin: 40, size: "A4" });
     doc.pipe(res);
 
-    // Draw frame
-    doc.roundedRect(40, 40, doc.page.width - 80, 450, 10).strokeColor("#15803d").lineWidth(1.5).stroke();
+    // 1. KOP RESMI (Official Header at the very top - split into columns to prevent overlap)
+    const leftColW = 280;
+    const rightColX = 330;
+    const rightColW = doc.page.width - 40 - rightColX;
 
-    // Top left text
-    doc.fillColor("#94a3b8").fontSize(22).font("Helvetica-Bold").text("ZIS", 60, 65);
+    // Left Column: Branding / App name
+    doc.fontSize(15).font("Helvetica-Bold").fillColor("#15803d").text("RWMANAGE ZIS", 40, 35, { width: leftColW });
+    doc.fontSize(8).font("Helvetica").fillColor("#64748b").text(`${transaksi.masjid.nama_masjid || "Masjid"} • Pengelolaan Zakat & Infaq`, 40, 54, { width: leftColW });
 
-    // Top right headers
-    doc.fillColor("#15803d").fontSize(18).text("Kwitansi Zakat & Infaq", 60, 60, { width: doc.page.width - 120, align: "right" });
-    doc.fillColor("#64748b").fontSize(10).font("Helvetica").text(`${transaksi.masjid.nama_masjid || "Masjid"} • Bukti Pembayaran Resmi`, 60, 80, { width: doc.page.width - 120, align: "right" });
+    // Right Column: Title & Subtitle of the document
+    doc.fontSize(10.5).font("Helvetica-Bold").fillColor("#15803d").text("KWITANSI ZAKAT & INFAQ", rightColX, 35, { width: rightColW, align: "right" });
+    doc.fontSize(7.5).font("Helvetica").fillColor("#64748b").text("Bukti Pembayaran Resmi Terverifikasi", rightColX, 54, { width: rightColW, align: "right" });
 
-    // Separator Line
-    doc.moveTo(60, 105).lineTo(doc.page.width - 60, 105).strokeColor("#dcfce3").lineWidth(1.5).stroke();
+    // Divider Line below the main Kop
+    doc.moveTo(40, 75).lineTo(doc.page.width - 40, 75).strokeColor("#15803d").lineWidth(1.5).stroke();
 
-    // Kv details
-    doc.fillColor("#475569").fontSize(10);
-    doc.font("Helvetica").text("No. Kwitansi: ", 60, 125, { continued: true }).font("Helvetica-Bold").fillColor("#1e293b").text(transaksi.kode_unik);
-    doc.font("Helvetica").fillColor("#475569").text(`Tanggal: ${dateFormatted}`, 60, 140);
+    // 2. CARD CONTAINER
+    const cardX = 40;
+    const cardY = 95;
+    const cardW = doc.page.width - 80;
+    const cardH = 430;
 
-    // Transaksi details array
-    let labelY = 175;
-    const drawKwitansiRow = (label: string, value: string) => {
-      doc.font("Helvetica").fillColor("#64748b").fontSize(11).text(label, 60, labelY);
-      doc.font("Helvetica-Bold").fillColor("#1e293b").text(value, 230, labelY);
-      // Dotted horizontal line separator
-      doc.moveTo(60, labelY + 15).lineTo(doc.page.width - 60, labelY + 15).strokeColor("#cbd5e1").lineWidth(0.5).dash(2, { space: 2 }).stroke();
-      doc.undash();
-      labelY += 25;
-    };
+    // Background of the card
+    doc.roundedRect(cardX, cardY, cardW, cardH, 8).fillColor("#f8fafc").fill();
 
-    drawKwitansiRow("Nama Kepala Keluarga", transaksi.nama_kk || "-");
-    drawKwitansiRow("Alamat Muzaqi", transaksi.alamat_muzaqi || "-");
-    drawKwitansiRow("Jumlah Jiwa", `${transaksi.jumlah_jiwa || 0} jiwa`);
-    
+    // Thin outer border of the card
+    doc.roundedRect(cardX, cardY, cardW, cardH, 8).strokeColor("#cbd5e1").lineWidth(1).stroke();
+
+    // Left solid accent bar in Islamic Green `#15803d`
+    doc.rect(cardX, cardY, 6, cardH).fillColor("#15803d").fill();
+
+    // 3. DETAIL ITEMS
     const jenis = transaksi.jenis_bayar === "UANG" ? "Uang" : "Beras";
-    drawKwitansiRow("Jenis Pembayaran", jenis);
-    
     let nominZakat = formatCurrencyId(Number(transaksi.nominal_zakat) || 0);
     if (transaksi.jenis_bayar === "BERAS") nominZakat = `${Number(transaksi.total_beras_kg).toFixed(2)} kg`;
-    drawKwitansiRow("Nominal Zakat", nominZakat);
-    
-    drawKwitansiRow("Nominal Infaq", formatCurrencyId(Number(transaksi.nominal_infaq) || 0));
 
-    // Signatures
-    const signY = labelY + 30;
-    doc.fillColor("#1e293b").font("Helvetica").fontSize(11).text("Petugas Zakat", 380, signY, { width: 140, align: "center" });
+    const items = [
+      ["No. Kwitansi", transaksi.kode_unik],
+      ["Tanggal & Waktu", dateFormatted],
+      ["Nama Kepala Keluarga", transaksi.nama_kk || "-"],
+      ["Alamat Muzaqi", transaksi.alamat_muzaqi || "-"],
+      ["Jumlah Jiwa", `${transaksi.jumlah_jiwa || 0} jiwa`],
+      ["Jenis Pembayaran", jenis],
+      ["Nominal Zakat", nominZakat],
+      ["Nominal Infaq", formatCurrencyId(Number(transaksi.nominal_infaq) || 0)],
+    ];
 
-    // LUNAS Stamp
-    const stampX = 450;
-    const stampY = signY + 60;
-    doc.circle(stampX, stampY, 35).strokeColor("#ef4444").lineWidth(2).stroke();
+    let labelY = cardY + 20;
+    items.forEach(([label, value], idx) => {
+      // Alternating rows backgrounds
+      if (idx % 2 === 0) {
+        doc.rect(cardX + 12, labelY - 4, cardW - 24, 20).fillColor("#ffffff").fill();
+      }
+
+      doc.font("Helvetica").fillColor("#475569").fontSize(9.5).text(label, cardX + 25, labelY);
+      doc.font("Helvetica-Bold").fillColor("#1e293b").fontSize(9.5).text(value, cardX + 180, labelY, { width: cardW - 200 });
+
+      // Subtle divider dotted line
+      doc.moveTo(cardX + 20, labelY + 14)
+         .lineTo(cardX + cardW - 20, labelY + 14)
+         .strokeColor("#f1f5f9")
+         .lineWidth(0.5)
+         .stroke();
+
+      labelY += 24;
+    });
+
+    // 4. SIGNATURE AREA AND CONCENTRIC STAMP
+    const signX = cardX + cardW - 160;
+    const signY = cardY + 240;
+
+    doc.fillColor("#1e293b").font("Helvetica").fontSize(9.5).text("Petugas Zakat,", signX, signY, { width: 140, align: "center" });
+
+    // Concentric LUNAS stamp next to the signature
+    const stampX = cardX + cardW - 220;
+    const stampY = cardY + 310;
+
+    doc.circle(stampX, stampY, 32).strokeColor("#ef4444").lineWidth(1.5).stroke();
+    doc.circle(stampX, stampY, 28).strokeColor("#ef4444").lineWidth(0.75).dash(1.5, { space: 1.5 }).stroke();
+    doc.undash();
+
     doc.save();
     doc.translate(stampX, stampY);
-    doc.rotate(-15);
-    doc.fillColor("#ef4444").font("Helvetica-Bold").fontSize(14).text("LUNAS", -25, -6);
+    doc.rotate(-12);
+    doc.fillColor("#ef4444").font("Helvetica-Bold").fontSize(10).text("LUNAS", -18, -4);
     doc.restore();
 
     // Signature line
-    doc.moveTo(370, signY + 110).lineTo(530, signY + 110).strokeColor("#94a3b8").lineWidth(1).stroke();
-    doc.fillColor("#1e293b").font("Helvetica-Bold").text(petugasNama, 370, signY + 115, { width: 160, align: "center" });
+    doc.moveTo(signX, signY + 80).lineTo(signX + 140, signY + 80).strokeColor("#94a3b8").lineWidth(1).stroke();
+    doc.fillColor("#1e293b").font("Helvetica-Bold").fontSize(9.5).text(petugasNama, signX, signY + 85, { width: 140, align: "center" });
 
-    // Footer note
-    doc.fillColor("#94a3b8").font("Helvetica").fontSize(8).text("Kwitansi ini dicetak otomatis dari sistem pengelola zakat masjid.", 60, signY + 115);
+    // 5. FOOTER NOTES INSIDE THE CARD
+    doc.fillColor("#64748b").font("Helvetica").fontSize(7.5).text("Kwitansi ini diterbitkan secara sah oleh sistem pengelola zakat masjid dan sah sebagai bukti penyerahan ZIS.", cardX + 25, cardY + cardH - 35);
+    doc.text(`Waktu Cetak: ${new Date().toLocaleString("id-ID")} | Sumber Data: MASJID_ZIS_DB`, cardX + 25, cardY + cardH - 22);
+
+    // 6. GLOBAL PAGE FOOTER
+    doc.moveTo(40, 765).lineTo(doc.page.width - 40, 765).strokeColor("#cbd5e1").lineWidth(0.5).stroke();
+    doc.fillColor("#94a3b8").font("Helvetica").fontSize(8).text("RWManage • Sistem Informasi & Pengelolaan Lingkungan RT/RW Mandiri Terintegrasi", 40, 775, { align: "center" });
+    doc.text("Laporan ZIS dikelola secara aman dan transparan melalui takmir masjid terverifikasi.", 40, 787, { align: "center" });
 
     doc.end();
   } catch (err) {
@@ -1519,12 +1467,15 @@ export const createPencatatanDistribusi = async (
         return;
       }
 
-      if (jenis === "UANG" && nominal > avail.uang) {
+      const EPSILON_UANG = 1.5;
+      const EPSILON_BERAS = 0.05;
+
+      if (jenis === "UANG" && nominal > avail.uang + EPSILON_UANG) {
         res.status(400).json({ success: false, message: `Nominal melebihi sisa dana uang untuk kategori ini (${formatCurrencyId(avail.uang)}).` });
         return;
       }
       
-      if (jenis === "BERAS" && nominal > avail.beras) {
+      if (jenis === "BERAS" && nominal > avail.beras + EPSILON_BERAS) {
         res.status(400).json({ success: false, message: `Nominal melebihi sisa beras untuk kategori ini (${avail.beras.toFixed(2)} kg).` });
         return;
       }
@@ -1624,12 +1575,15 @@ export const updatePencatatanDistribusi = async (
         return;
       }
 
-      if (finalJenis === "UANG" && finalNominal > avail.uang) {
+      const EPSILON_UANG = 1.5;
+      const EPSILON_BERAS = 0.05;
+
+      if (finalJenis === "UANG" && finalNominal > avail.uang + EPSILON_UANG) {
         res.status(400).json({ success: false, message: `Nominal melebihi sisa dana uang untuk kategori ini (${formatCurrencyId(avail.uang)}).` });
         return;
       }
       
-      if (finalJenis === "BERAS" && finalNominal > avail.beras) {
+      if (finalJenis === "BERAS" && finalNominal > avail.beras + EPSILON_BERAS) {
         res.status(400).json({ success: false, message: `Nominal melebihi sisa beras untuk kategori ini (${avail.beras.toFixed(2)} kg).` });
         return;
       }
@@ -1701,6 +1655,82 @@ export const updatePengaturanZis = async (
     if (!authorizedMasjidId) {
       res.status(403).json({ success: false, message: "Akses ditolak." });
       return;
+    }
+
+    const newPersenFakir = persen_fakir !== undefined ? Number(persen_fakir) : Number(existing.persen_fakir);
+    const newPersenAmil = persen_amil !== undefined ? Number(persen_amil) : Number(existing.persen_amil);
+    const newPersenFisabilillah = persen_fisabilillah !== undefined ? Number(persen_fisabilillah) : Number(existing.persen_fisabilillah);
+    const newPersenLainnya = persen_lainnya !== undefined ? Number(persen_lainnya) : Number(existing.persen_lainnya);
+
+    // Get current total zakat and distributions to check if the new percentages will cause a negative remaining balance
+    const [aggregateZis, sumDistribusi] = await Promise.all([
+      prisma.transaksiZis.aggregate({
+        where: { masjid_id: authorizedMasjidId },
+        _sum: { total_beras_kg: true, nominal_zakat: true },
+      }),
+      prisma.pencatatanDistribusi.groupBy({
+        by: ["kategori", "jenis"],
+        where: { masjid_id: authorizedMasjidId },
+        _sum: { nominal: true },
+      })
+    ]);
+
+    const totalBeras = roundTo2(decimalToNumber(aggregateZis._sum.total_beras_kg));
+    const totalUangZakat = roundTo2(decimalToNumber(aggregateZis._sum.nominal_zakat));
+
+    const used: Record<string, { uang: number; beras: number }> = {
+      FAKIR: { uang: 0, beras: 0 },
+      AMIL: { uang: 0, beras: 0 },
+      FISABILILLAH: { uang: 0, beras: 0 },
+      LAINNYA: { uang: 0, beras: 0 },
+    };
+    
+    sumDistribusi.forEach(d => {
+      const nominal = decimalToNumber(d._sum.nominal);
+      const catKey = d.kategori as keyof typeof used;
+      if (used[catKey]) {
+        if (d.jenis === "UANG") used[catKey].uang += nominal;
+        if (d.jenis === "BERAS") used[catKey].beras += nominal;
+      }
+    });
+
+    const catDisplayNames: Record<string, string> = {
+      FAKIR: "Fakir Miskin",
+      AMIL: "Amil",
+      FISABILILLAH: "Fisabilillah",
+      LAINNYA: "Lainnya"
+    };
+
+    const newPercents = {
+      FAKIR: newPersenFakir,
+      AMIL: newPersenAmil,
+      FISABILILLAH: newPersenFisabilillah,
+      LAINNYA: newPersenLainnya
+    };
+
+    const EPSILON_UANG = 1.5;
+    const EPSILON_BERAS = 0.05;
+
+    for (const cat of ["FAKIR", "AMIL", "FISABILILLAH", "LAINNYA"] as const) {
+      const percent = newPercents[cat];
+      const newAllocUang = (percent / 100) * totalUangZakat;
+      const newAllocBeras = (percent / 100) * totalBeras;
+
+      if (newAllocUang + EPSILON_UANG < used[cat].uang) {
+        res.status(400).json({
+          success: false,
+          message: `Tidak bisa mengurangi persentase alokasi ${catDisplayNames[cat]}. Dana yang sudah terdistribusi untuk kategori ini (Rp${Math.round(used[cat].uang).toLocaleString("id-ID")}) melebihi alokasi baru (Rp${Math.round(newAllocUang).toLocaleString("id-ID")}).`
+        });
+        return;
+      }
+
+      if (newAllocBeras + EPSILON_BERAS < used[cat].beras) {
+        res.status(400).json({
+          success: false,
+          message: `Tidak bisa mengurangi persentase alokasi ${catDisplayNames[cat]}. Beras yang sudah terdistribusi untuk kategori ini (${used[cat].beras.toFixed(2)} kg) melebihi alokasi baru (${newAllocBeras.toFixed(2)} kg).`
+        });
+        return;
+      }
     }
 
     const updated = await prisma.pengaturanZis.update({

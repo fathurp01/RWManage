@@ -52,6 +52,7 @@
    LIGHT MODE — Premium "Mira" palette
    ============================================================ */
 :root {
+  color-scheme: light;
   /* Base surfaces */
   --background: oklch(0.98 0.004 247);      /* slate-50-ish, slightly blue tinted */
   --foreground: oklch(0.15 0.014 262);       /* slate-900 */
@@ -170,6 +171,7 @@
   }
   html {
     @apply scroll-smooth;
+    color-scheme: light !important;
   }
 }
 

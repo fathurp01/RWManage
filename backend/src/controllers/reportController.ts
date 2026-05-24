@@ -761,55 +761,75 @@ export const exportRwReport = async (req: Request, res: Response): Promise<void>
     const doc = new PDFDocument({ margin: 40, size: "A4" });
     doc.pipe(res);
 
-    // Header logic
-    doc.fontSize(18).font("Helvetica-Bold").fillColor("#1e293b").text("Laporan RW Bulanan", { align: "left" });
-    doc.moveDown(0.2);
-    doc.fontSize(10).font("Helvetica").fillColor("#64748b").text(`Periode: ${report.periode.label}`);
-    doc.text(`Dicetak: ${new Date().toLocaleString("id-ID")}`);
+    const MONTH_LABELS_SHORT = [
+      "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+      "Jul", "Agt", "Sep", "Okt", "Nov", "Des"
+    ];
+
+    // Header RW Branding
+    doc.fontSize(15).font("Helvetica-Bold").fillColor("#312e81").text("LAPORAN BULANAN RUKUN WARGA (RW)", { align: "center" });
+    doc.moveDown(0.25);
+    doc.fontSize(12).font("Helvetica-Bold").fillColor("#1e293b").text(`WILAYAH RW ${report.wilayah_rw.no_rw || ""} / KOMPLEKS ${report.wilayah_rw.nama_kompleks?.toUpperCase() || ""}`, { align: "center" });
+    doc.fontSize(10).font("Helvetica").fillColor("#64748b").text(`Periode Laporan: ${report.periode.label}`, { align: "center" });
+    doc.text(`Dicetak: ${new Date().toLocaleString("id-ID")}`, { align: "center" });
     doc.moveDown(1.5);
 
     // Summary Block
-    doc.fontSize(12).font("Helvetica-Bold").fillColor("#1e293b").text("Ringkasan Wilayah", { underline: true });
-    doc.moveDown(0.5);
-    doc.fontSize(10).font("Helvetica").fillColor("#334155");
-    doc.text(`Kompleks: ${report.wilayah_rw.nama_kompleks}`);
-    doc.text(`No RW: ${report.wilayah_rw.no_rw}`);
-    doc.text(`Total Warga: ${report.summary.total_warga}`);
-    doc.moveDown();
+    doc.fontSize(11).font("Helvetica-Bold").fillColor("#1e293b").text("Ringkasan Laporan RW:");
+    doc.moveDown(0.4);
 
-    doc.fontSize(12).font("Helvetica-Bold").text("Ringkasan Keuangan");
-    doc.moveDown(0.5);
-    const summaryX1 = 40;
-    const summaryX2 = 300;
-    let currentY = doc.y;
+    const cardY = doc.y;
+    const cardHeight = 80;
+    doc.rect(40, cardY, 515, cardHeight).fillColor("#f8fafc").fill();
+    doc.rect(40, cardY, 515, cardHeight).strokeColor("#e2e8f0").stroke();
 
-    doc.fontSize(10).font("Helvetica");
-    doc.text(`Iuran Lunas: ${report.summary.total_iuran_lunas_count} (${formatCurrency(report.summary.total_iuran_lunas_nominal)})`, summaryX1, currentY);
-    doc.text(`Total Kas Masuk: ${formatCurrency(report.summary.total_kas_masuk)}`, summaryX2, currentY);
-    currentY += 15;
-    doc.text(`Iuran Belum: ${report.summary.total_iuran_belum_count} (${formatCurrency(report.summary.total_iuran_belum_nominal)})`, summaryX1, currentY);
-    doc.text(`Total Kas Keluar: ${formatCurrency(report.summary.total_kas_keluar)}`, summaryX2, currentY);
-    currentY += 20;
-    doc.font("Helvetica-Bold").text(`Saldo Kas Akhir: ${formatCurrency(report.summary.saldo_kas)}`, summaryX1, currentY);
+    // Inside text
+    doc.fillColor("#1e293b");
     
-    doc.moveDown(2);
+    // Column 1: Wilayah (x = 55)
+    doc.fontSize(9).font("Helvetica-Bold").text("Data Wilayah", 55, cardY + 10);
+    doc.font("Helvetica").fontSize(9);
+    doc.text(`Kompleks: ${report.wilayah_rw.nama_kompleks}`, 55, cardY + 25, { width: 150 });
+    doc.text(`No RW: RW ${report.wilayah_rw.no_rw}`, 55, cardY + 40, { width: 150 });
+    doc.text(`Total Warga: ${report.summary.total_warga} Jiwa`, 55, cardY + 55, { width: 150 });
 
-    // Table
+    // Column 2: Iuran (x = 220)
+    doc.font("Helvetica-Bold").text("Status Iuran Warga", 220, cardY + 10);
+    doc.font("Helvetica");
+    doc.text(`Lunas: ${report.summary.total_iuran_lunas_count} KK (${formatCurrency(report.summary.total_iuran_lunas_nominal)})`, 220, cardY + 25, { width: 160 });
+    doc.text(`Belum Lunas: ${report.summary.total_iuran_belum_count} KK (${formatCurrency(report.summary.total_iuran_belum_nominal)})`, 220, cardY + 40, { width: 160 });
+
+    // Column 3: Kas (x = 395)
+    doc.font("Helvetica-Bold").text("Ringkasan Keuangan", 395, cardY + 10);
+    doc.font("Helvetica");
+    doc.text(`Kas Masuk: ${formatCurrency(report.summary.total_kas_masuk)}`, 395, cardY + 25, { width: 150 });
+    doc.text(`Kas Keluar: ${formatCurrency(report.summary.total_kas_keluar)}`, 395, cardY + 40, { width: 150 });
+    doc.font("Helvetica-Bold").fillColor("#312e81").text(`Saldo Kas: ${formatCurrency(report.summary.saldo_kas)}`, 395, cardY + 55, { width: 150 });
+
+    doc.y = cardY + cardHeight + 20;
+
+    // Table drawing
     const headers = ["Bulan", "Lunas", "Belum", "Masuk", "Keluar", "Saldo"];
     const colWidths = [80, 80, 80, 90, 90, 90];
     let tableY = doc.y;
 
-    const drawRow = (data: string[], isHeader = false) => {
-        const h = 20;
+    const drawRow = (rowData: string[], isHeader = false) => {
+        const h = 22;
         if (tableY + h > 750) {
             doc.addPage();
             tableY = 40;
         }
         let x = 40;
         doc.font(isHeader ? "Helvetica-Bold" : "Helvetica").fontSize(9);
-        data.forEach((text, i) => {
-            doc.rect(x, tableY, colWidths[i], h).stroke();
-            doc.text(text, x + 5, tableY + 6, { width: colWidths[i] - 10, align: "left" });
+        rowData.forEach((text, i) => {
+            if (isHeader) {
+                doc.rect(x, tableY, colWidths[i], h).fillColor("#312e81").fill();
+                doc.rect(x, tableY, colWidths[i], h).strokeColor("#cbd5e1").stroke();
+                doc.fillColor("#ffffff").text(text, x + 6, tableY + 7, { width: colWidths[i] - 12, align: i === 0 ? "left" : (i === 1 || i === 2 ? "center" : "right") });
+            } else {
+                doc.rect(x, tableY, colWidths[i], h).strokeColor("#e2e8f0").stroke();
+                doc.fillColor("#1e293b").text(text, x + 6, tableY + 7, { width: colWidths[i] - 12, align: i === 0 ? "left" : (i === 1 || i === 2 ? "center" : "right") });
+            }
             x += colWidths[i];
         });
         tableY += h;
@@ -826,6 +846,24 @@ export const exportRwReport = async (req: Request, res: Response): Promise<void>
             formatCurrency(item.kas_saldo)
         ]);
     });
+
+    // Add Signature section at the end of PDF
+    const signatureHeight = 100;
+    if (tableY + signatureHeight > 750) {
+        doc.addPage();
+        tableY = 40;
+    }
+
+    doc.moveDown(2);
+    tableY = doc.y;
+    
+    doc.fontSize(10).font("Helvetica").fillColor("#334155");
+    const today = new Date();
+    doc.text(`Kota Bandung, ${today.getDate()} ${MONTH_LABELS_SHORT[today.getMonth()]} ${today.getFullYear()}`, 350, tableY, { align: "center", width: 200 });
+    doc.moveDown(0.2);
+    doc.font("Helvetica-Bold").text("Ketua RW", 350, doc.y, { align: "center", width: 200 });
+    doc.moveDown(3.5);
+    doc.font("Helvetica-Bold").text("( ____________________ )", 350, doc.y, { align: "center", width: 200 });
 
     doc.end();
   } catch (error) {
@@ -856,45 +894,38 @@ export const exportMasjidReport = async (req: Request, res: Response): Promise<v
     doc.pipe(res);
 
     // Header logic
-    doc.fontSize(18).font("Helvetica-Bold").fillColor("#059669").text("Laporan Masjid Bulanan", { align: "left" });
-    doc.moveDown(0.2);
-    doc.fontSize(10).font("Helvetica").fillColor("#64748b").text(`Periode: ${report.periode.label}`);
-    doc.text(`Dicetak: ${new Date().toLocaleString("id-ID")}`);
+    doc.fontSize(15).font("Helvetica-Bold").fillColor("#312e81").text("LAPORAN REKAPITULASI BULANAN MASJID", { align: "center" });
+    doc.moveDown(0.25);
+    doc.fontSize(12).font("Helvetica-Bold").fillColor("#1e293b").text(report.masjid.nama_masjid.toUpperCase(), { align: "center" });
+    doc.fontSize(10).font("Helvetica").fillColor("#64748b").text(`Wilayah: RW ${report.masjid.blok_wilayah.no_rw}, RT ${report.masjid.blok_wilayah.no_rt ?? "-"} / Blok ${report.masjid.blok_wilayah.nama_blok}`, { align: "center" });
+    doc.text(`Periode Laporan: ${report.periode.label} | Dicetak: ${new Date().toLocaleString("id-ID")}`, { align: "center" });
     doc.moveDown(1.5);
 
-    // Info Block
-    doc.fontSize(12).font("Helvetica-Bold").fillColor("#1e293b").text("Informasi Masjid", { underline: true });
-    doc.moveDown(0.5);
-    doc.fontSize(10).font("Helvetica").fillColor("#334155");
-    doc.text(`Nama Masjid: ${report.masjid.nama_masjid}`);
-    doc.text(`Alamat: ${report.masjid.alamat}`);
-    doc.text(`Wilayah: RW ${report.masjid.blok_wilayah.no_rw}, RT ${report.masjid.blok_wilayah.no_rt ?? "-"} / Blok ${report.masjid.blok_wilayah.nama_blok}`);
-    doc.moveDown();
-
     // Summary ZIS & Kas
-    doc.fontSize(12).font("Helvetica-Bold").text("Ringkasan Keuangan");
-    doc.moveDown(0.5);
+    doc.fontSize(11).font("Helvetica-Bold").fillColor("#1e293b").text("Ringkasan Keuangan Periode Ini:");
+    doc.moveDown(0.4);
+    
     let currentY = doc.y;
-    doc.fontSize(10).font("Helvetica");
+    doc.fontSize(10).font("Helvetica").fillColor("#334155");
+    doc.text(`Total Kas Masuk: ${formatCurrency(report.summary.total_kas_masuk)}`, 40, currentY);
+    doc.text(`ZIS Zakat: ${formatCurrency(report.summary.total_zis_uang_zakat)}`, 300, currentY);
     
-    // Left Column
-    doc.text(`ZIS Zakat: ${formatCurrency(report.summary.total_zis_uang_zakat)}`, 40, currentY);
-    doc.text(`ZIS Infaq: ${formatCurrency(report.summary.total_zis_uang_infaq)}`, 40, currentY + 15);
-    doc.text(`Total Beras: ${report.summary.total_zis_beras_kg.toFixed(2)} kg`, 40, currentY + 30);
-
-    // Right Column
-    doc.text(`Total Kas Masuk: ${formatCurrency(report.summary.total_kas_masuk)}`, 300, currentY);
-    doc.text(`Total Kas Keluar: ${formatCurrency(report.summary.total_kas_keluar)}`, 300, currentY + 15);
-    doc.font("Helvetica-Bold").text(`Saldo Kas Akhir: ${formatCurrency(report.summary.saldo_kas)}`, 300, currentY + 30);
+    currentY += 15;
+    doc.text(`Total Kas Keluar: ${formatCurrency(report.summary.total_kas_keluar)}`, 40, currentY);
+    doc.text(`ZIS Infaq: ${formatCurrency(report.summary.total_zis_uang_infaq)}`, 300, currentY);
     
-    doc.moveDown(4);
+    currentY += 15;
+    doc.font("Helvetica-Bold").text(`Saldo Kas Akhir: ${formatCurrency(report.summary.saldo_kas)}`, 40, currentY);
+    doc.font("Helvetica").text(`Total Beras ZIS: ${report.summary.total_zis_beras_kg.toFixed(2)} kg`, 300, currentY);
+    doc.moveDown(1.5);
 
     // Table
     const headers = ["Bulan", "Kas Masuk", "Kas Keluar", "Zakat", "Infaq", "Beras"];
     const colWidths = [70, 95, 95, 95, 95, 60];
+    const colAligns: Array<"left" | "center" | "right"> = ["center", "right", "right", "right", "right", "right"];
     let tableY = doc.y;
 
-    const drawRow = (data: string[], isHeader = false) => {
+    const drawRow = (rowData: string[], isHeader = false) => {
         const h = 22;
         if (tableY + h > 750) {
             doc.addPage();
@@ -902,9 +933,15 @@ export const exportMasjidReport = async (req: Request, res: Response): Promise<v
         }
         let x = 40;
         doc.font(isHeader ? "Helvetica-Bold" : "Helvetica").fontSize(8);
-        data.forEach((text, i) => {
-            doc.rect(x, tableY, colWidths[i], h).strokeColor("#e2e8f0").stroke();
-            doc.text(text, x + 4, tableY + 7, { width: colWidths[i] - 8, align: "left" });
+        rowData.forEach((text, i) => {
+            if (isHeader) {
+                doc.rect(x, tableY, colWidths[i], h).fillColor("#312e81").fill();
+                doc.rect(x, tableY, colWidths[i], h).strokeColor("#cbd5e1").stroke();
+                doc.fillColor("#ffffff").text(text, x + 4, tableY + 7, { width: colWidths[i] - 8, align: colAligns[i] });
+            } else {
+                doc.rect(x, tableY, colWidths[i], h).strokeColor("#e2e8f0").stroke();
+                doc.fillColor("#1e293b").text(text, x + 4, tableY + 7, { width: colWidths[i] - 8, align: colAligns[i] });
+            }
             x += colWidths[i];
         });
         tableY += h;

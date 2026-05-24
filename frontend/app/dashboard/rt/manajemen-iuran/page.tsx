@@ -82,6 +82,8 @@ interface RtIuranResponse {
     blok_wilayah_id: string;
     no_rt: string;
     nama_blok: string;
+    persen_rt?: number;
+    persen_rw?: number;
     tahun: number;
     bulan: number | null;
     status: "BELUM" | "LUNAS" | null;
@@ -211,6 +213,9 @@ export default function ManajemenIuranPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<RtIuranResponse["data"] | null>(null);
+
+  const persenRt = data?.persen_rt ?? 70;
+  const persenRw = data?.persen_rw ?? 30;
   const [searchNama, setSearchNama] = useState("");
   const [selectedDetail, setSelectedDetail] = useState<{ wargaName: string; iuran: IuranItem } | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -429,6 +434,17 @@ export default function ManajemenIuranPage() {
     }
   };
 
+  const getNominalTarif = (warga: any) => {
+    const firstUnpaid = warga.iuran.find((i: any) => i.status === "BELUM");
+    if (firstUnpaid) {
+      return Number(firstUnpaid.nominal);
+    }
+    if (warga.iuran.length > 0) {
+      return Number(warga.iuran[warga.iuran.length - 1].nominal);
+    }
+    return 0;
+  };
+
   const filteredWarga = useMemo(() => {
     if (!data) return [];
     return data.warga.filter((w) =>
@@ -438,14 +454,14 @@ export default function ManajemenIuranPage() {
 
   const chargeableWarga = useMemo(() => {
     return filteredWarga.filter((w) => {
-      const nominalBulanan = w.iuran[0]?.nominal ?? 0;
+      const nominalBulanan = getNominalTarif(w);
       return Number(nominalBulanan) > 0;
     });
   }, [filteredWarga]);
 
   const exemptWarga = useMemo(() => {
     return filteredWarga.filter((w) => {
-      const nominalBulanan = w.iuran[0]?.nominal ?? 0;
+      const nominalBulanan = getNominalTarif(w);
       return Number(nominalBulanan) === 0;
     });
   }, [filteredWarga]);
@@ -476,7 +492,7 @@ export default function ManajemenIuranPage() {
     if (!data) return { totalWarga: 0, lunas: 0, belumLunas: 0, cicilan: 0 };
     let lunas = 0, belumLunas = 0, cicilan = 0;
     for (const w of data.warga) {
-      const nominal = w.iuran[0]?.nominal ?? 0;
+      const nominal = getNominalTarif(w);
       if (Number(nominal) === 0) continue;
       for (const iuran of w.iuran) {
         const toneMeta = getIuranTone(iuran);
@@ -753,7 +769,7 @@ export default function ManajemenIuranPage() {
                       ];
                     }
 
-                    const nominalBulanan = warga.iuran[0]?.nominal ?? 0;
+                    const nominalBulanan = getNominalTarif(warga);
 
                     return [
                       <TableRow key={warga.id} className="hover:bg-slate-50/70 dark:hover:bg-white/3">
@@ -1038,8 +1054,8 @@ export default function ManajemenIuranPage() {
                   <TableHead className="font-semibold">Periode</TableHead>
                   <TableHead className="font-semibold hidden sm:table-cell">Tanggal Bayar</TableHead>
                   <TableHead className="font-semibold">Nominal</TableHead>
-                  <TableHead className="font-semibold hidden md:table-cell">Kas RT</TableHead>
-                  <TableHead className="font-semibold hidden md:table-cell">Setoran RW</TableHead>
+                  <TableHead className="font-semibold hidden md:table-cell">Kas RT ({persenRt}%)</TableHead>
+                  <TableHead className="font-semibold hidden md:table-cell">Setoran RW ({persenRw}%)</TableHead>
                   <TableHead className="font-semibold hidden lg:table-cell pr-6">Kode</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1203,15 +1219,15 @@ export default function ManajemenIuranPage() {
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div className="rounded-xl border p-3">
-                            <p className="text-[10px] uppercase tracking-widest text-slate-400">Kas RT (70%)</p>
+                            <p className="text-[10px] uppercase tracking-widest text-slate-400">Kas RT ({persenRt}%)</p>
                             <p className="mt-1 font-semibold">
-                              {formatCurrency(selectedDetail.iuran.nominal * 0.7)}
+                              {formatCurrency(selectedDetail.iuran.nominal * (persenRt / 100))}
                             </p>
                           </div>
                           <div className="rounded-xl border p-3">
-                            <p className="text-[10px] uppercase tracking-widest text-slate-400">Setoran RW (30%)</p>
+                            <p className="text-[10px] uppercase tracking-widest text-slate-400">Setoran RW ({persenRw}%)</p>
                             <p className="mt-1 font-semibold">
-                              {formatCurrency(selectedDetail.iuran.nominal * 0.3)}
+                              {formatCurrency(selectedDetail.iuran.nominal * (persenRw / 100))}
                             </p>
                           </div>
                         </div>
@@ -1263,15 +1279,15 @@ export default function ManajemenIuranPage() {
                     <div className="space-y-3 text-sm">
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div className="rounded-xl border p-3">
-                          <p className="text-[10px] uppercase tracking-widest text-slate-400">Kas RT (70%)</p>
+                          <p className="text-[10px] uppercase tracking-widest text-slate-400">Kas RT ({persenRt}%)</p>
                           <p className="mt-1 font-semibold">
-                            {selectedDetail ? formatCurrency(selectedDetail.iuran.nominal * 0.7) : "-"}
+                            {selectedDetail ? formatCurrency(selectedDetail.iuran.nominal * (persenRt / 100)) : "-"}
                           </p>
                         </div>
                         <div className="rounded-xl border p-3">
-                          <p className="text-[10px] uppercase tracking-widest text-slate-400">Setoran RW (30%)</p>
+                          <p className="text-[10px] uppercase tracking-widest text-slate-400">Setoran RW ({persenRw}%)</p>
                           <p className="mt-1 font-semibold">
-                            {selectedDetail ? formatCurrency(selectedDetail.iuran.nominal * 0.3) : "-"}
+                            {selectedDetail ? formatCurrency(selectedDetail.iuran.nominal * (persenRw / 100)) : "-"}
                           </p>
                         </div>
                       </div>

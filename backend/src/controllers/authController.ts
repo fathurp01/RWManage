@@ -168,10 +168,12 @@ export const registerWithClient = async (
       return;
     }
 
+    let targetBlokId = blok_wilayah_id;
+
     if (role === Role.PENGURUS_MASJID && masjid_id) {
       const masjid = await client.masjid.findUnique({
         where: { id: masjid_id },
-        select: { id: true },
+        select: { id: true, blok_wilayah_id: true },
       });
 
       if (!masjid) {
@@ -181,6 +183,7 @@ export const registerWithClient = async (
         });
         return;
       }
+      targetBlokId = masjid.blok_wilayah_id;
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
@@ -194,7 +197,7 @@ export const registerWithClient = async (
           password: hashedPassword,
           no_hp,
           role,
-          blok_wilayah_id,
+          blok_wilayah_id: targetBlokId,
           status_akun: initialStatus,
         },
       });
@@ -675,6 +678,7 @@ export const approvePengurusWithClient = async (
       select: {
         masjid: {
           select: {
+            blok_wilayah_id: true,
             blok_wilayah: {
               select: {
                 wilayah_rw_id: true,
@@ -708,6 +712,7 @@ export const approvePengurusWithClient = async (
         status_akun,
         alasan_penolakan:
           status_akun === "REJECTED" ? alasan_penolakan?.trim() : null,
+        ...(status_akun === "APPROVED" ? { blok_wilayah_id: targetPengurus.masjid.blok_wilayah_id } : {}),
       },
       select: {
         id: true,
