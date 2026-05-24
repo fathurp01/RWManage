@@ -22,7 +22,7 @@ import {
   approvePasswordReset,
   rejectPasswordReset,
 } from "../controllers/superadminController";
-import { getAuditLogList } from "../controllers/auditLogController";
+
 import {
   bayarIuran,
   createKasRW,

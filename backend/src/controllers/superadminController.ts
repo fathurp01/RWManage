@@ -54,23 +54,37 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
-    const newUser = await prisma.user.create({
-      data: {
-        nama,
-        email,
-        password: hashedPassword,
-        no_hp,
-        role,
-        blok_wilayah_id: blok_wilayah_id || null,
-        status_akun: StatusAkun.APPROVED, // Auto-approved as requested
-      },
-      select: {
-        id: true,
-        nama: true,
-        email: true,
-        role: true,
-        status_akun: true,
-      },
+    const newUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          nama,
+          email,
+          password: hashedPassword,
+          no_hp,
+          role,
+          blok_wilayah_id: blok_wilayah_id || null,
+          status_akun: StatusAkun.APPROVED, // Auto-approved as requested
+        },
+        select: {
+          id: true,
+          nama: true,
+          email: true,
+          role: true,
+          status_akun: true,
+        },
+      });
+
+      if (user.role === Role.RW) {
+        await tx.wilayahRW.create({
+          data: {
+            user_id: user.id,
+            nama_kompleks: user.nama, // Gunakan nama user (Desa)
+            no_rw: "-", // Default no_rw
+          },
+        });
+      }
+
+      return user;
     });
 
     await recordAudit(req, {
@@ -98,7 +112,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { nama, no_hp, role, status_akun, blok_wilayah_id } = req.body;
 
     const existingUser = await prisma.user.findUnique({ where: { id } });
@@ -144,7 +158,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const user = await prisma.user.findUnique({
       where: { id },
@@ -194,7 +208,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
 
 export const resetPasswordDirect = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { new_password } = req.body;
 
     if (!new_password) {
@@ -255,7 +269,7 @@ export const getPasswordResets = async (req: Request, res: Response): Promise<vo
 
 export const approvePasswordReset = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const request = await prisma.passwordResetRequest.findUnique({
       where: { id },
@@ -303,7 +317,7 @@ export const approvePasswordReset = async (req: Request, res: Response): Promise
 
 export const rejectPasswordReset = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const request = await prisma.passwordResetRequest.findUnique({
       where: { id },

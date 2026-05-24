@@ -268,7 +268,7 @@ export default function DashboardRwIndexPage() {
           </span>
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
-              Overview - Desa {report?.wilayah_rw?.desa || user?.nama || ""} | RW {report?.wilayah_rw?.no_rw || ""}
+              Overview - {report?.wilayah_rw?.desa || user?.nama || ""} | RW {report?.wilayah_rw?.no_rw || ""}
             </h1>
             <p className="text-sm text-slate-500 dark:text-muted-foreground font-medium">
               Pusat Komando Keuangan, Kependudukan, dan Keamanan Wilayah RW

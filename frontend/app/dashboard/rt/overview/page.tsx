@@ -158,7 +158,7 @@ export default function RtOverviewPage() {
           </span>
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
-              Overview - Desa {overview?.desa || ""} | RW {overview?.no_rw ? `${overview.no_rw}` : ""}/RT {overview?.no_rt ? `${overview.no_rt}` : ""}
+              Overview - {overview?.desa || ""} | RW {overview?.no_rw ? `${overview.no_rw}` : ""}/RT {overview?.no_rt ? `${overview.no_rt}` : ""}
             </h1>
             <p className="text-sm text-slate-500 dark:text-muted-foreground font-medium">
               Ringkasan warga, target iuran, pembayaran yang terkumpul, status lunas/belum, dan riwayat transaksi kas.
@@ -381,11 +381,10 @@ export default function RtOverviewPage() {
                         className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50/50 dark:hover:bg-white/1 transition-colors"
                       >
                         <span
-                          className={`inline-flex size-9 shrink-0 items-center justify-center rounded-xl ${
-                            isMasuk
+                          className={`inline-flex size-9 shrink-0 items-center justify-center rounded-xl ${isMasuk
                               ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/30"
                               : "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100/30"
-                          }`}
+                            }`}
                         >
                           {isMasuk ? (
                             <ArrowDownLeft className="size-4.5" />
@@ -403,20 +402,18 @@ export default function RtOverviewPage() {
                         </div>
                         <div className="shrink-0 text-right">
                           <p
-                            className={`text-sm font-extrabold tabular-nums ${
-                              isMasuk
+                            className={`text-sm font-extrabold tabular-nums ${isMasuk
                                 ? "text-emerald-700 dark:text-emerald-400"
                                 : "text-rose-700 dark:text-rose-400"
-                            }`}
+                              }`}
                           >
                             {isMasuk ? "+" : "-"} {formatCurrency(Number(item.nominal))}
                           </p>
                           <span
-                            className={`text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-md ${
-                              isMasuk
+                            className={`text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-md ${isMasuk
                                 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
                                 : "bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400"
-                            }`}
+                              }`}
                           >
                             {item.jenis_transaksi}
                           </span>

@@ -160,7 +160,7 @@ const getAvailableZisBalance = async (
   masjid_id: string,
   exclude_pencatatan_id?: string
 ) => {
-  const [aggregateZis, sumDistribusi, pengaturan] = await Promise.all([
+  const [aggregateZis, sumDistribusi] = await Promise.all([
     client.transaksiZis.aggregate({
       where: { masjid_id },
       _sum: { total_beras_kg: true, nominal_zakat: true, nominal_infaq: true },
@@ -169,9 +169,18 @@ const getAvailableZisBalance = async (
       by: ["kategori", "jenis"],
       where: { masjid_id, ...(exclude_pencatatan_id ? { id: { not: exclude_pencatatan_id } } : {}) },
       _sum: { nominal: true },
-    }),
-    client.pengaturanZis.findUnique({ where: { masjid_id } })
+    })
   ]);
+
+  let pengaturan = await client.pengaturanZis.findUnique({ where: { masjid_id } });
+  if (!pengaturan) {
+    pengaturan = await client.pengaturanZis.create({
+      data: {
+        masjid_id,
+        harga_beras_per_kg: 15000,
+      },
+    });
+  }
 
   const totalBeras = roundTo2(decimalToNumber(aggregateZis._sum.total_beras_kg));
   const totalUangZakat = roundTo2(decimalToNumber(aggregateZis._sum.nominal_zakat));
@@ -185,8 +194,6 @@ const getAvailableZisBalance = async (
     if (d.jenis === "UANG") used[d.kategori].uang += nominal;
     if (d.jenis === "BERAS") used[d.kategori].beras += nominal;
   });
-
-  if (!pengaturan) throw new Error("Pengaturan ZIS tidak ditemukan");
 
   const allocUang = calculateDistribution(pengaturan, totalUangZakat);
   const allocBeras = calculateDistribution(pengaturan, totalBeras);
@@ -268,16 +275,17 @@ export const createTransaksiZisWithClient = async (
       return;
     }
 
-    const pengaturan = await client.pengaturanZis.findUnique({
+    let pengaturan = await client.pengaturanZis.findUnique({
       where: { masjid_id: authorizedMasjidId },
     });
 
     if (!pengaturan) {
-      res.status(404).json({
-        success: false,
-        message: "Pengaturan ZIS untuk masjid ini belum tersedia.",
+      pengaturan = await client.pengaturanZis.create({
+        data: {
+          masjid_id: authorizedMasjidId,
+          harga_beras_per_kg: 15000,
+        },
       });
-      return;
     }
 
     // Perhitungan Zakat — gunakan nilai manual jika ada, otomatis jika tidak
@@ -371,7 +379,7 @@ export const getDashboardZisWithClient = async (
       return;
     }
 
-    const pengaturan = await client.pengaturanZis.findUnique({
+    let pengaturan = await client.pengaturanZis.findUnique({
       where: { masjid_id: authorizedMasjidId },
       select: {
         id: true,
@@ -386,11 +394,22 @@ export const getDashboardZisWithClient = async (
     });
 
     if (!pengaturan) {
-      res.status(404).json({
-        success: false,
-        message: "Pengaturan ZIS untuk masjid ini belum tersedia.",
+      pengaturan = await client.pengaturanZis.create({
+        data: {
+          masjid_id: authorizedMasjidId,
+          harga_beras_per_kg: 15000,
+        },
+        select: {
+          id: true,
+          masjid_id: true,
+          persen_fakir: true,
+          persen_amil: true,
+          persen_fisabilillah: true,
+          persen_lainnya: true,
+          harga_beras_per_kg: true,
+          is_harga_auto_api: true,
+        },
       });
-      return;
     }
 
     let whereTransaksi: Prisma.TransaksiZisWhereInput = { masjid_id: authorizedMasjidId };
@@ -765,13 +784,17 @@ export const updateTransaksiZis = async (
       return;
     }
 
-    const pengaturan = await prisma.pengaturanZis.findUnique({
+    let pengaturan = await prisma.pengaturanZis.findUnique({
       where: { masjid_id: authorizedMasjidId },
     });
 
     if (!pengaturan) {
-      res.status(404).json({ success: false, message: "Pengaturan ZIS untuk masjid ini belum tersedia." });
-      return;
+      pengaturan = await prisma.pengaturanZis.create({
+        data: {
+          masjid_id: authorizedMasjidId,
+          harga_beras_per_kg: 15000,
+        },
+      });
     }
 
     // Determine values to update. If missing, fetch existing to calculate correctly.

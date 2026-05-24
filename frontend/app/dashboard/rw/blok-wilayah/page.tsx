@@ -848,8 +848,8 @@ export default function BlokWilayahPage() {
                   <th className="text-left px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs w-12">No</th>
                   <th className="text-left px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Nama Blok</th>
                   <th className="text-left px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Nomor RT</th>
-                  <th className="text-left px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Akun Ketua RT</th>
-                  <th className="text-left px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Akun Pengurus</th>
+                  <th className="text-left px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Nama Ketua RT</th>
+                  <th className="text-left px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Nama Pengurus Masjid</th>
                   <th className="text-left px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Warga</th>
                   <th className="text-right px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Aksi</th>
                 </tr>

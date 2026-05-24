@@ -35,6 +35,7 @@ interface RegisterBody {
   role?: Role;
   blok_wilayah_id?: string;
   masjid_id?: string;
+  no_rw?: string;
 }
 
 interface LoginBody {
@@ -93,7 +94,7 @@ export const registerWithClient = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { nama, email, password, no_hp, role, blok_wilayah_id, masjid_id } =
+    const { nama, email, password, no_hp, role, blok_wilayah_id, masjid_id, no_rw } =
       req.body as RegisterBody;
 
     if (!nama || !email || !password || !no_hp || !role) {
@@ -108,6 +109,14 @@ export const registerWithClient = async (
       res.status(400).json({
         success: false,
         message: "Role tidak valid. Gunakan RW atau PENGURUS_MASJID.",
+      });
+      return;
+    }
+
+    if (role === Role.RW && !no_rw) {
+      res.status(400).json({
+        success: false,
+        message: "no_rw wajib diisi untuk role RW.",
       });
       return;
     }
@@ -195,6 +204,16 @@ export const registerWithClient = async (
           data: {
             user_id: user.id,
             masjid_id,
+          },
+        });
+      }
+
+      if (role === Role.RW && no_rw) {
+        await tx.wilayahRW.create({
+          data: {
+            user_id: user.id,
+            no_rw,
+            nama_kompleks: nama, // Desa sama dengan nama kompleks
           },
         });
       }
@@ -994,20 +1013,42 @@ export const approveRegistrationWithClient = async (
       return;
     }
 
-    const updatedUser = await client.user.update({
-      where: { id: user_id },
-      data: {
-        status_akun: status_akun,
-        alasan_penolakan: status_akun === "REJECTED" ? alasan_penolakan?.trim() : null,
-      },
-      select: {
-        id: true,
-        nama: true,
-        email: true,
-        role: true,
-        status_akun: true,
-        alasan_penolakan: true,
-      },
+    const updatedUser = await client.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id: user_id },
+        data: {
+          status_akun: status_akun,
+          alasan_penolakan: status_akun === "REJECTED" ? alasan_penolakan?.trim() : null,
+        },
+        select: {
+          id: true,
+          nama: true,
+          email: true,
+          role: true,
+          status_akun: true,
+          alasan_penolakan: true,
+        },
+      });
+
+      if (status_akun === "APPROVED" && user.role === Role.RW) {
+        const existingWilayah = await tx.wilayahRW.findUnique({
+          where: { user_id: user.id },
+        });
+
+        if (!existingWilayah) {
+          await tx.wilayahRW.create({
+            data: {
+              user_id: user.id,
+              nama_kompleks: "-",
+              no_rw: "-",
+            },
+          });
+        }
+      } else if (user.role === Role.PENGURUS_MASJID) {
+        // Nothing special to do for masjid approvals right now
+      }
+
+      return user;
     });
 
     res.status(200).json({

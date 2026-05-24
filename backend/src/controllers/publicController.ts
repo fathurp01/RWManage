@@ -132,6 +132,15 @@ export const getWilayahListWithClient = async (
             id: true,
             nama_blok: true,
             no_rt: true,
+            _count: {
+              select: {
+                users: {
+                  where: {
+                    role: "RT",
+                  },
+                },
+              },
+            },
           },
           orderBy: [{ no_rt: "asc" }],
         },
@@ -147,7 +156,12 @@ export const getWilayahListWithClient = async (
         desa: item.user.nama,
         nama_kompleks: item.nama_kompleks,
         no_rw: item.no_rw,
-        blok_wilayah: item.blok_wilayah,
+        blok_wilayah: item.blok_wilayah.map((b) => ({
+          id: b.id,
+          nama_blok: b.nama_blok,
+          no_rt: b.no_rt,
+          is_occupied: b._count.users > 0,
+        })),
       })),
     });
   } catch {

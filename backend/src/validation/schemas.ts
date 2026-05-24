@@ -11,6 +11,7 @@ export const registerSchema = z
     role: z.enum(["RW", "RT", "PENGURUS_MASJID"]),
     blok_wilayah_id: uuidSchema.optional(),
     masjid_id: uuidSchema.optional(),
+    no_rw: z.string().trim().max(10).optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -26,6 +27,13 @@ export const registerSchema = z
         code: z.ZodIssueCode.custom,
         path: ["blok_wilayah_id"],
         message: "blok_wilayah_id wajib diisi untuk role RT.",
+      });
+    }
+    if (value.role === "RW" && !value.no_rw) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["no_rw"],
+        message: "no_rw wajib diisi untuk role RW.",
       });
     }
   });

@@ -33,6 +33,7 @@ interface BlokWilayahOption {
   id: string;
   no_rt: string;
   nama_blok: string;
+  is_occupied?: boolean;
 }
 
 interface WilayahHierarchyOption {
@@ -151,6 +152,7 @@ export default function RegisterPage() {
       const selectedRole = String(formData.get("role") ?? "RW") as AppRole;
       const masjidId = String(formData.get("masjid_id") ?? "").trim();
       const blokWilayahIdInput = String(formData.get("blok_wilayah_id") ?? "").trim();
+      const noRw = String(formData.get("no_rw") ?? "").trim();
 
       const fieldErrors: FieldErrors = {};
 
@@ -164,6 +166,9 @@ export default function RegisterPage() {
       if (selectedRole === "RT" && !blokWilayahIdInput) {
         fieldErrors.blok_wilayah_id = "RT wajib memilih Blok Wilayah.";
       }
+      if (selectedRole === "RW") {
+        if (!noRw) fieldErrors.no_rw = "Nomor RW wajib diisi.";
+      }
 
       const payload: Record<string, string> = {
         nama,
@@ -172,6 +177,10 @@ export default function RegisterPage() {
         password,
         role: selectedRole,
       };
+
+      if (selectedRole === "RW") {
+        payload.no_rw = noRw;
+      }
 
       if (selectedRole === "PENGURUS_MASJID") {
         if (!masjidId) {
@@ -441,14 +450,24 @@ export default function RegisterPage() {
                 {/* Nama */}
                 <div className="space-y-1.5">
                   <Label htmlFor="nama" className="text-sm font-bold text-slate-700 dark:text-foreground/90">
-                    Nama Lengkap
+                    {role === "RW"
+                      ? "Nama Desa / Kelurahan"
+                      : role === "RT"
+                      ? "Nama Ketua RT"
+                      : "Nama Pengurus"}
                   </Label>
                   <div className="relative">
                     <User className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                     <Input
                       id="nama"
                       name="nama"
-                      placeholder="Nama lengkap"
+                      placeholder={
+                        role === "RW"
+                          ? "Misal: Desa Sukamaju"
+                          : role === "RT"
+                          ? "Misal: Budi Santoso"
+                          : "Nama lengkap pengurus"
+                      }
                       aria-invalid={Boolean(formState.fieldErrors.nama)}
                       disabled={isPending}
                       className="pl-10 h-10 rounded-xl"
@@ -527,7 +546,31 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* RW system: optional blok wilayah ID */}
+              {/* RW specific fields */}
+              {systemChoice === "rwrt" && role === "RW" && (
+                <div className="rounded-2xl border border-indigo-100 dark:border-indigo-500/15 bg-indigo-50/50 dark:bg-indigo-950/20 p-4 space-y-4">
+                  <p className="text-sm font-bold text-slate-700 dark:text-foreground/90">Detail Wilayah RW</p>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="no_rw" className="text-xs font-semibold text-slate-600 dark:text-muted-foreground">
+                      Nomor RW
+                    </Label>
+                    <Input
+                      id="no_rw"
+                      name="no_rw"
+                      placeholder="Misal: 01"
+                      disabled={isPending}
+                      className="h-10 rounded-xl"
+                      aria-invalid={Boolean(formState.fieldErrors.no_rw)}
+                    />
+                    {formState.fieldErrors.no_rw ? (
+                      <p className="text-xs text-destructive">{formState.fieldErrors.no_rw}</p>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+
+              {/* RT system: optional blok wilayah ID */}
               {systemChoice === "rwrt" && role === "RT" && (
                 <div className="rounded-2xl border border-indigo-100 dark:border-indigo-500/15 bg-indigo-50/50 dark:bg-indigo-950/20 p-4 space-y-4">
                   <p className="text-sm font-bold text-slate-700 dark:text-foreground/90">Pilih Desa/RW & RT</p>
@@ -574,8 +617,8 @@ export default function RegisterPage() {
                         {wilayahHierarchy
                           .find(rw => rw.id === selectedRwId)
                           ?.blok_wilayah.map((rt) => (
-                            <option key={rt.id} value={rt.id}>
-                              RT {rt.no_rt} — {rt.nama_blok}
+                            <option key={rt.id} value={rt.id} disabled={rt.is_occupied}>
+                              RT {rt.no_rt} — {rt.nama_blok} {rt.is_occupied ? "(Sudah ada pengurus)" : ""}
                             </option>
                           ))}
                       </select>
