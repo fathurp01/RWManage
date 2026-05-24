@@ -39,4 +39,15 @@ export const auditLogClient = {
     const res = await api.get<AuditLogListResponse>("/admin/audit-logs", { params });
     return res.data;
   },
+  async listForRt(params?: {
+    aksi?: AuditAction;
+    tanggal_mulai?: string;
+    tanggal_akhir?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<AuditLogListResponse> {
+    const res = await api.get<AuditLogListResponse>("/rt/audit-logs", { params });
+    return res.data;
+  },
 };
+

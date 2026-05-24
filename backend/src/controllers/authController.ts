@@ -59,6 +59,13 @@ interface TokenPayload extends Pick<User, "id" | "email" | "role"> {
   blok_wilayah_id?: string;
 }
 
+interface ForgotPasswordBody {
+  email: string;
+  new_password: string;
+  confirm_password: string;
+  alasan: string;
+}
+
 const createToken = (user: TokenPayload): string => {
   const jwtSecret = process.env.JWT_SECRET;
 
@@ -413,6 +420,60 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     success: true,
     message: "Logout berhasil.",
   });
+};
+
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, new_password, confirm_password, alasan } = req.body as ForgotPasswordBody;
+
+    if (!email || !new_password || !confirm_password || !alasan) {
+      res.status(400).json({
+        success: false,
+        message: "Email, password baru, konfirmasi password, dan alasan wajib diisi.",
+      });
+      return;
+    }
+
+    if (new_password !== confirm_password) {
+      res.status(400).json({
+        success: false,
+        message: "Password baru dan konfirmasi password tidak cocok.",
+      });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: "User dengan email tersebut tidak ditemukan.",
+      });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(new_password, SALT_ROUNDS);
+
+    await prisma.passwordResetRequest.create({
+      data: {
+        user_id: user.id,
+        new_password_hash: hashedPassword,
+        alasan,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Permintaan ubah password berhasil dikirim dan menunggu persetujuan admin.",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan saat memproses permintaan ubah password.",
+    });
+  }
 };
 
 export const meWithClient = async (

@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 export default function RwMonitoringRondaPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<RwMonitoringRondaData | null>(null);
-  const [expandedBloks, setExpandedBloks] = useState<string[]>([]);
+  const [expandedBlok, setExpandedBlok] = useState<string>("");
   const [blokDetails, setBlokDetails] = useState<Record<string, { jadwals: any[]; presensi: any[] }>>({});
   const [loadingBloks, setLoadingBloks] = useState<Record<string, boolean>>({});
 
@@ -76,19 +76,17 @@ export default function RwMonitoringRondaPage() {
     }
   }, [selectedMonth, selectedYear]);
 
-  const handleAccordionChange = async (values: string[]) => {
-    setExpandedBloks(values);
-    for (const val of values) {
-      if (!blokDetails[val] && !loadingBloks[val]) {
-        try {
-          setLoadingBloks(prev => ({ ...prev, [val]: true }));
-          const res = await performaRondaClient.getDetailRondaBlok(val);
-          setBlokDetails(prev => ({ ...prev, [val]: res }));
-        } catch (err) {
-          toast.error("Gagal memuat riwayat presensi RT");
-        } finally {
-          setLoadingBloks(prev => ({ ...prev, [val]: false }));
-        }
+  const handleAccordionChange = async (value: string) => {
+    setExpandedBlok(value);
+    if (value && !blokDetails[value] && !loadingBloks[value]) {
+      try {
+        setLoadingBloks(prev => ({ ...prev, [value]: true }));
+        const res = await performaRondaClient.getDetailRondaBlok(value);
+        setBlokDetails(prev => ({ ...prev, [value]: res }));
+      } catch (err) {
+        toast.error("Gagal memuat riwayat presensi RT");
+      } finally {
+        setLoadingBloks(prev => ({ ...prev, [value]: false }));
       }
     }
   };
@@ -420,31 +418,6 @@ export default function RwMonitoringRondaPage() {
                   <p className="text-sm text-slate-500 mt-0.5">Pantau keaktifan patroli dan penjagaan dari setiap blok wilayah.</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2.5">
-                <span className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl shrink-0">
-                  Menampilkan {totalItems > 0 ? startIndex + 1 : 0} - {Math.min(endIndex, totalItems)} dari {totalItems} RT
-                </span>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={activePage === 1}
-                    className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
-                  >
-                    <ChevronLeft className="size-5 stroke-[2.5px]" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={activePage === totalPages}
-                    className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
-                  >
-                    <ChevronRight className="size-5 stroke-[2.5px]" />
-                  </Button>
-                </div>
-              </div>
             </div>
 
             <div className="p-0">
@@ -453,7 +426,7 @@ export default function RwMonitoringRondaPage() {
                   Tidak ada data yang cocok dengan pencarian Anda.
                 </div>
               ) : (
-                <Accordion type="multiple" value={expandedBloks} onValueChange={handleAccordionChange} className="w-full">
+                <Accordion type="single" collapsible value={expandedBlok} onValueChange={handleAccordionChange} className="w-full">
                   {paginatedBloks.map((blok) => {
                     const stats = getBlockStats(blok);
                     const isAlert = blok.is_any_kosong_malam_ini;
@@ -471,7 +444,6 @@ export default function RwMonitoringRondaPage() {
                               </span>
                               <div className="text-left">
                                 <div className="flex items-center gap-2">
-                                  {/* Teks RT disamakan dengan ukuran text-base font-bold agar lebih terbaca legang */}
                                   <h3 className="text-base font-bold text-slate-900">
                                     RT {blok.no_rt.toString().padStart(3, '0')} <span className="font-semibold text-slate-400 text-sm ml-1.5">{blok.nama_blok}</span>
                                   </h3>
@@ -479,7 +451,6 @@ export default function RwMonitoringRondaPage() {
                                     <Badge className="bg-red-500 text-white text-[9px] uppercase px-1.5 py-0.5 border-0">Kosong Malam Ini</Badge>
                                   )}
                                 </div>
-                                {/* Deskripsi dinaikkan ke text-sm */}
                                 <p className="text-sm text-slate-400 mt-1 font-medium">
                                   {blok.jadwal.length} Jadwal Aktif • {stats.attendanceRate}% Kehadiran Warga
                                 </p>
@@ -511,14 +482,12 @@ export default function RwMonitoringRondaPage() {
                             </TabsList>
 
                             <TabsContent value="jadwal" className="pt-0">
-                              {/* Kalender 7 Hari yang Kompak & Nyaman Dibaca */}
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {hariList.map(hari => {
                                   const jadwalHariIni = blok.jadwal.filter(j => j.hari_minggu === hari.value);
                                   const hasSchedule = jadwalHariIni.length > 0;
                                   const isTodayEmpty = hasSchedule && jadwalHariIni.some(j => j.is_kosong_malam_ini);
 
-                                  // Tampilan minimal untuk hari yang tidak ada jadwal
                                   if (!hasSchedule) {
                                     return (
                                       <div key={hari.value} className="rounded-xl bg-slate-50/50 border border-slate-200/70 p-3.5 flex flex-col justify-between items-center text-center min-h-[145px] shadow-xs">
@@ -532,7 +501,6 @@ export default function RwMonitoringRondaPage() {
                                     );
                                   }
 
-                                  // Tampilan kartu untuk hari yang ada jadwal
                                   return (
                                     <div key={hari.value} className={`rounded-xl bg-white border p-3.5 flex flex-col min-h-[145px] ${isTodayEmpty ? "border-red-300 ring-1 ring-red-100 shadow-sm" : "border-slate-200 shadow-sm"
                                       }`}>
@@ -595,7 +563,6 @@ export default function RwMonitoringRondaPage() {
                                     <table className="w-full text-left">
                                       <thead className="bg-slate-50 border-b border-slate-200">
                                         <tr>
-                                          {/* Table header disesuaikan ukuran teksnya */}
                                           <th className="px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-500">Tanggal</th>
                                           <th className="px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-500">Petugas Ronda</th>
                                           <th className="px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-500">Status</th>
@@ -608,7 +575,6 @@ export default function RwMonitoringRondaPage() {
                                             <td className="px-5 py-3 text-slate-600">
                                               {new Date(p.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                                             </td>
-                                            {/* Text disamakan font-semibold text-slate-900 text-sm */}
                                             <td className="px-5 py-3 font-semibold text-slate-900">{p.nama_petugas}</td>
                                             <td className="px-5 py-3">
                                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.status_hadir === 'HADIR' ? 'bg-emerald-100 text-emerald-700' :
@@ -617,7 +583,6 @@ export default function RwMonitoringRondaPage() {
                                                 {p.status_hadir}
                                               </span>
                                             </td>
-                                            {/* Catatan disesuaikan text-sm text-slate-500 */}
                                             <td className="px-5 py-3 text-slate-500 truncate max-w-[200px]">{p.catatan || "-"}</td>
                                           </tr>
                                         ))}
@@ -635,6 +600,32 @@ export default function RwMonitoringRondaPage() {
                 </Accordion>
               )}
             </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between flex-wrap gap-4">
+              <span className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl shrink-0">
+                Menampilkan {totalItems > 0 ? startIndex + 1 : 0} - {Math.min(endIndex, totalItems)} dari {totalItems} RT
+              </span>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={activePage === 1}
+                  className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
+                >
+                  <ChevronLeft className="size-5 stroke-[2.5px]" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={activePage === totalPages}
+                  className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
+                >
+                  <ChevronRight className="size-5 stroke-[2.5px]" />
+                </Button>
+              </div>
+            </div>
           </div>
 
           {/* ── Rapor Ronda Bulanan RT ── */}
@@ -649,31 +640,6 @@ export default function RwMonitoringRondaPage() {
                     Rapor Ronda Bulanan RT (Bulan {monthNames.find(m => m.value === selectedMonth)?.label} {selectedYear})
                   </h2>
                   <p className="text-sm text-slate-500 mt-0.5">Akumulasi tingkat kehadiran periode ini (Klik <b>Tegur RT</b> untuk menegur RT terkait).</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <span className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl shrink-0">
-                  Menampilkan {totalRaporItems > 0 ? startRaporIndex + 1 : 0} - {Math.min(endRaporIndex, totalRaporItems)} dari {totalRaporItems} RT
-                </span>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setRaporCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={activeRaporPage === 1}
-                    className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
-                  >
-                    <ChevronLeft className="size-5 stroke-[2.5px]" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setRaporCurrentPage(prev => Math.min(prev + 1, totalRaporPages))}
-                    disabled={activeRaporPage === totalRaporPages}
-                    className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
-                  >
-                    <ChevronRight className="size-5 stroke-[2.5px]" />
-                  </Button>
                 </div>
               </div>
             </div>
@@ -781,6 +747,32 @@ export default function RwMonitoringRondaPage() {
                   </table>
                 </div>
               )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between flex-wrap gap-4">
+              <span className="text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl shrink-0">
+                Menampilkan {totalRaporItems > 0 ? startRaporIndex + 1 : 0} - {Math.min(endRaporIndex, totalRaporItems)} dari {totalRaporItems} RT
+              </span>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setRaporCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={activeRaporPage === 1}
+                  className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
+                >
+                  <ChevronLeft className="size-5 stroke-[2.5px]" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setRaporCurrentPage(prev => Math.min(prev + 1, totalRaporPages))}
+                  disabled={activeRaporPage === totalRaporPages}
+                  className="size-8 rounded-lg border-slate-300 bg-white hover:bg-violet-50 text-slate-800 hover:text-violet-600 hover:border-violet-300 disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-all shadow-xs flex items-center justify-center"
+                >
+                  <ChevronRight className="size-5 stroke-[2.5px]" />
+                </Button>
+              </div>
             </div>
           </div>
         </>

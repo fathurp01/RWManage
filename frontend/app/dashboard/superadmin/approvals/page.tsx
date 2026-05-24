@@ -13,7 +13,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 export default function SuperadminApprovalsPage() {
   const [rows, setRows] = useState<PendingRegistrationItem[]>([]);
   const [search, setSearch] = useState("");
-  const [role, setRole] = useState<"ALL" | "RW" | "RT">("ALL");
   const [rejectReason, setRejectReason] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +21,7 @@ export default function SuperadminApprovalsPage() {
     try {
       const data = await superadminClient.listPendingRegistrations({
         search: search || undefined,
-        role: role === "ALL" ? undefined : role,
+        role: "RW",
       });
       setRows(data);
     } catch (error) {
@@ -31,7 +30,7 @@ export default function SuperadminApprovalsPage() {
     } finally {
       setLoading(false);
     }
-  }, [role, search]);
+  }, [search]);
 
   useEffect(() => {
     loadRows().catch(() => undefined);
@@ -58,25 +57,17 @@ export default function SuperadminApprovalsPage() {
     <main className="flex flex-1 flex-col gap-6">
       <header>
         <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">Persetujuan User</h1>
-        <p className="text-slate-500 dark:text-muted-foreground">Proses pendaftaran RW dan RT yang masih pending.</p>
+        <p className="text-slate-500 dark:text-muted-foreground">Proses pendaftaran RW yang masih pending.</p>
       </header>
 
       <Card>
         <CardHeader>
           <CardTitle>Filter</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
+        <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label>Pencarian</Label>
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nama / email / no hp" />
-          </div>
-          <div className="space-y-2">
-            <Label>Role</Label>
-            <select className="h-10 rounded-md border bg-background px-3" value={role} onChange={(e) => setRole(e.target.value as "ALL" | "RW" | "RT")}>
-              <option value="ALL">Semua</option>
-              <option value="RW">RW</option>
-              <option value="RT">RT</option>
-            </select>
           </div>
           <div className="flex items-end">
             <Button className="w-full" variant="rw" onClick={() => loadRows()} disabled={loading}>{loading ? "Memuat..." : "Terapkan"}</Button>

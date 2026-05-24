@@ -29,10 +29,22 @@ interface FormState {
   fieldErrors: FieldErrors;
 }
 
-interface WilayahRwOption {
+interface BlokWilayahOption {
   id: string;
+  no_rt: string;
+  nama_blok: string;
+}
+
+interface WilayahHierarchyOption {
+  id: string;
+  desa: string;
   nama_kompleks: string;
   no_rw: string;
+  blok_wilayah: BlokWilayahOption[];
+}
+
+interface WilayahListResponse {
+  data: WilayahHierarchyOption[];
 }
 
 interface MasjidOption {
@@ -48,7 +60,6 @@ interface MasjidOption {
 
 interface MasjidListResponse {
   data: {
-    wilayah_rw: WilayahRwOption[];
     masjid: MasjidOption[];
   };
 }
@@ -69,7 +80,7 @@ export default function RegisterPage() {
 
   // --- Phase 2 state (inside form) ---
   const [role, setRole] = useState<AppRole>("RW");
-  const [wilayahRwOptions, setWilayahRwOptions] = useState<WilayahRwOption[]>([]);
+  const [wilayahHierarchy, setWilayahHierarchy] = useState<WilayahHierarchyOption[]>([]);
   const [masjidOptions, setMasjidOptions] = useState<MasjidOption[]>([]);
   const [selectedRwId, setSelectedRwId] = useState<string>("");
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
@@ -95,17 +106,23 @@ export default function RegisterPage() {
     setSelectedRwId("");
   };
 
-  // Fetch masjid catalog when entering masjid form
+  // Fetch catalog when role requires it
   useEffect(() => {
-    if (role !== "PENGURUS_MASJID") return;
-    if (masjidOptions.length > 0 || isCatalogLoading) return;
+    if (role !== "PENGURUS_MASJID" && role !== "RT") return;
+    if (wilayahHierarchy.length > 0 || isCatalogLoading) return;
 
     const fetchCatalog = async () => {
       setIsCatalogLoading(true);
       try {
-        const response = await api.get<MasjidListResponse>("/public/masjid-list");
-        setWilayahRwOptions(response.data.data.wilayah_rw);
-        setMasjidOptions(response.data.data.masjid);
+        const [wilayahRes, masjidRes] = await Promise.all([
+          api.get<WilayahListResponse>("/public/wilayah-list"),
+          role === "PENGURUS_MASJID" ? api.get<MasjidListResponse>("/public/masjid-list") : Promise.resolve(null)
+        ]);
+
+        setWilayahHierarchy(wilayahRes.data.data);
+        if (masjidRes) {
+          setMasjidOptions(masjidRes.data.data.masjid);
+        }
       } catch (error) {
         const apiError = getApiError(error);
         toast.error(apiError.message);
@@ -115,10 +132,10 @@ export default function RegisterPage() {
     };
 
     fetchCatalog().catch(() => {
-      toast.error("Gagal memuat daftar masjid.");
+      toast.error("Gagal memuat daftar wilayah.");
       setIsCatalogLoading(false);
     });
-  }, [role, masjidOptions.length, isCatalogLoading]);
+  }, [role, wilayahHierarchy.length, isCatalogLoading]);
 
   const filteredMasjid = useMemo(() => {
     if (!selectedRwId) return masjidOptions;
@@ -143,6 +160,9 @@ export default function RegisterPage() {
       if (password.length < 8) fieldErrors.password = "Password minimal 8 karakter.";
       if (selectedRole !== "RW" && selectedRole !== "RT" && selectedRole !== "PENGURUS_MASJID") {
         fieldErrors.role = "Role tidak valid.";
+      }
+      if (selectedRole === "RT" && !blokWilayahIdInput) {
+        fieldErrors.blok_wilayah_id = "RT wajib memilih Blok Wilayah.";
       }
 
       const payload: Record<string, string> = {
@@ -508,23 +528,62 @@ export default function RegisterPage() {
               </div>
 
               {/* RW system: optional blok wilayah ID */}
-              {systemChoice === "rwrt" && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="blok_wilayah_id" className="text-sm font-bold text-slate-700 dark:text-foreground/90">
-                    Blok Wilayah ID{" "}
-                    <span className="font-normal text-slate-400">(opsional, UUID)</span>
-                  </Label>
-                  <Input
-                    id="blok_wilayah_id"
-                    name="blok_wilayah_id"
-                    placeholder="550e8400-e29b-41d4-a716-446655440011"
-                    aria-invalid={Boolean(formState.fieldErrors.blok_wilayah_id)}
-                    disabled={isPending}
-                    className="h-10 rounded-xl font-mono text-xs"
-                  />
-                  {formState.fieldErrors.blok_wilayah_id ? (
-                    <p className="text-xs text-destructive">{formState.fieldErrors.blok_wilayah_id}</p>
-                  ) : null}
+              {systemChoice === "rwrt" && role === "RT" && (
+                <div className="rounded-2xl border border-indigo-100 dark:border-indigo-500/15 bg-indigo-50/50 dark:bg-indigo-950/20 p-4 space-y-4">
+                  <p className="text-sm font-bold text-slate-700 dark:text-foreground/90">Pilih Desa/RW & RT</p>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="rt_rw_picker" className="text-xs font-semibold text-slate-600 dark:text-muted-foreground">
+                      Desa / Wilayah RW
+                    </Label>
+                    {isCatalogLoading ? (
+                      <Skeleton className="h-10 w-full rounded-xl" />
+                    ) : (
+                      <select
+                        id="rt_rw_picker"
+                        value={selectedRwId}
+                        onChange={(e) => setSelectedRwId(e.target.value)}
+                        className={selectClass}
+                        disabled={isPending}
+                      >
+                        <option value="">Pilih Desa / RW</option>
+                        {wilayahHierarchy.map((rw) => (
+                          <option key={rw.id} value={rw.id}>
+                            Desa: {rw.desa} — RW {rw.no_rw} ({rw.nama_kompleks})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="blok_wilayah_id" className="text-xs font-semibold text-slate-600 dark:text-muted-foreground">
+                      RT / Blok Wilayah
+                    </Label>
+                    {isCatalogLoading ? (
+                      <Skeleton className="h-10 w-full rounded-xl" />
+                    ) : (
+                      <select
+                        id="blok_wilayah_id"
+                        name="blok_wilayah_id"
+                        className={selectClass}
+                        disabled={isPending || !selectedRwId}
+                        aria-invalid={Boolean(formState.fieldErrors.blok_wilayah_id)}
+                      >
+                        <option value="">Pilih RT / Blok Wilayah</option>
+                        {wilayahHierarchy
+                          .find(rw => rw.id === selectedRwId)
+                          ?.blok_wilayah.map((rt) => (
+                            <option key={rt.id} value={rt.id}>
+                              RT {rt.no_rt} — {rt.nama_blok}
+                            </option>
+                          ))}
+                      </select>
+                    )}
+                    {formState.fieldErrors.blok_wilayah_id ? (
+                      <p className="text-xs text-destructive">{formState.fieldErrors.blok_wilayah_id}</p>
+                    ) : null}
+                  </div>
                 </div>
               )}
 
@@ -536,7 +595,7 @@ export default function RegisterPage() {
                   {/* RW filter */}
                   <div className="space-y-1.5">
                     <Label htmlFor="rw_picker" className="text-xs font-semibold text-slate-600 dark:text-muted-foreground">
-                      Filter Wilayah RW
+                      Filter Desa / Wilayah RW
                     </Label>
                     {isCatalogLoading ? (
                       <Skeleton className="h-10 w-full rounded-xl" />
@@ -549,9 +608,9 @@ export default function RegisterPage() {
                         disabled={isPending}
                       >
                         <option value="">Semua RW</option>
-                        {wilayahRwOptions.map((rw) => (
+                        {wilayahHierarchy.map((rw) => (
                           <option key={rw.id} value={rw.id}>
-                            {rw.nama_kompleks} - RW {rw.no_rw}
+                            Desa: {rw.desa} — RW {rw.no_rw} ({rw.nama_kompleks})
                           </option>
                         ))}
                       </select>

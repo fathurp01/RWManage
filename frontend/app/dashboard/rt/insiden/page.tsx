@@ -494,21 +494,22 @@ export default function RtInsidenPage() {
   return (
     <main className="flex flex-1 flex-col gap-6">
       {/* ── Page Header ── */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-sm shadow-cyan-500/30">
-            <ShieldAlert className="size-6" />
-          </span>
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
-              Manajemen Laporan Kejadian
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-muted-foreground">
-              Kelola, pantau, dan tindaklanjuti laporan insiden keamanan di wilayah RT Anda
-            </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Badge variant="rt">Laporan RT</Badge>
+            <span className="text-sm text-slate-500 dark:text-muted-foreground">
+              Lacak dan tindaklanjuti insiden keamanan
+            </span>
           </div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-foreground">
+            Manajemen Laporan Kejadian
+          </h1>
+          <p className="text-base text-slate-500 dark:text-muted-foreground">
+            Kelola, pantau, dan tindaklanjuti laporan insiden keamanan di wilayah RT Anda
+          </p>
         </div>
-        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+        <div className="flex flex-wrap gap-2 items-center self-end sm:self-auto shrink-0">
           <Button
             onClick={handleExportAll}
             className="gap-1.5 h-10 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white border-0 shadow-md shadow-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/30 transition-all duration-300 font-bold text-xs"

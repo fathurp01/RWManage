@@ -19,6 +19,7 @@ const getRtBlockContext = async (req: Request) => {
       nama_blok: null,
       no_rt: null,
       wilayah_rw_id: null,
+      wilayah_rw: null,
     } as any;
   }
 
@@ -29,6 +30,16 @@ const getRtBlockContext = async (req: Request) => {
       nama_blok: true,
       no_rt: true,
       wilayah_rw_id: true,
+      wilayah_rw: {
+        select: {
+          no_rw: true,
+          user: {
+            select: {
+              nama: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -182,6 +193,8 @@ export const getIuranForRt = async (req: Request, res: Response): Promise<void> 
       data: {
         blok_wilayah_id: blokId,
         no_rt: blok.no_rt,
+        no_rw: blok.wilayah_rw?.no_rw ?? null,
+        desa: blok.wilayah_rw?.user?.nama ?? null,
         nama_blok: blok.nama_blok,
         tahun: tahunInt,
         bulan: bulanInt ?? null,
@@ -723,7 +736,7 @@ export const updatePerformaRondaForRt = async (req: Request, res: Response): Pro
       data: {
         ...(nama_petugas ? { nama_petugas: nama_petugas.trim() } : {}),
         ...(status_kehadiran ? { status_kehadiran } : {}),
-        ...(catatan !== undefined ? { catatan: catatan.trim() || null } : {}),
+        ...(catatan !== undefined ? { catatan: catatan?.trim() || null } : {}),
       },
     });
 
@@ -987,7 +1000,7 @@ export const getAuditLogForRt = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const { aksi, tanggal_mulai, tanggal_akhir, limit = "50", offset = "0" } = req.query as {
+    const { aksi, tanggal_mulai, tanggal_akhir, limit = "10", offset = "0" } = req.query as {
       aksi?: AksiAudit;
       tanggal_mulai?: string;
       tanggal_akhir?: string;
@@ -995,27 +1008,68 @@ export const getAuditLogForRt = async (req: Request, res: Response): Promise<voi
       offset?: string;
     };
 
+    const auditLogQuery: any = {
+      user_id: req.user.id,
+    };
+
+    if (aksi) {
+      auditLogQuery.aksi = aksi;
+    }
+
+    if (tanggal_mulai || tanggal_akhir) {
+      const dateFilter: any = {};
+      
+      if (tanggal_mulai && tanggal_mulai.trim() !== "") {
+        const dateStart = new Date(tanggal_mulai);
+        if (!isNaN(dateStart.getTime())) {
+          dateFilter.gte = dateStart;
+        }
+      }
+      
+      if (tanggal_akhir && tanggal_akhir.trim() !== "") {
+        const dateEnd = new Date(tanggal_akhir);
+        if (!isNaN(dateEnd.getTime())) {
+          dateFilter.lte = dateEnd;
+        }
+      }
+
+      if (Object.keys(dateFilter).length > 0) {
+        auditLogQuery.created_at = dateFilter;
+      }
+    }
+
     const data = await prisma.auditLog.findMany({
-      where: {
-        ...(aksi ? { aksi } : {}),
-        created_at: tanggal_mulai && tanggal_akhir ? { gte: new Date(tanggal_mulai), lte: new Date(tanggal_akhir) } : undefined,
-        OR: [
-          { user: { blok_wilayah_id: blok.id } },
-          { entitas: "Warga" },
-          { entitas: "PerformaRonda" },
-          { entitas: "LaporanInsiden" },
-        ],
+      where: auditLogQuery,
+      include: {
+        user: {
+          select: { id: true, email: true, nama: true, role: true }
+        }
       },
       orderBy: { created_at: "desc" },
       take: Math.min(Number(limit), 100),
       skip: Number(offset),
     });
 
-    res.status(200).json({ success: true, message: "Data audit log RT berhasil diambil.", data });
-  } catch {
+    const totalCount = await prisma.auditLog.count({
+      where: auditLogQuery,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Data audit log RT berhasil diambil.",
+      data,
+      pagination: {
+        total: totalCount,
+        limit: Number(limit),
+        offset: Number(offset),
+      },
+    });
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengambil data audit log RT." });
   }
 };
+
 
 export const bayarIuranForRt = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -1340,7 +1394,7 @@ export const updateJadwalRonda = async (req: Request, res: Response): Promise<vo
         ...(jam_selesai ? { jam_selesai } : {}),
         ...(minggu_mulai ? { minggu_mulai: new Date(minggu_mulai) } : {}),
         ...(minggu_selesai ? { minggu_selesai: new Date(minggu_selesai) } : {}),
-        ...(catatan !== undefined ? { catatan: catatan.trim() || null } : {}),
+        ...(catatan !== undefined ? { catatan: catatan?.trim() || null } : {}),
       },
       include: { petugas: true },
     });
@@ -1616,6 +1670,35 @@ export const markPresenceRonda = async (req: Request, res: Response): Promise<vo
         catatan: catatan?.trim() || null,
       },
     });
+
+    // Sync with PerformaRonda
+    const existingPerforma = await prisma.performaRonda.findFirst({
+      where: {
+        blok_wilayah_id: blok.id,
+        tanggal: new Date(tanggal),
+        nama_petugas: nama_petugas.trim(),
+      },
+    });
+
+    if (existingPerforma) {
+      await prisma.performaRonda.update({
+        where: { id: existingPerforma.id },
+        data: {
+          status_kehadiran: status_hadir,
+          catatan: catatan?.trim() || null,
+        },
+      });
+    } else {
+      await prisma.performaRonda.create({
+        data: {
+          blok_wilayah_id: blok.id,
+          tanggal: new Date(tanggal),
+          nama_petugas: nama_petugas.trim(),
+          status_kehadiran: status_hadir,
+          catatan: catatan?.trim() || null,
+        },
+      });
+    }
 
     await recordAudit(req, {
       aksi: AksiAudit.CREATE,
@@ -2033,5 +2116,160 @@ const checkOverdueHelper = (date: Date): boolean => {
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
   return diffDays >= 3;
+};
+
+export const exportPerformaRondaPdfForRt = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({ success: false, message: "User belum terautentikasi." });
+      return;
+    }
+
+    const blok = await getRtBlockContext(req);
+    if (!blok) {
+      res.status(403).json({ success: false, message: "Data blok wilayah RT tidak ditemukan." });
+      return;
+    }
+
+    const { tanggal_mulai, tanggal_akhir } = req.query as { tanggal_mulai?: string; tanggal_akhir?: string };
+
+    const data = await prisma.performaRonda.findMany({
+      where: {
+        blok_wilayah_id: blok.id,
+        ...(tanggal_mulai && tanggal_akhir
+          ? { tanggal: { gte: new Date(tanggal_mulai), lte: new Date(tanggal_akhir) } }
+          : {}),
+      },
+      orderBy: { tanggal: "desc" },
+    });
+
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+
+    // Format Period Label
+    let periodLabel = "";
+    if (tanggal_mulai) {
+      const d = new Date(tanggal_mulai);
+      const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+      periodLabel = `${months[d.getMonth()]} ${d.getFullYear()}`;
+    } else {
+      periodLabel = new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+    }
+
+    const filename = `histori-absensi-ronda-rt-${blok.no_rt || 'grouped'}-${periodLabel.replace(/\s+/g, '-')}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    doc.pipe(res);
+
+    const MONTH_LABELS_SHORT = [
+      "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+      "Jul", "Agt", "Sep", "Okt", "Nov", "Des"
+    ];
+
+    const DAYS = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+    const formatDateFull = (value: any) => {
+      if (!value) return "-";
+      const d = new Date(value);
+      return `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTH_LABELS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+    };
+
+    // Header RT Branding
+    doc.fontSize(15).font("Helvetica-Bold").fillColor("#312e81").text("LAPORAN REKAPITULASI HISTORI KEHADIRAN RONDA", { align: "center" });
+    doc.moveDown(0.25);
+    doc.fontSize(12).font("Helvetica-Bold").fillColor("#1e293b").text(`RUKUN TETANGGA (RT) ${blok.no_rt || ''} / BLOK ${blok.nama_blok || ''}`, { align: "center" });
+    doc.fontSize(10).font("Helvetica").fillColor("#64748b").text(`Periode Laporan: ${periodLabel}`, { align: "center" });
+    doc.text(`Dicetak: ${new Date().toLocaleString("id-ID")}`, { align: "center" });
+    doc.moveDown(1.5);
+
+    // Summary statistics
+    const totalHadir = data.filter(item => item.status_kehadiran === 'HADIR').length;
+    const totalIzin = data.filter(item => item.status_kehadiran === 'IZIN').length;
+    const totalAlfa = data.filter(item => item.status_kehadiran === 'ALFA').length;
+
+    doc.fontSize(11).font("Helvetica-Bold").fillColor("#1e293b").text("Ringkasan Kehadiran Periode Ini:");
+    doc.moveDown(0.4);
+
+    let currentY = doc.y;
+    doc.fontSize(10).font("Helvetica").fillColor("#334155");
+    doc.text(`Total Presensi: ${data.length} kegiatan`, 40, currentY);
+    doc.text(`Total Hadir: ${totalHadir} kali`, 200, currentY);
+    doc.text(`Total Izin/Sakit: ${totalIzin} kali`, 320, currentY);
+    doc.text(`Total Alfa (Mangkir): ${totalAlfa} kali`, 440, currentY);
+    doc.moveDown(1.5);
+
+    // Table drawing
+    const headers = ["No", "Hari & Tanggal", "Petugas Ronda", "Status Kehadiran", "Catatan"];
+    const colWidths = [35, 140, 150, 100, 90];
+    let tableY = doc.y;
+
+    const drawRow = (rowItems: string[], isHeader = false) => {
+      const h = 22;
+      if (tableY + h > 750) {
+        doc.addPage();
+        tableY = 40;
+      }
+      let x = 40;
+      doc.font(isHeader ? "Helvetica-Bold" : "Helvetica").fontSize(9);
+      rowItems.forEach((text, i) => {
+        // Draw background box
+        if (isHeader) {
+          doc.rect(x, tableY, colWidths[i], h).fillColor("#312e81").fill();
+          doc.rect(x, tableY, colWidths[i], h).strokeColor("#cbd5e1").stroke();
+          doc.fillColor("#ffffff").text(text, x + 6, tableY + 6, { width: colWidths[i] - 12, align: i === 0 || i === 3 ? "center" : "left" });
+        } else {
+          doc.rect(x, tableY, colWidths[i], h).strokeColor("#e2e8f0").stroke();
+          if (i === 3) {
+            // Color status
+            let color = "#475569";
+            if (text === "HADIR") color = "#059669";
+            if (text === "ALFA") color = "#dc2626";
+            if (text === "IZIN") color = "#d97706";
+            doc.font("Helvetica-Bold").fillColor(color).text(text, x + 6, tableY + 6, { width: colWidths[i] - 12, align: "center" });
+            doc.font("Helvetica"); // Reset
+          } else {
+            doc.fillColor("#1e293b").text(text, x + 6, tableY + 6, { width: colWidths[i] - 12, align: i === 0 ? "center" : "left" });
+          }
+        }
+        x += colWidths[i];
+      });
+      tableY += h;
+    };
+
+    drawRow(headers, true);
+    data.forEach((item, idx) => {
+      drawRow([
+        String(idx + 1),
+        formatDateFull(item.tanggal),
+        item.nama_petugas,
+        item.status_kehadiran,
+        item.catatan || "-"
+      ]);
+    });
+
+    // Add Signature section at the end of PDF
+    const signatureHeight = 100;
+    if (tableY + signatureHeight > 750) {
+      doc.addPage();
+      tableY = 40;
+    }
+
+    doc.moveDown(2);
+    tableY = doc.y;
+    
+    doc.fontSize(10).font("Helvetica").fillColor("#334155");
+    const today = new Date();
+    doc.text(`Kota Bandung, ${today.getDate()} ${MONTH_LABELS_SHORT[today.getMonth()]} ${today.getFullYear()}`, 350, tableY, { align: "center", width: 200 });
+    doc.moveDown(0.2);
+    doc.font("Helvetica-Bold").text("Ketua RT", 350, doc.y, { align: "center", width: 200 });
+    doc.moveDown(3.5);
+    doc.font("Helvetica-Bold").text("( ____________________ )", 350, doc.y, { align: "center", width: 200 });
+
+    doc.end();
+  } catch (error) {
+    console.error("Error exporting RT ronda history PDF:", error);
+    res.status(500).json({ success: false, message: "Terjadi kesalahan saat mengekspor rekapitulasi absensi ronda ke PDF." });
+  }
 };
 

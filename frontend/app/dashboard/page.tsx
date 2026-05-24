@@ -10,6 +10,10 @@ export default async function DashboardIndexPage() {
     redirect("/auth/login");
   }
 
+  if (roleFromCookie === "SUPERADMIN") {
+    redirect("/dashboard/superadmin");
+  }
+
   if (roleFromCookie === "RW") {
     redirect("/dashboard/rw/data-penduduk");
   }

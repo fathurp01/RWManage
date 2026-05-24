@@ -6,9 +6,10 @@ export const getAuditLogList = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { user_id, aksi, tanggal_mulai, tanggal_akhir, limit = "50", offset = "0" } = req.query as {
+    const { user_id, aksi, role, tanggal_mulai, tanggal_akhir, limit = "50", offset = "0" } = req.query as {
       user_id?: string;
       aksi?: string;
+      role?: string;
       tanggal_mulai?: string;
       tanggal_akhir?: string;
       limit?: string;
@@ -43,6 +44,10 @@ export const getAuditLogList = async (
 
     if (aksi) {
       auditLogQuery.aksi = aksi;
+    }
+
+    if (role && req.user.role === "SUPERADMIN") {
+      auditLogQuery.user = { role };
     }
 
     if (tanggal_mulai || tanggal_akhir) {

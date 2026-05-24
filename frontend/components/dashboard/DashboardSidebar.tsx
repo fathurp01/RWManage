@@ -27,6 +27,10 @@ import {
   BadgeCheck,
   Map,
   CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  GripVertical,
 } from "lucide-react";
 
 type SidebarItem = {
@@ -314,7 +318,13 @@ const superadminItems: SidebarItem[] = [
     icon: ShieldCheck,
   },
   {
-    href: "/dashboard/rw/audit-logs",
+    href: "/dashboard/superadmin/users",
+    label: "Manajemen User",
+    description: "Kelola akun pengguna",
+    icon: Users,
+  },
+  {
+    href: "/dashboard/superadmin/audit-logs",
     label: "Audit Logs",
     description: "Lihat jejak aktivitas sistem",
     icon: FileText,
@@ -455,11 +465,70 @@ function NavItem({
 }
 
 // ─── DashboardSidebar ────────────────────────────────────────────────────────
-export function DashboardSidebar({ role }: { role: AppRole | null }) {
+export function DashboardSidebar({
+  role,
+  isCollapsed,
+  onToggle
+}: {
+  role: AppRole | null;
+  isCollapsed: boolean;
+  onToggle: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
   const accent = getAccent(role);
+
+  const handleLogout = useCallback(async () => {
+    await logout();
+    router.push("/");
+  }, [logout, router]);
+
+  if (isCollapsed) {
+    return (
+      <div className="flex h-full flex-col items-center justify-between px-1 md:px-2 py-4 md:py-6">
+        {/* Top Brand Zone */}
+        <div className="hidden md:flex flex-col items-center gap-6 w-full">
+          {/* Brand / Logo Area */}
+          <div
+            className={cn(
+              "inline-flex size-10 items-center justify-center rounded-2xl shrink-0",
+              "bg-linear-to-br shadow-sm",
+              accent.gradient,
+              "text-white"
+            )}
+          >
+            <LayoutDashboard className="size-5" />
+          </div>
+
+          {/* Divider */}
+          <div className="w-8 h-px bg-slate-200/70 dark:bg-white/8" />
+        </div>
+
+        {/* Middle Clickable Zone (Giant Trigger Area) */}
+        <button
+          type="button"
+          onClick={onToggle}
+          className="text-slate-500 dark:text-slate-400 flex-1 w-full flex items-center justify-center group cursor-pointer hover:bg-slate-100/10 dark:hover:bg-white/5 rounded-md my-2 transition-colors duration-150"
+          title="Tampilkan Sidebar"
+        >
+          <GripVertical className="size-6 text-slate-700 dark:text-slate-300 stroke-[2.5px] transition-transform duration-150 group-hover:scale-110" />
+        </button>
+
+        {/* Bottom Section - Sticky Logout */}
+        <div className="hidden md:flex flex-col items-center w-full">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="inline-flex size-8 items-center justify-center rounded-xl border border-rose-300 bg-rose-100 text-rose-600 hover:border-rose-400 hover:bg-rose-200 hover:text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:border-rose-600 dark:hover:bg-rose-900/60 dark:hover:text-rose-300 transition-all duration-200 shrink-0"
+            title="Keluar"
+          >
+            <LogOut className="size-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Determine whether to use grouped or flat navigation
   const isRW = role !== "PENGURUS_MASJID" && role !== "RT" && role !== "SUPERADMIN";
@@ -471,38 +540,45 @@ export function DashboardSidebar({ role }: { role: AppRole | null }) {
   else if (role === "RT") flatItems = rtItems;
   else if (role === "SUPERADMIN") flatItems = superadminItems;
 
-  const handleLogout = useCallback(async () => {
-    await logout();
-    router.push("/");
-  }, [logout, router]);
-
   return (
     <div className="flex h-full flex-col gap-6 px-4 py-6 md:px-5">
       {/* Brand / Logo area */}
-      <div className="flex items-center gap-3 px-1">
-        <div
-          className={cn(
-            "inline-flex size-10 items-center justify-center rounded-2xl",
-            "bg-linear-to-br shadow-sm",
-            accent.gradient,
-            "text-white"
-          )}
-        >
-          <LayoutDashboard className="size-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold tracking-tight text-slate-900 dark:text-foreground">
-            RWManage
-          </p>
-          <span
+      <div className="flex items-center justify-between gap-3 px-1">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div
             className={cn(
-              "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold",
-              accent.roleBadge
+              "inline-flex size-10 items-center justify-center rounded-2xl shrink-0",
+              "bg-linear-to-br shadow-sm",
+              accent.gradient,
+              "text-white"
             )}
           >
-            {accent.roleLabel}
-          </span>
+            <LayoutDashboard className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-bold tracking-tight text-slate-900 dark:text-foreground">
+              RWManage
+            </p>
+            <span
+              className={cn(
+                "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                accent.roleBadge
+              )}
+            >
+              {accent.roleLabel}
+            </span>
+          </div>
         </div>
+
+        {/* Close Button */}
+        <button
+          type="button"
+          onClick={onToggle}
+          className="inline-flex size-8 items-center justify-center rounded-xl border border-slate-300 bg-slate-100 text-slate-600 hover:border-slate-400 hover:bg-slate-200 hover:text-slate-800 dark:border-white/20 dark:bg-white/10 dark:text-muted-foreground dark:hover:border-white/30 dark:hover:bg-white/20 dark:hover:text-foreground transition-all duration-200 shrink-0"
+          title="Sembunyikan Sidebar"
+        >
+          <Menu className="size-4" />
+        </button>
       </div>
 
       {/* Divider */}
@@ -570,9 +646,9 @@ export function DashboardSidebar({ role }: { role: AppRole | null }) {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:text-muted-foreground dark:hover:bg-rose-950/20 dark:hover:text-rose-400"
+          className="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm text-rose-600 transition-colors hover:bg-rose-100 hover:text-rose-800 dark:text-rose-400 dark:hover:bg-rose-900/40 dark:hover:text-rose-300"
         >
-          <span className="inline-flex size-8 items-center justify-center rounded-xl border border-slate-200/60 bg-white text-slate-400 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500 dark:border-white/8 dark:bg-white/5 dark:hover:border-rose-800/40 dark:hover:bg-rose-950/20 dark:hover:text-rose-400 transition-colors">
+          <span className="inline-flex size-8 items-center justify-center rounded-xl border border-rose-300 bg-rose-100 text-rose-600 hover:border-rose-400 hover:bg-rose-200 hover:text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:border-rose-600 dark:hover:bg-rose-900/60 dark:hover:text-rose-300 transition-colors">
             <LogOut className="size-4" />
           </span>
           <span className="font-medium">Keluar</span>

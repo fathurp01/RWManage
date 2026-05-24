@@ -111,6 +111,53 @@ export const getMasjidListWithClient = async (
   }
 };
 
+export const getWilayahListWithClient = async (
+  client: typeof prisma,
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const wilayahRwList = await client.wilayahRW.findMany({
+      select: {
+        id: true,
+        nama_kompleks: true,
+        no_rw: true,
+        user: {
+          select: {
+            nama: true,
+          },
+        },
+        blok_wilayah: {
+          select: {
+            id: true,
+            nama_blok: true,
+            no_rt: true,
+          },
+          orderBy: [{ no_rt: "asc" }],
+        },
+      },
+      orderBy: [{ user: { nama: "asc" } }, { no_rw: "asc" }],
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Daftar hierarki wilayah berhasil diambil.",
+      data: wilayahRwList.map((item) => ({
+        id: item.id,
+        desa: item.user.nama,
+        nama_kompleks: item.nama_kompleks,
+        no_rw: item.no_rw,
+        blok_wilayah: item.blok_wilayah,
+      })),
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan saat mengambil daftar hierarki wilayah.",
+    });
+  }
+};
+
 export const cekKodeUnikWithClient = async (
   client: typeof prisma,
   req: Request,
@@ -317,6 +364,10 @@ export const cekKodeUnik = async (req: Request, res: Response): Promise<void> =>
 
 export const getMasjidList = async (req: Request, res: Response): Promise<void> => {
   return getMasjidListWithClient(prisma, req, res);
+};
+
+export const getWilayahList = async (req: Request, res: Response): Promise<void> => {
+  return getWilayahListWithClient(prisma, req, res);
 };
 
 export const exportPublicKwitansi = async (req: Request, res: Response): Promise<void> => {

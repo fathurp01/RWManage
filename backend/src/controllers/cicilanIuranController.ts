@@ -355,29 +355,12 @@ export const updateCicilanStatus = async (
       return;
     }
 
-    const { nominal } = req.body as { nominal?: number | string };
-    if (nominal === undefined) {
-      res.status(400).json({
-        success: false,
-        message: "Nominal pembayaran wajib diisi.",
-      });
-      return;
-    }
-
-    const nominalNum = Number(nominal);
-    if (isNaN(nominalNum) || nominalNum <= 0) {
-      res.status(400).json({
-        success: false,
-        message: "Nominal pembayaran harus berupa angka positif.",
-      });
-      return;
-    }
-
     const cicilan = await prisma.cicilanIuran.findUnique({
       where: { id: cicilan_id },
       select: {
         id: true,
         total_cicilan: true,
+        nominal_per_bulan: true,
         sudah_lunas: true,
         warga: {
           select: {
@@ -413,6 +396,22 @@ export const updateCicilanStatus = async (
         message: "Cicilan tidak ditemukan.",
       });
       return;
+    }
+
+    const { nominal } = (req.body || {}) as { nominal?: number | string };
+    let nominalNum: number;
+
+    if (nominal === undefined) {
+      nominalNum = Number(cicilan.nominal_per_bulan);
+    } else {
+      nominalNum = Number(nominal);
+      if (isNaN(nominalNum) || nominalNum <= 0) {
+        res.status(400).json({
+          success: false,
+          message: "Nominal pembayaran harus berupa angka positif.",
+        });
+        return;
+      }
     }
 
     if (cicilan.sudah_lunas) {

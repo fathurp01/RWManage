@@ -19,6 +19,8 @@ import {
   Landmark,
   HandCoins,
   ChevronLeft,
+  CheckSquare,
+  Square
 } from "lucide-react";
 
 
@@ -45,15 +47,24 @@ const parseRole = (value: string | null): AppRole | null => {
 const inferRoleFromNextPath = (nextPath: string | null): AppRole | null => {
   if (!nextPath) return null;
   if (nextPath.startsWith("/dashboard/rw")) return "RW";
+  if (nextPath.startsWith("/dashboard/rt")) return "RT";
+  if (nextPath.startsWith("/dashboard/superadmin")) return "SUPERADMIN";
   if (nextPath.startsWith("/dashboard/masjid")) return "PENGURUS_MASJID";
   return null;
 };
 
 const toRedirectPath = (role: AppRole, nextPath: string | null): string => {
-  if (nextPath && nextPath.startsWith("/")) return nextPath;
-  return role === "RW" || role === "RT" || role === "SUPERADMIN"
-    ? "/dashboard/rw"
-    : "/dashboard/masjid";
+  if (nextPath && nextPath.startsWith("/")) {
+    if (nextPath.startsWith("/dashboard/settings")) return nextPath;
+    if (role === "SUPERADMIN" && nextPath.startsWith("/dashboard/superadmin")) return nextPath;
+    if (role === "RW" && nextPath.startsWith("/dashboard/rw")) return nextPath;
+    if (role === "RT" && nextPath.startsWith("/dashboard/rt")) return nextPath;
+    if (role === "PENGURUS_MASJID" && nextPath.startsWith("/dashboard/masjid")) return nextPath;
+  }
+  if (role === "SUPERADMIN") return "/dashboard/superadmin";
+  if (role === "RT") return "/dashboard/rt";
+  if (role === "RW") return "/dashboard/rw";
+  return "/dashboard/masjid";
 };
 
 
@@ -88,6 +99,22 @@ export default function LoginPage() {
   // After hydration, a useEffect will restore from URL params if needed.
   const [systemChoice, setSystemChoice] = useState<SystemChoice | null>(null);
   const [animState, setAnimState] = useState<"idle" | "expanding-masjid" | "expanding-rwrt" | "expanded">("idle");
+
+  const [savedEmail, setSavedEmail] = useState("");
+  const [savedPassword, setSavedPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const em = localStorage.getItem("rwmanage_saved_email");
+      const pw = localStorage.getItem("rwmanage_saved_password");
+      if (em && pw) {
+        setSavedEmail(em);
+        setSavedPassword(pw);
+        setRememberMe(true);
+      }
+    }
+  }, []);
 
   // Restore state from URL on first client render (avoids SSR/hydration mismatch)
   const [hydrated, setHydrated] = useState(false);
@@ -169,6 +196,7 @@ export default function LoginPage() {
     async (_previousState, formData) => {
       const email = String(formData.get("email") ?? "").trim().toLowerCase();
       const password = String(formData.get("password") ?? "");
+      const remember = formData.get("rememberMe") === "on";
       // For masjid system, role is always fixed. For rwrt, role auto-detected by backend.
       const system = String(formData.get("system") ?? "") as SystemChoice;
 
@@ -221,6 +249,15 @@ export default function LoginPage() {
 
         setUser(nextUser);
         toast.success("Login berhasil.");
+
+        if (remember) {
+          localStorage.setItem("rwmanage_saved_email", email);
+          localStorage.setItem("rwmanage_saved_password", password);
+        } else {
+          localStorage.removeItem("rwmanage_saved_email");
+          localStorage.removeItem("rwmanage_saved_password");
+        }
+
         router.push(toRedirectPath(nextUser.role, nextPath));
 
         return { message: "", fieldErrors: {} };
@@ -461,6 +498,7 @@ export default function LoginPage() {
                     name="email"
                     type="email"
                     autoComplete="email"
+                    defaultValue={savedEmail}
                     placeholder="nama@email.com"
                     aria-invalid={Boolean(formState.fieldErrors.email)}
                     disabled={isPending}
@@ -484,6 +522,7 @@ export default function LoginPage() {
                     name="password"
                     type="password"
                     autoComplete="current-password"
+                    defaultValue={savedPassword}
                     placeholder="••••••••"
                     aria-invalid={Boolean(formState.fieldErrors.password)}
                     disabled={isPending}
@@ -493,6 +532,32 @@ export default function LoginPage() {
                 {formState.fieldErrors.password ? (
                   <p className="text-sm text-destructive font-medium">{formState.fieldErrors.password}</p>
                 ) : null}
+              </div>
+
+              {/* Remember Me & Forgot Password */}
+              <div className="flex items-center justify-between mt-2">
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    name="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="hidden"
+                  />
+                  <div className="text-slate-400 group-hover:text-indigo-500 transition-colors">
+                    {rememberMe ? <CheckSquare className="size-5 text-indigo-500" /> : <Square className="size-5" />}
+                  </div>
+                  <span className="text-sm text-slate-600 font-medium select-none">Ingat saya</span>
+                </label>
+                
+                <Link
+                  href="/auth/forgot-password"
+                  className={`text-sm font-semibold hover:underline hover:underline-offset-2 ${
+                    systemChoice === "masjid" ? "text-emerald-600" : "text-indigo-600"
+                  }`}
+                >
+                  Lupa password?
+                </Link>
               </div>
 
               {/* Global error */}

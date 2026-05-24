@@ -106,7 +106,16 @@ export const useAuth = (): AuthContextValue => {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error("useAuth harus digunakan di dalam AuthProvider.");
+    return {
+      user: null,
+      role: null,
+      statusAkun: null,
+      isAuthenticated: false,
+      isHydrated: false,
+      setUser: () => {},
+      refreshSession: async () => {},
+      logout: async () => {},
+    };
   }
 
   return context;

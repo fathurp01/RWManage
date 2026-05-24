@@ -6,11 +6,23 @@ import {
   logout,
   me,
   register,
-  listPendingRegistrationsWithClient as listPendingRegistrations,
-  approveRegistrationWithClient as approveRegistration,
+  listPendingRegistrations,
+  approveRegistration,
   listPendingRT,
   approveRT,
+  forgotPassword,
 } from "../controllers/authController";
+import {
+  getUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+  resetPasswordDirect,
+  getPasswordResets,
+  approvePasswordReset,
+  rejectPasswordReset,
+} from "../controllers/superadminController";
+import { getAuditLogList } from "../controllers/auditLogController";
 import {
   bayarIuran,
   createKasRW,
@@ -76,7 +88,7 @@ import {
   activateMasjidShareLink,
   deleteMasjidShareLink,
 } from "../controllers/shareLinkController";
-import { cekKodeUnik, exportPublicKwitansi, getMasjidList } from "../controllers/publicController";
+import { cekKodeUnik, exportPublicKwitansi, getMasjidList, getWilayahList } from "../controllers/publicController";
 import {
   createAnggotaKeluarga,
   getAnggotaKeluargaList,
@@ -147,6 +159,7 @@ import {
   markPresenceRonda,
   getPresenceForJadwal,
   exportIuranHistoryPdfForRt,
+  exportPerformaRondaPdfForRt,
 } from "../controllers/rtController";
 
 import {
@@ -320,6 +333,7 @@ router.post("/auth/register", authRateLimit, validateBody(registerSchema), regis
 router.post("/auth/login", loginRateLimit, validateBody(loginSchema), login);
 router.post("/auth/logout", logout);
 router.get("/auth/me", verifyToken, me);
+router.post("/auth/forgot-password", forgotPassword);
 router.patch(
   "/auth/approve-pengurus",
   rwActionRateLimit,
@@ -981,6 +995,15 @@ router.get(
   checkApproval,
   validateQuery(getRtPerformaRondaQuerySchema),
   getPerformaRondaForRt
+);
+router.get(
+  "/rt/performa-ronda/export-pdf",
+  rwActionRateLimit,
+  verifyToken,
+  checkRole(["RT"]),
+  checkApproval,
+  validateQuery(getRtPerformaRondaQuerySchema),
+  exportPerformaRondaPdfForRt
 );
 router.post(
   "/rt/performa-ronda",
@@ -1959,6 +1982,18 @@ router.get(
 
 // ==================== RW RONDA MONITORING ====================
 // TODO: Implement RW monitoring ronda endpoints
+
+router.get("/superadmin/users", verifyToken, checkRole(["SUPERADMIN"]), getUsers);
+router.post("/superadmin/users", verifyToken, checkRole(["SUPERADMIN"]), createUser);
+router.put("/superadmin/users/:id", verifyToken, checkRole(["SUPERADMIN"]), updateUser);
+router.delete("/superadmin/users/:id", verifyToken, checkRole(["SUPERADMIN"]), deleteUser);
+router.post("/superadmin/users/:id/reset-password", verifyToken, checkRole(["SUPERADMIN"]), resetPasswordDirect);
+
+router.get("/superadmin/password-resets", verifyToken, checkRole(["SUPERADMIN"]), getPasswordResets);
+router.post("/superadmin/password-resets/:id/approve", verifyToken, checkRole(["SUPERADMIN"]), approvePasswordReset);
+router.post("/superadmin/password-resets/:id/reject", verifyToken, checkRole(["SUPERADMIN"]), rejectPasswordReset);
+
+// End Superadmin
 /*
 router.get(
   "/rw/monitoring-ronda",
@@ -1994,6 +2029,11 @@ router.get(
   getMasjidList
 );
 router.get(
+  "/public/wilayah-list",
+  publicRateLimit,
+  getWilayahList
+);
+router.get(
   "/public/cek-kode/:kode_unik",
   publicRateLimit,
   validateParams(cekKodeUnikParamsSchema),
@@ -2018,6 +2058,8 @@ router.get(
   validateParams(shareLinkTokenParamsSchema),
   getPublicSharedMuzaqi
 );
+
+router.get("/audit-logs", verifyToken, getAuditLogList);
 
 export default router;
 

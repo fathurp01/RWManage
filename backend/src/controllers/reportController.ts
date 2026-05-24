@@ -168,10 +168,15 @@ const getAuthorizedRw = async (userId: string, requestedRwId?: string) => {
         id: true,
         nama_kompleks: true,
         no_rw: true,
+        user: {
+          select: {
+            nama: true,
+          },
+        },
       },
     });
 
-    return relation ?? null;
+    return relation ? { ...relation, desa: relation.user.nama } : null;
   }
 
   const relation = await prisma.wilayahRW.findUnique({
@@ -180,10 +185,15 @@ const getAuthorizedRw = async (userId: string, requestedRwId?: string) => {
       id: true,
       nama_kompleks: true,
       no_rw: true,
+      user: {
+        select: {
+          nama: true,
+        },
+      },
     },
   });
 
-  return relation ?? null;
+  return relation ? { ...relation, desa: relation.user.nama } : null;
 };
 
 const getAuthorizedMasjid = async (userId: string, requestedMasjidId?: string) => {
