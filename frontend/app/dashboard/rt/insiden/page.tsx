@@ -379,7 +379,7 @@ export default function RtInsidenPage() {
   const getPhotoUrl = (url: string | null | undefined): string | null => {
     if (!url) return null;
     if (url.startsWith("http://") || url.startsWith("https://")) return url;
-    const base = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(/\/api\/?$/, "");
+    const base = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/api\/?$/, "");
     const path = url.startsWith("/") ? url : `/${url}`;
     return `${base}${path}`;
   };

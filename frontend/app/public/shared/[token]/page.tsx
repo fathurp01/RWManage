@@ -159,7 +159,7 @@ export default function PublicSharedDashboardPage() {
       setErrorMessage("");
       try {
         const baseUrl = (
-          process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api"
+          process.env.NEXT_PUBLIC_API_URL || "/api"
         ).replace(/\/$/, "");
         const res = await fetch(
           `${baseUrl}/public/shared/${encodeURIComponent(token)}`

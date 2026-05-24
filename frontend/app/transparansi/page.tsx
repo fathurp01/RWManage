@@ -132,7 +132,7 @@ export default function TransparansiPage() {
   );
 
   const receipt = formState.receipt;
-  const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(/\/api\/?$/, "");
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/api\/?$/, "");
 
 
   return (

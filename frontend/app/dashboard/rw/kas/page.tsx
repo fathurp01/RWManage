@@ -100,7 +100,7 @@ const getProofUrl = (url: string | null | undefined): string => {
   if (/^https?:\/\//i.test(trimmed)) {
     return trimmed;
   }
-  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(/\/api\/?$/, "");
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/api\/?$/, "");
   if (trimmed.startsWith("/")) {
     return `${apiBaseUrl}${trimmed}`;
   }
@@ -308,7 +308,7 @@ export default function KasRwDashboardPage() {
     [wilayahRwId]
   );
 
-  const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(/\/api\/?$/, "");
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/api\/?$/, "");
 
   useEffect(() => {
     if (!wilayahRwId) {

@@ -268,7 +268,7 @@ export default function SetoranKeRWPage() {
     }
   };
 
-  const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(/\/api\/?$/, "");
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/api\/?$/, "");
 
   const getProofUrl = (url: string | null | undefined) => {
     if (!url) return "";
