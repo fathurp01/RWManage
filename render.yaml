@@ -7,7 +7,7 @@ services:
     runtime: node
     plan: free
     rootDir: backend
-    buildCommand: npm install && npx prisma generate && npm run build
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
     startCommand: npm run db:deploy && FRONTEND_URL=https://$FRONTEND_HOST node dist/src/server.js
     envVars:
       - key: DATABASE_URL
@@ -34,7 +34,7 @@ services:
     runtime: node
     plan: free
     rootDir: frontend
-    buildCommand: echo "NEXT_PUBLIC_API_URL=https://$BACKEND_HOST/api" > .env.production && npm install && npm run build
+    buildCommand: echo "NEXT_PUBLIC_API_URL=https://$BACKEND_HOST/api" > .env.production && npm install --include=dev && npm run build
     startCommand: npx next start
     envVars:
       - key: BACKEND_HOST
