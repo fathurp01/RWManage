@@ -65,35 +65,74 @@ cd frontend
 npm run dev  # Starts the Next.js server on port 3001
 ```
 
-## 🚢 Production Deployment (VPS/cPanel)
+## 🚢 Production Deployment
 
-This project has been optimized for traditional hosting using Node.js and PM2, with Next.js compiled to Standalone mode.
+Terdapat dua opsi deployment untuk aplikasi ini: menggunakan cloud provider **Render.com** (otomatis via Render Blueprint) atau **cPanel/VPS** tradisional (menggunakan PM2).
 
-1. **Build Frontend**:
+### Opsi A: Cloud Deployment (Render.com) — Rekomendasi
+Deployment otomatis dan gratis menggunakan file konfigurasi `render.yaml` yang tersedia di branch `cloud-render`.
+
+1. **Push Branch `cloud-render` ke GitHub**:
    ```bash
-   cd frontend
-   npm run build
+   git push origin cloud-render
    ```
-   *(This creates an optimized standalone Next.js server in `.next/standalone`)*
+2. **Buat Blueprint Instance**:
+   - Masuk ke dashboard [Render.com](https://dashboard.render.com).
+   - Klik **New +** -> **Blueprint**.
+   - Hubungkan repositori GitHub Anda dan pilih branch **`cloud-render`**.
+3. **Approve & Deploy**:
+   - Render secara otomatis akan mendeteksi dan membuat PostgreSQL database (`rwmanage-db`), backend API (`rwmanage-backend`), serta Next.js frontend (`rwmanage-frontend`).
+   - Env dan konektivitas antarlayanan akan di-setup secara otomatis.
+   - Database migration akan berjalan otomatis pada fase startup backend.
 
-2. **Build Backend**:
-   ```bash
-   cd backend
-   npm run build
-   ```
+*Catatan: Seeding database awal bisa dijalankan manual lewat menu **Shell** di layanan backend Render dengan perintah `npm run db:seed`.*
 
-3. **Database Migration**:
-   ```bash
-   cd backend
-   npm run db:deploy  # Safely applies migrations to the production DB
-   ```
+---
 
-4. **Start via PM2**:
-   From the root of the project:
-   ```bash
-   pm2 start ecosystem.config.js
-   ```
-   This will spin up both the backend dan frontend di server Anda.
+### Opsi B: Traditional/cPanel Deployment (PM2)
+Opsi untuk hosting VPS atau cPanel berbasis Node.js yang sudah terpasang PM2.
+
+#### 1. Prasyarat & File `.env`
+Pastikan Anda membuat file `.env` di dalam folder `backend/` dengan isi:
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/nama_db"
+JWT_SECRET="secret-key-anda"
+JWT_EXPIRY="1d"
+PORT=3000
+NODE_ENV="production"
+FRONTEND_URL="https://domain-frontend-anda.com"
+```
+Dan pastikan file `.env.production` (atau `.env`) di folder `frontend/` sudah memiliki `NEXT_PUBLIC_API_URL` yang mengarah ke URL API backend Anda (dibutuhkan pada saat build time).
+
+#### 2. Konfigurasi Standalone Next.js
+Pastikan file `frontend/next.config.ts` sudah menyertakan `output: "standalone"` agar folder build standalone terbuat dengan benar.
+
+#### 3. Build Proyek di cPanel/VPS
+Jalankan instruksi berikut di terminal cPanel/SSH Anda:
+
+**A. Build Backend:**
+```bash
+cd backend
+npm install
+npx prisma generate
+npx prisma migrate deploy  # Menerapkan migrasi schema ke database cPanel
+npm run build              # Menghasilkan dist/src/server.js
+```
+
+**B. Build Frontend:**
+```bash
+cd ../frontend
+npm install
+npm run build              # Menghasilkan folder standalone .next/standalone/server.js
+```
+
+#### 4. Menjalankan via PM2
+Kembali ke root direktori proyek, lalu jalankan:
+```bash
+pm2 start ecosystem.config.js
+```
+Ini akan menyalakan backend dan frontend secara bersamaan dan menjaganya tetap aktif di background.
+
 
 ## 🧪 Testing the Application (Ensuring No Errors)
 
