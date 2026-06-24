@@ -7,7 +7,7 @@ services:
     runtime: node
     rootDir: backend
     buildCommand: npm install && npx prisma generate && npm run build
-    releaseCommand: npm run db:deploy
+    preDeployCommand: npm run db:deploy
     startCommand: FRONTEND_URL=https://$FRONTEND_HOST node dist/src/server.js
     envVars:
       - key: DATABASE_URL
