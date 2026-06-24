@@ -17,17 +17,32 @@ const isCookieSecure = (): boolean => {
   return process.env.NODE_ENV === "production";
 };
 
+const getSameSiteOption = (): "lax" | "strict" | "none" => {
+  const envSameSite = process.env.COOKIE_SAME_SITE?.toLowerCase();
+  if (envSameSite === "none") return "none";
+  if (envSameSite === "strict") return "strict";
+  if (envSameSite === "lax") return "lax";
+  // Default to lax (safe, works with proxy and same-domain setups)
+  return "lax";
+};
+
 const authCookieOptions = () => {
   const secure = isCookieSecure();
-  const sameSite = (process.env.COOKIE_SAME_SITE as "lax" | "strict" | "none") || "lax";
   
-  return {
+  // Conditionally add domain if it's provided in env (useful for cPanel subdomains like .domain.com)
+  const options: any = {
     httpOnly: true,
     secure,
-    sameSite,
+    sameSite: getSameSiteOption(),
     maxAge: AUTH_COOKIE_MAX_AGE_MS,
     path: "/",
   };
+
+  if (process.env.COOKIE_DOMAIN) {
+    options.domain = process.env.COOKIE_DOMAIN;
+  }
+
+  return options;
 };
 
 interface RegisterBody {
