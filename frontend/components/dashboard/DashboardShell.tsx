@@ -23,7 +23,7 @@ export function DashboardShell({ role, children }: DashboardShellProps) {
   }, [pathname]);
 
   return (
-    <div className="flex flex-1 flex-row page-gradient min-h-screen relative">
+    <div className="flex flex-1 flex-row page-gradient min-h-screen relative overflow-x-hidden w-full max-w-full">
       {/* Sidebar Container */}
       <aside
         className={cn(
