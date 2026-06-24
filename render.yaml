@@ -8,7 +8,7 @@ services:
     plan: free
     rootDir: backend
     buildCommand: npm install --include=dev && npx prisma generate && npm run build
-    startCommand: npm run db:deploy && FRONTEND_URL=https://$FRONTEND_HOST node dist/src/server.js
+    startCommand: npm run db:deploy && node dist/src/server.js
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -20,11 +20,8 @@ services:
         value: 1d
       - key: NODE_ENV
         value: production
-      - key: FRONTEND_HOST
-        fromService:
-          name: rwmanage-frontend
-          type: web
-          property: host
+      - key: FRONTEND_URL
+        value: https://rwmanage-frontend.onrender.com
 
   # ----------------------------------------------------
   # Next.js Frontend App
@@ -34,14 +31,14 @@ services:
     runtime: node
     plan: free
     rootDir: frontend
-    buildCommand: echo "NEXT_PUBLIC_API_URL=https://$BACKEND_HOST/api" > .env.production && npm install --include=dev && npm run build
+    buildCommand: echo "NEXT_PUBLIC_API_URL=$BACKEND_URL/api" > .env.production && npm install --include=dev && npm run build
     startCommand: npx next start
     envVars:
-      - key: BACKEND_HOST
+      - key: BACKEND_URL
         fromService:
           name: rwmanage-backend
           type: web
-          property: host
+          envVarKey: RENDER_EXTERNAL_URL
 
 databases:
   # ----------------------------------------------------
