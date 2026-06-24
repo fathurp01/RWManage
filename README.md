@@ -67,55 +67,67 @@ npm run dev  # Starts the Next.js server on port 3001
 
 ## 🚢 Production Deployment
 
-Terdapat dua opsi deployment untuk aplikasi ini: menggunakan cloud provider **Render.com** (otomatis via Render Blueprint) atau **cPanel/VPS** tradisional (menggunakan PM2).
+Terdapat dua skenario utama untuk mendepoly aplikasi ini: menggunakan cloud provider modern seperti **Render.com** (dikombinasikan dengan Supabase), atau menggunakan **cPanel / VPS Tradisional**. Keduanya memiliki pendekatan arsitektur yang berbeda untuk menangani Autentikasi dan Cookie Lintas Domain (Cross-Domain Cookies).
 
-### Opsi A: Cloud Deployment (Render.com) — Rekomendasi
-Deployment otomatis dan gratis menggunakan file konfigurasi `render.yaml` yang tersedia di branch `cloud-render`.
+### Opsi A: Cloud Deployment (Render.com + Supabase) — Rekomendasi
+Arsitektur ini menggunakan **Next.js API Rewrites** di Frontend untuk mem-proxy request API secara internal ke Backend. Seluruh aplikasi akan tampak berjalan di 1 domain yang sama (`rwmanage.onrender.com`), sehingga sangat aman dari CSRF dan bebas blokir cookie pihak ketiga oleh browser.
 
-1. **Push Branch `cloud-render` ke GitHub**:
-   ```bash
-   git push origin cloud-render
-   ```
-2. **Buat Blueprint Instance**:
-   - Masuk ke dashboard [Render.com](https://dashboard.render.com).
-   - Klik **New +** -> **Blueprint**.
-   - Hubungkan repositori GitHub Anda dan pilih branch **`cloud-render`**.
-3. **Approve & Deploy**:
-   - Render secara otomatis akan mendeteksi dan membuat PostgreSQL database (`rwmanage-db`), backend API (`rwmanage-backend`), serta Next.js frontend (`rwmanage-frontend`).
-   - Env dan konektivitas antarlayanan akan di-setup secara otomatis.
-   - Database migration akan berjalan otomatis pada fase startup backend.
-
-*Catatan: Seeding database awal bisa dijalankan manual lewat menu **Shell** di layanan backend Render dengan perintah `npm run db:seed`.*
+1. **Siapkan Database Supabase**:
+   - Buat project di [Supabase](https://supabase.com/).
+   - Dapatkan `DATABASE_URL` (Port 6543, Transaction Pooler) dan `DIRECT_URL` (Port 5432, Session Mode).
+2. **Push Kode ke GitHub**:
+   - Pastikan kode terbaru ada di repositori GitHub Anda.
+3. **Deploy via Render Blueprint**:
+   - Masuk ke dashboard Render -> **New** -> **Blueprint**.
+   - Hubungkan repositori GitHub Anda. Render akan otomatis membaca file `render.yaml` dan membuat Web Service Backend & Frontend.
+4. **Set Environment Variables**:
+   - Render akan meminta input `DATABASE_URL` dan `DIRECT_URL` di dashboard secara otomatis. Masukkan kredensial Supabase Anda.
+5. **Bagaimana Sistem Bekerja**:
+   - Frontend otomatis menggunakan proxy (`/api/*`) di `next.config.ts` untuk meneruskan request ke backend secara transparan.
+   - Backend akan mendeteksi status produksi dan otomatis menerbitkan Auth Cookie dengan keamanan `SameSite: Lax` yang anti-tembus oleh sistem pihak ketiga.
 
 ---
 
-### Opsi B: Traditional/cPanel Deployment (PM2)
-Opsi untuk hosting VPS atau cPanel berbasis Node.js yang sudah terpasang PM2.
+### Opsi B: Traditional / cPanel Deployment (PM2 / Node App)
+Opsi untuk hosting VPS atau cPanel berbasis Node.js. Skenario ini umumnya mengharuskan Frontend dan Backend dipisah ke *subdomain berbeda* (misal: `app.domain.com` dan `api.domain.com`), yang akan memicu restriksi Cross-Site Cookie oleh browser (seperti Safari/Chrome).
 
-#### 1. Prasyarat & File `.env`
-Pastikan Anda membuat file `.env` di dalam folder `backend/` dengan isi:
+Untuk mengatasinya, sistem telah dilengkapi dukungan *Dynamic Variables* khusus untuk konfigurasi server tradisional.
+
+#### 1. Setup Environment Backend
+Buat file `.env` di dalam folder `backend/`:
 ```env
-DATABASE_URL="postgresql://user:password@localhost:5432/nama_db"
-JWT_SECRET="secret-key-anda"
-JWT_EXPIRY="1d"
-PORT=3000
-NODE_ENV="production"
-FRONTEND_URL="https://domain-frontend-anda.com"
-```
-Dan pastikan file `.env.production` (atau `.env`) di folder `frontend/` sudah memiliki `NEXT_PUBLIC_API_URL` yang mengarah ke URL API backend Anda (dibutuhkan pada saat build time).
+# Koneksi Database
+DATABASE_URL="postgresql://user:pass@host:5432/db"
+DIRECT_URL="postgresql://user:pass@host:5432/db"
 
-#### 2. Konfigurasi Standalone Next.js
-Pastikan file `frontend/next.config.ts` sudah menyertakan `output: "standalone"` agar folder build standalone terbuat dengan benar.
+# Keamanan JWT & Server
+JWT_SECRET="secret-key-anda"
+NODE_ENV="production"
+PORT=3000
+
+# Pengaturan CORS & Cookie Lintas Subdomain (PENTING UNTUK CPANEL)
+FRONTEND_URL="https://app.domainanda.com"
+COOKIE_SAME_SITE="none"          # Wajib "none" agar cookie diizinkan menyeberang antar subdomain
+COOKIE_DOMAIN=".domainanda.com"  # Isi root domain Anda dengan awalan TITIK
+COOKIE_SECURE="true"             # Wajib true (HTTPS harus aktif di cPanel)
+```
+
+#### 2. Konfigurasi Frontend
+Pada folder `frontend/`, pastikan Anda menyesuaikan `.env.production` saat akan membuild aplikasi di cPanel agar mengarah ke API eksternal:
+```env
+NEXT_PUBLIC_API_URL="https://api.domainanda.com"
+```
+*(Catatan Penting: Jika Anda men-deploy terpisah di cPanel, disarankan untuk menghapus sementara blok `rewrites()` di file `next.config.ts` agar Next.js menembak API secara eksternal alih-alih menganggap API berada di domain internal).*
 
 #### 3. Build Proyek di cPanel/VPS
-Jalankan instruksi berikut di terminal cPanel/SSH Anda:
+Buka terminal cPanel atau SSH, lalu kompilasi proyek:
 
 **A. Build Backend:**
 ```bash
 cd backend
 npm install
 npx prisma generate
-npx prisma migrate deploy  # Menerapkan migrasi schema ke database cPanel
+npx prisma migrate deploy  # Sinkronisasi tabel ke database
 npm run build              # Menghasilkan dist/src/server.js
 ```
 
@@ -123,16 +135,15 @@ npm run build              # Menghasilkan dist/src/server.js
 ```bash
 cd ../frontend
 npm install
-npm run build              # Menghasilkan folder standalone .next/standalone/server.js
+npm run build              # Menghasilkan folder `.next/standalone`
 ```
 
-#### 4. Menjalankan via PM2
-Kembali ke root direktori proyek, lalu jalankan:
+#### 4. Menjalankan Layanan via PM2
+Gunakan file bawaan `ecosystem.config.js` dari folder utama untuk menjaga server Node.js tetap menyala:
 ```bash
 pm2 start ecosystem.config.js
 ```
-Ini akan menyalakan backend dan frontend secara bersamaan dan menjaganya tetap aktif di background.
-
+*(Tips Tambahan: Jika cPanel Anda menggunakan fitur native "Setup Node.js App" tanpa PM2, arahkan Application Startup File milik backend ke `dist/src/server.js`, dan milik frontend ke `.next/standalone/server.js`).*
 
 ## 🧪 Testing the Application (Ensuring No Errors)
 
