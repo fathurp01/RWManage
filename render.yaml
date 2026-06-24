@@ -5,6 +5,7 @@ services:
   - type: web
     name: rwmanage-backend
     runtime: node
+    plan: free
     rootDir: backend
     buildCommand: npm install && npx prisma generate && npm run build
     preDeployCommand: npm run db:deploy
@@ -32,6 +33,7 @@ services:
   - type: web
     name: rwmanage-frontend
     runtime: node
+    plan: free
     rootDir: frontend
     buildCommand: echo "NEXT_PUBLIC_API_URL=https://$BACKEND_HOST/api" > .env.production && npm install && npm run build
     startCommand: npx next start
