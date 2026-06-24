@@ -15,7 +15,7 @@ const RT_DASHBOARD_PATH = "/dashboard/rt";
 const MASJID_DASHBOARD_PATH = "/dashboard/masjid";
 const SUPERADMIN_DASHBOARD_PATH = "/dashboard/superadmin";
 
-const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api").replace(/\/$/, "");
+const apiBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:3000") + "/api";
 
 const fetchSessionUser = async (request: NextRequest): Promise<AuthUser | null> => {
   try {

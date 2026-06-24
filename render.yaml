@@ -31,7 +31,7 @@ services:
     runtime: node
     plan: free
     rootDir: frontend
-    buildCommand: echo "NEXT_PUBLIC_API_URL=$BACKEND_URL/api" > .env.production && npm install --include=dev && npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npx next start
     envVars:
       - key: BACKEND_URL

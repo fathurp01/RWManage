@@ -22,7 +22,7 @@ const authCookieOptions = () => {
   return {
     httpOnly: true,
     secure,
-    sameSite: secure ? ("none" as const) : ("lax" as const),
+    sameSite: "lax" as const,
     maxAge: AUTH_COOKIE_MAX_AGE_MS,
     path: "/",
   };
