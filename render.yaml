@@ -21,13 +21,13 @@ services:
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
-        value: https://rwmanage-frontend.onrender.com
+        value: https://rwmanage.onrender.com
 
   # ----------------------------------------------------
   # Next.js Frontend App
   # ----------------------------------------------------
   - type: web
-    name: rwmanage-frontend
+    name: rwmanage
     runtime: node
     plan: free
     rootDir: frontend
