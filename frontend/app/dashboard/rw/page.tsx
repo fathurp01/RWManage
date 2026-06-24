@@ -283,7 +283,7 @@ export default function DashboardRwIndexPage() {
           {(pendingSetoranCount > 0 || pendingIncidentsCount > 0) ? (
             <div className="flex flex-col gap-3">
               {pendingSetoranCount > 0 && (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4.5 rounded-2xl border border-amber-200/60 bg-amber-50/50 dark:border-amber-950/30 dark:bg-amber-950/10 shadow-xs">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4.5 rounded-2xl border border-amber-200/60 bg-amber-50/50 dark:border-amber-950/30 dark:bg-amber-950/10 shadow-xs">
                   <div className="flex items-center gap-3">
                     <span className="inline-flex size-9 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
                       <AlertTriangle className="size-4.5" />
@@ -305,7 +305,7 @@ export default function DashboardRwIndexPage() {
               )}
 
               {pendingIncidentsCount > 0 && (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4.5 rounded-2xl border border-rose-200/60 bg-rose-50/50 dark:border-rose-950/30 dark:bg-rose-950/10 shadow-xs">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4.5 rounded-2xl border border-rose-200/60 bg-rose-50/50 dark:border-rose-950/30 dark:bg-rose-950/10 shadow-xs">
                   <div className="flex items-center gap-3">
                     <span className="inline-flex size-9 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
                       <Shield className="size-4.5" />
@@ -410,10 +410,10 @@ export default function DashboardRwIndexPage() {
           </div>
 
           {/* 4. Baris Keempat: Konten Terbagi 2 Kolom (Grid / Split View) */}
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-2 w-full min-w-0">
 
             {/* ==================== KOLOM KIRI (KEUANGAN & WARGA) ==================== */}
-            <div className="space-y-6">
+            <div className="space-y-6 min-w-0 w-full">
 
               {/* Card Ringkasan & Donut Chart Iuran */}
               <Card className="border-slate-200/80 dark:border-white/5 shadow-xs">
@@ -421,10 +421,10 @@ export default function DashboardRwIndexPage() {
                   <CardTitle className="text-base font-extrabold">Status Penerimaan Iuran {tahun}</CardTitle>
                   <CardDescription>Rasio kepatuhan iuran warga aktif periode berjalan</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col sm:flex-row items-center gap-8">
+                <CardContent className="min-w-0 overflow-hidden">
+                  <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
                     {/* Donut Chart */}
-                    <div className="relative flex items-center justify-center shrink-0">
+                    <div className="relative flex items-center justify-center shrink-0 mx-auto md:mx-0">
                       <svg className="size-28 -rotate-90">
                         <circle
                           cx="56"
@@ -561,7 +561,7 @@ export default function DashboardRwIndexPage() {
             </div>
 
             {/* ==================== KOLOM KANAN (KEAMANAN & PENGAWASAN) ==================== */}
-            <div className="space-y-6">
+            <div className="space-y-6 min-w-0 w-full">
 
               {/* Status Ronda Malam Ini */}
               <Card className="border-slate-200/80 dark:border-white/5 shadow-xs">
@@ -680,7 +680,7 @@ export default function DashboardRwIndexPage() {
                             <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
                               {item.deskripsi}
                             </p>
-                            <div className="mt-2.5 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider border-t border-slate-100/60 dark:border-white/5 pt-2">
+                            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider border-t border-slate-100/60 dark:border-white/5 pt-2">
                               <span>Pelapor: {item.pelapor_nama}</span>
                               <span>{formatTanggal(item.tanggal_insiden)}</span>
                             </div>
@@ -697,7 +697,7 @@ export default function DashboardRwIndexPage() {
 
           {/* 5. Baris Bawah: Footer Action */}
           <div className="rounded-2xl border border-blue-200 dark:border-blue-900/35 bg-blue-50/40 dark:bg-blue-950/15 p-4.5 shadow-xs">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="inline-flex size-9 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
                   <FileText className="size-4.5" />
