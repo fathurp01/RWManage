@@ -18,10 +18,11 @@ const isCookieSecure = (): boolean => {
 };
 
 const authCookieOptions = () => {
+  const secure = isCookieSecure();
   return {
     httpOnly: true,
-    secure: isCookieSecure(),
-    sameSite: "strict" as const,
+    secure,
+    sameSite: secure ? ("none" as const) : ("lax" as const),
     maxAge: AUTH_COOKIE_MAX_AGE_MS,
     path: "/",
   };
