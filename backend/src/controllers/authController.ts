@@ -19,10 +19,12 @@ const isCookieSecure = (): boolean => {
 
 const authCookieOptions = () => {
   const secure = isCookieSecure();
+  const sameSite = (process.env.COOKIE_SAME_SITE as "lax" | "strict" | "none") || "lax";
+  
   return {
     httpOnly: true,
     secure,
-    sameSite: "lax" as const,
+    sameSite,
     maxAge: AUTH_COOKIE_MAX_AGE_MS,
     path: "/",
   };
